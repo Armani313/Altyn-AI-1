@@ -113,16 +113,10 @@ function PlanCard({
   highlighted,
 }: (typeof plans)[number]) {
   return (
-    <div
-      className={`relative flex flex-col rounded-2xl overflow-hidden transition-all duration-300 ${
-        highlighted
-          ? 'bg-gradient-to-br from-rose-gold-500 via-rose-gold-500 to-rose-gold-600 text-white shadow-glow ring-1 ring-rose-gold-400'
-          : 'bg-white border border-cream-200 hover:shadow-card hover:border-rose-gold-200'
-      }`}
-    >
-      {/* Popular badge */}
+    <div className="relative pt-4">
+      {/* Popular badge — outside overflow-hidden card to avoid clipping */}
       {badge && (
-        <div className="absolute -top-px left-1/2 -translate-x-1/2 px-4 py-1 bg-white rounded-b-full shadow-soft">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 px-4 py-1 bg-white rounded-b-full shadow-soft whitespace-nowrap">
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-gold-600">
             <Sparkles className="w-3 h-3" />
             {badge}
@@ -130,7 +124,15 @@ function PlanCard({
         </div>
       )}
 
-      <div className="p-7 pt-8 flex flex-col flex-1">
+      <div
+        className={`relative flex flex-col rounded-2xl transition-all duration-300 ${
+          highlighted
+            ? 'bg-gradient-to-br from-rose-gold-500 via-rose-gold-500 to-rose-gold-600 text-white shadow-glow ring-1 ring-rose-gold-400'
+            : 'bg-white border border-cream-200 hover:shadow-card hover:border-rose-gold-200'
+        }`}
+      >
+
+      <div className="p-7 flex flex-col flex-1">
         {/* Plan name + description */}
         <div className="mb-5">
           <h3
@@ -216,6 +218,7 @@ function PlanCard({
             <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </Button>
         </Link>
+      </div>
       </div>
     </div>
   )

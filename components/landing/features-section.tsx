@@ -137,7 +137,7 @@ function StepCard({
       <div className="absolute inset-0 bg-gradient-to-br from-rose-gold-50/0 to-rose-gold-100/0 group-hover:from-rose-gold-50/60 group-hover:to-rose-gold-50/20 transition-all duration-300 rounded-2xl" />
 
       {/* Content */}
-      <div className="relative z-10">
+      <div className="relative z-10 pr-14">
         {/* Icon */}
         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-gold-100 to-rose-gold-200 flex items-center justify-center mb-5 group-hover:from-rose-gold-200 group-hover:to-rose-gold-300 transition-colors duration-300">
           <Icon className="w-5 h-5 text-rose-gold-700" />

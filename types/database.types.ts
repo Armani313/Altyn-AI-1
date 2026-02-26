@@ -147,7 +147,12 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      decrement_credits: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+    }
     Enums: Record<string, never>
   }
 }

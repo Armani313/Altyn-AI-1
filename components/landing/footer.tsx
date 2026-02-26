@@ -28,8 +28,7 @@ export function Footer() {
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              ИИ-платформа для создания профессиональных лайфстайл-фотографий украшений.
-              Для ювелирных магазинов Казахстана.
+              ИИ-фото украшений для ювелирных магазинов Казахстана.
             </p>
             <p className="mt-4 text-xs text-muted-foreground">
               🇰🇿 Алматы, Казахстан

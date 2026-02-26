@@ -33,7 +33,7 @@ export function HeroSection() {
             <motion.div {...fadeUp(0)}>
               <span className="inline-flex items-center gap-2 bg-rose-gold-100 text-rose-gold-700 text-xs font-semibold px-4 py-1.5 rounded-full mb-6 tracking-wide uppercase">
                 <Sparkles className="w-3.5 h-3.5" />
-                ИИ-генерация для ювелирных магазинов
+                ИИ для ювелирных магазинов
               </span>
             </motion.div>
 
@@ -42,7 +42,7 @@ export function HeroSection() {
               {...fadeUp(0.08)}
               className="font-serif text-[clamp(2rem,5vw,3rem)] font-medium text-foreground leading-[1.15] tracking-tight mb-6"
             >
-              Создавайте потрясающий контент для ювелирного бизнеса{' '}
+              Контент для украшений —{' '}
               <em className="text-primary not-italic">без фотосессий.</em>
             </motion.h1>
 
@@ -51,8 +51,8 @@ export function HeroSection() {
               {...fadeUp(0.16)}
               className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-[480px]"
             >
-              Загрузите фото украшения — за секунды получите профессиональные
-              лайфстайл-снимки. Без модели, без студии, без больших затрат.
+              Загрузите фото украшения — получите профессиональный
+              лайфстайл-снимок за секунды. Без модели и студии.
             </motion.p>
 
             {/* Stats row */}

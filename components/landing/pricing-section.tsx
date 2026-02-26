@@ -12,18 +12,16 @@ const plans = [
     name: 'Старт',
     price: '9 900',
     period: 'мес',
-    description: 'Для магазинов, которые только начинают работать с ИИ-контентом',
+    description: 'Для старта с ИИ-контентом',
     badge: null,
     credits: '30 генераций / мес',
     features: [
-      'До 30 ИИ-фотографий в месяц',
       'Все базовые шаблоны поз',
-      'Экспорт для Instagram и Kaspi',
-      'Скачивание в высоком качестве',
+      'Instagram, Kaspi и сайт',
       'Email-поддержка',
     ],
     notIncluded: ['Премиум-позы', 'Пакетная загрузка'],
-    cta: 'Начать на тарифе Старт',
+    cta: 'Начать',
     highlighted: false,
   },
   {
@@ -31,15 +29,14 @@ const plans = [
     name: 'Бренд Бизнес',
     price: '29 900',
     period: 'мес',
-    description: 'Для активных брендов с большим объёмом контента',
+    description: 'Для брендов с высоким объёмом контента',
     badge: 'Популярный выбор',
     credits: '150 генераций / мес',
     features: [
-      'До 150 ИИ-фотографий в месяц',
       'Все шаблоны + эксклюзивные позы',
-      'Приоритетная очередь генерации',
-      'Экспорт для всех платформ',
-      'Пакетная загрузка нескольких фото',
+      'Приоритетная очередь',
+      'Все платформы',
+      'Пакетная загрузка',
       'Приоритетная поддержка',
     ],
     notIncluded: [],
@@ -68,7 +65,7 @@ export function PricingSection() {
             Прозрачные цены
           </h2>
           <p className="text-muted-foreground text-lg">
-            Оплата через Kaspi Pay. Отмена подписки в любой момент.
+            Оплата через Kaspi Pay · Отмена в любой момент
           </p>
         </motion.div>
 
@@ -95,9 +92,8 @@ export function PricingSection() {
           transition={{ delay: 0.4 }}
           className="text-center mt-10 text-sm text-muted-foreground"
         >
-          Все тарифы включают{' '}
-          <strong className="text-foreground">3 бесплатные генерации</strong>{' '}
-          при регистрации. Попробуйте без риска — карта не нужна.
+          <strong className="text-foreground">3 генерации бесплатно</strong>{' '}
+          при регистрации — карта не нужна.
         </motion.p>
       </div>
     </section>

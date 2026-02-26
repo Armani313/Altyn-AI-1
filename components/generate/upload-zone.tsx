@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback } from 'react'
 import { Camera, X, ImagePlus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_MB } from '@/lib/constants'
 
 interface UploadZoneProps {
   onUpload: (file: File, previewUrl: string) => void
@@ -10,8 +11,8 @@ interface UploadZoneProps {
   previewUrl: string | null
 }
 
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic']
-const MAX_SIZE_MB = 10
+const ACCEPTED_TYPES = ACCEPTED_IMAGE_TYPES
+const MAX_SIZE_MB = MAX_IMAGE_MB
 
 export function UploadZone({ onUpload, onRemove, previewUrl }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -22,7 +23,7 @@ export function UploadZone({ onUpload, onRemove, previewUrl }: UploadZoneProps) 
     (file: File) => {
       setError('')
 
-      if (!ACCEPTED_TYPES.includes(file.type)) {
+      if (!(ACCEPTED_TYPES as readonly string[]).includes(file.type)) {
         setError('Поддерживаются форматы: JPG, PNG, WEBP, HEIC')
         return
       }

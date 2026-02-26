@@ -6,16 +6,9 @@ import { UploadZone } from '@/components/generate/upload-zone'
 import { TemplatePicker } from '@/components/generate/template-picker'
 import { ResultViewer } from '@/components/generate/result-viewer'
 import { createClient } from '@/lib/supabase/client'
+import { TEMPLATE_CATEGORY_MAP } from '@/components/generate/template-picker'
 
 type AspectRatio = '1:1' | '9:16'
-
-// Derive Replicate category from our template ID prefix
-function getCategoryFromTemplateId(id: string | null): string {
-  if (!id) return 'rings'
-  if (id.startsWith('neck')) return 'necklaces'
-  if (id.startsWith('ear')) return 'earrings'
-  return 'rings'
-}
 
 export default function DashboardPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -77,7 +70,7 @@ export default function DashboardPage() {
       const formData = new FormData()
       formData.append('image', uploadedFile)
       if (selectedTemplate) formData.append('template_id', selectedTemplate)
-      formData.append('template_category', getCategoryFromTemplateId(selectedTemplate))
+      formData.append('template_category', TEMPLATE_CATEGORY_MAP[selectedTemplate ?? ''] ?? 'rings')
       formData.append('aspect_ratio', aspectRatio)
 
       const res = await fetch('/api/generate', { method: 'POST', body: formData })

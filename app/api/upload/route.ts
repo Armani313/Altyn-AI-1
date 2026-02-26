@@ -13,15 +13,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-]
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -43,14 +35,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Файл не найден.' }, { status: 400 })
   }
 
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+  if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
     return NextResponse.json(
       { error: `Неподдерживаемый формат: ${file.type}. Используйте JPG, PNG, WebP или HEIC.` },
       { status: 400 }
     )
   }
 
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json(
       { error: `Файл превышает лимит 10 МБ.` },
       { status: 413 }
@@ -58,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   const rawExt  = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-  const safeExt = /^(jpg|jpeg|png|webp|heic|heif)$/.test(rawExt) ? rawExt : 'jpg'
+  const safeExt = (SAFE_IMAGE_EXTENSIONS as readonly string[]).includes(rawExt) ? rawExt : 'jpg'
   const path    = `${user.id}/${Date.now()}-upload.${safeExt}`
   const bytes   = await file.arrayBuffer()
 

@@ -6,6 +6,7 @@ import { Wand2, Images, Settings, LogOut, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/supabase/actions'
 import type { Profile } from '@/types/database.types'
+import { PLAN_META } from '@/lib/config/plans'
 
 interface SidebarProps {
   profile: Pick<Profile, 'contact_name' | 'business_name' | 'credits_remaining' | 'plan'> | null
@@ -16,17 +17,11 @@ const NAV_ITEMS = [
   { href: '/library', icon: Images, label: 'Библиотека' },
 ]
 
-const PLAN_LABELS: Record<string, string> = {
-  free: 'Бесплатный',
-  starter: 'Старт',
-  pro: 'Бренд Бизнес',
-  enterprise: 'Enterprise',
-}
-
 export function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
-  const credits = profile?.credits_remaining ?? 0
-  const maxCredits = profile?.plan === 'starter' ? 30 : profile?.plan === 'pro' ? 150 : 3
+  const plan     = profile?.plan ?? 'free'
+  const credits  = profile?.credits_remaining ?? 0
+  const planMeta = PLAN_META[plan]
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[240px] bg-white border-r border-cream-200 flex flex-col z-40">
@@ -93,7 +88,7 @@ export function Sidebar({ profile }: SidebarProps) {
               <span className="text-xs font-semibold text-foreground">Кредиты</span>
             </div>
             <span className="text-xs text-muted-foreground">
-              {PLAN_LABELS[profile?.plan ?? 'free']}
+              {planMeta.label}
             </span>
           </div>
 
@@ -101,7 +96,7 @@ export function Sidebar({ profile }: SidebarProps) {
           <div className="h-1.5 bg-cream-300 rounded-full overflow-hidden mb-1.5">
             <div
               className="h-full bg-gradient-to-r from-rose-gold-400 to-rose-gold-500 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min((credits / maxCredits) * 100, 100)}%` }}
+              style={{ width: `${Math.min((credits / planMeta.credits) * 100, 100)}%` }}
             />
           </div>
 
@@ -109,7 +104,7 @@ export function Sidebar({ profile }: SidebarProps) {
             <span className="text-xs text-muted-foreground">
               <strong className="text-foreground">{credits}</strong> осталось
             </span>
-            {profile?.plan === 'free' && (
+            {plan === 'free' && (
               <Link
                 href="/settings/billing"
                 className="text-[10px] font-semibold text-primary hover:text-rose-gold-600 transition-colors"

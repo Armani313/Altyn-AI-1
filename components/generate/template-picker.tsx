@@ -3,18 +3,19 @@
 import { useState } from 'react'
 import { Sparkles, Lock, Check } from 'lucide-react'
 
-type Category = 'all' | 'rings' | 'necklaces' | 'earrings'
+export type TemplateCategory = 'rings' | 'necklaces' | 'earrings'
+type Category = 'all' | TemplateCategory
 
-interface Template {
+export interface Template {
   id: string
   name: string
-  category: Exclude<Category, 'all'>
+  category: TemplateCategory
   gradient: string
   label?: string
   premium?: boolean
 }
 
-const TEMPLATES: Template[] = [
+export const TEMPLATES: Template[] = [
   { id: 'hand-1', name: 'Изящная рука',    category: 'rings',     gradient: 'from-[#F5D5C0] to-[#D49A6A]', label: 'Хит' },
   { id: 'hand-2', name: 'Длинные пальцы',  category: 'rings',     gradient: 'from-[#EAC9A8] to-[#C48860]' },
   { id: 'hand-3', name: 'Нежный жест',     category: 'rings',     gradient: 'from-[#F0D8C0] to-[#D4A070]', label: 'Новый' },
@@ -25,6 +26,11 @@ const TEMPLATES: Template[] = [
   { id: 'ear-1',  name: 'Профиль',         category: 'earrings',  gradient: 'from-[#F0D0B0] to-[#E0A870]' },
   { id: 'ear-2',  name: 'Крупный план',    category: 'earrings',  gradient: 'from-[#E8C8A8] to-[#D8A068]', label: 'Новый' },
 ]
+
+/** Maps template ID → category. Import in dashboard page to avoid prefix-matching. */
+export const TEMPLATE_CATEGORY_MAP: Record<string, TemplateCategory> = Object.fromEntries(
+  TEMPLATES.map((t) => [t.id, t.category])
+)
 
 const TABS: { id: Category; label: string }[] = [
   { id: 'all',       label: 'Все' },

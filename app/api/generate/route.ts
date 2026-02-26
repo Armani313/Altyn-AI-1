@@ -30,20 +30,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateJewelryPhoto } from '@/lib/ai/replicate'
+import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
+
 // Extend serverless timeout to 60 s for the Replicate polling step
 export const maxDuration = 60
 export const runtime = 'nodejs'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-]
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const INPUT_BUCKET  = 'jewelry-uploads'
 const OUTPUT_BUCKET = 'generated-images'
 
@@ -98,14 +92,14 @@ export async function POST(request: Request) {
       return err('Файл изображения не найден. Пожалуйста, загрузите фото украшения.', 400)
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(imageFile.type)) {
+    if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(imageFile.type)) {
       return err(
         `Неподдерживаемый формат: ${imageFile.type}. Используйте JPG, PNG, WebP или HEIC.`,
         400
       )
     }
 
-    if (imageFile.size > MAX_FILE_SIZE) {
+    if (imageFile.size > MAX_IMAGE_BYTES) {
       return err(
         `Файл ${(imageFile.size / 1024 / 1024).toFixed(1)} МБ превышает лимит 10 МБ. ` +
         'Сожмите изображение и попробуйте снова.',
@@ -115,7 +109,7 @@ export async function POST(request: Request) {
 
     // ── 4. Upload source image ────────────────────────────────────────────────
     const rawExt    = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-    const safeExt   = /^(jpg|jpeg|png|webp|heic|heif)$/.test(rawExt) ? rawExt : 'jpg'
+    const safeExt   = (SAFE_IMAGE_EXTENSIONS as readonly string[]).includes(rawExt) ? rawExt : 'jpg'
     const inputPath = `${user.id}/${Date.now()}-source.${safeExt}`
     const fileBytes = await imageFile.arrayBuffer()
 

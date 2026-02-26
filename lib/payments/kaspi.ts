@@ -10,25 +10,10 @@
  */
 
 import { createHmac } from 'crypto'
+import { PLAN_META } from '@/lib/config/plans'
 
 // ── Plan configuration ────────────────────────────────────────────────────────
-
-export const KASPI_PLANS = {
-  starter: {
-    name: 'Старт',
-    priceKZT: 9_900,
-    credits: 30,
-    description: 'Nurai AI Studio — тариф Старт (30 генераций в месяц)',
-  },
-  pro: {
-    name: 'Бренд Бизнес',
-    priceKZT: 29_900,
-    credits: 150,
-    description: 'Nurai AI Studio — тариф Бренд Бизнес (150 генераций в месяц)',
-  },
-} as const satisfies Record<string, KaspiPlan>
-
-export type PlanKey = keyof typeof KASPI_PLANS
+// Credits come from PLAN_META — update lib/config/plans.ts, not here.
 
 interface KaspiPlan {
   name: string
@@ -36,6 +21,23 @@ interface KaspiPlan {
   credits: number
   description: string
 }
+
+export const KASPI_PLANS = {
+  starter: {
+    name: PLAN_META.starter.label,
+    priceKZT: 9_900,
+    credits: PLAN_META.starter.credits,
+    description: `Nurai AI Studio — тариф Старт (${PLAN_META.starter.credits} генераций в месяц)`,
+  },
+  pro: {
+    name: PLAN_META.pro.label,
+    priceKZT: 29_900,
+    credits: PLAN_META.pro.credits,
+    description: `Nurai AI Studio — тариф Бренд Бизнес (${PLAN_META.pro.credits} генераций в месяц)`,
+  },
+} satisfies Record<string, KaspiPlan>
+
+export type PlanKey = keyof typeof KASPI_PLANS
 
 // ── Payment order creation ────────────────────────────────────────────────────
 

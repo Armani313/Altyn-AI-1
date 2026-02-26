@@ -19,7 +19,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import {
   verifyKaspiSignature,
   subscriptionExpiresAt,
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
   console.info(`Kaspi webhook: TxnId=${TxnId} OrderId=${OrderId} Status=${Status}`)
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   // ── 4. Find matching subscription ─────────────────────────────────────────
   // OrderId was set to our subscription row id at creation time

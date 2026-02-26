@@ -2,26 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
+  /* ─── Дизайн-токены: "Luminous Feminine B2B" ───────────────────────── */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+    --background:         30 33% 98%;   /* #FAF7F4 cream */
+    --foreground:         20 15% 18%;
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+    --card:               30 30% 99%;
+    --card-foreground:    20 15% 18%;
+
+    --popover:            30 30% 99%;
+    --popover-foreground: 20 15% 18%;
+
+    --primary:            24 52% 59%;   /* Rose Gold #C4834F */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary:          30 20% 94%;
+    --secondary-foreground: 20 12% 28%;
+
+    --muted:              30 15% 92%;
+    --muted-foreground:   20 8% 52%;
+
+    --accent:             24 52% 59%;
+    --accent-foreground:  0 0% 100%;
+
+    --destructive:        0 78% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border:             30 18% 88%;
+    --input:              30 18% 88%;
+    --ring:               24 52% 59%;
+
+    --radius:             0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3 {
+    @apply font-serif;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .gradient-rose-gold {
+    background: linear-gradient(135deg, #E8BC91 0%, #C4834F 50%, #A66B3C 100%);
+  }
+
+  .glass-card {
+    background: rgba(250, 247, 244, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 154, 106, 0.15);
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--secondary)) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
   }
 }

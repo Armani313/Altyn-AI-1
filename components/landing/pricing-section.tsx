@@ -47,7 +47,7 @@ const plans = [
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="py-28 px-6 bg-gradient-to-b from-cream-200/30 to-[#FAF9F6]">
+    <section id="pricing" className="py-28 px-6 scroll-mt-20 bg-gradient-to-b from-cream-200/30 to-[#FAF9F6]">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}

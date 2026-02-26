@@ -46,7 +46,7 @@ const cardVariants = {
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-28 px-6">
+    <section id="features" className="py-28 px-6 scroll-mt-20">
       <div className="max-w-6xl mx-auto">
 
         {/* Section header */}
@@ -82,11 +82,6 @@ export function FeaturesSection() {
             </motion.div>
           ))}
         </motion.div>
-
-        {/* Connector arrows — desktop only */}
-        <div className="hidden md:flex justify-center gap-0 -mt-[calc(theme(spacing.6)+50%)] pointer-events-none select-none" aria-hidden>
-          {/* Rendered purely decoratively via the cards themselves */}
-        </div>
 
         {/* Testimonial / trust strip */}
         <motion.div

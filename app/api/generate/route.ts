@@ -29,10 +29,10 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { generateJewelryPhoto, assertSafeOutputUrl } from '@/lib/ai/replicate'
+import { generateJewelryPhoto } from '@/lib/ai/gemini'
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
 
-// Extend serverless timeout to 60 s for the Replicate polling step
+// Extend serverless timeout to 60 s for Gemini generation
 export const maxDuration = 60
 export const runtime = 'nodejs'
 
@@ -175,15 +175,16 @@ export async function POST(request: Request) {
 
     const generationId = gen.id
 
-    // ── 6. Call AI provider ───────────────────────────────────────────────────
-    let aiOutputUrl: string
+    // ── 6. Call Gemini ────────────────────────────────────────────────────────
+    let aiImageBuffer: Buffer
+    let aiMimeType:    string
     try {
       const result = await generateJewelryPhoto({
         imageUrl:         signedData.signedUrl,
         templateCategory,
-        promptStrength:   0.55,
       })
-      aiOutputUrl = result.outputUrl
+      aiImageBuffer = result.imageBuffer
+      aiMimeType    = result.mimeType
     } catch (aiErr) {
       // HIGH-4: store only a safe user-facing message, never a raw exception string
       const safeErrMsg = aiErr instanceof Error
@@ -203,30 +204,23 @@ export async function POST(request: Request) {
       )
     }
 
-    // ── 7. Download AI result and re-upload to our Storage ────────────────────
-    // Storing on our infrastructure prevents expiring Replicate URLs
-    const outputPath     = `${user.id}/${generationId}-result.jpg`
-    let resultPublicUrl  = aiOutputUrl // fallback to direct Replicate URL
+    // ── 7. Upload Gemini result to our Storage ────────────────────────────────
+    // Gemini returns raw bytes — upload directly, no re-fetch needed
+    const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'
+    const outputPath = `${user.id}/${generationId}-result.${ext}`
+    let resultPublicUrl = ''
 
-    try {
-      // CRIT-2: validate URL before server-side fetch (SSRF guard)
-      assertSafeOutputUrl(aiOutputUrl)
-      const aiResponse = await fetch(aiOutputUrl, { signal: AbortSignal.timeout(30_000) })
-      if (aiResponse.ok) {
-        const resultBytes = await aiResponse.arrayBuffer()
-        const { error: resultUploadErr } = await supabase.storage
-          .from(OUTPUT_BUCKET)
-          .upload(outputPath, resultBytes, { contentType: 'image/jpeg', upsert: true })
+    const { error: resultUploadErr } = await supabase.storage
+      .from(OUTPUT_BUCKET)
+      .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: true })
 
-        if (!resultUploadErr) {
-          const { data: pub } = supabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
-          resultPublicUrl = pub.publicUrl
-        }
-      }
-    } catch (downloadErr) {
-      // Non-critical: Replicate URL is still valid for ~1 h
-      console.warn('Result re-upload skipped:', downloadErr)
+    if (resultUploadErr) {
+      console.error('Result upload error:', resultUploadErr)
+      return err('Ошибка сохранения результата. Попробуйте снова.', 500)
     }
+
+    const { data: pub } = supabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
+    resultPublicUrl = pub.publicUrl
 
     // ── 8. Mark generation as completed ──────────────────────────────────────
     await supabase

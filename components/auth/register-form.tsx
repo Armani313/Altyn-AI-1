@@ -218,7 +218,7 @@ export function RegisterForm() {
 
         <p className="text-center text-xs text-muted-foreground">
           Нажимая кнопку, вы соглашаетесь с{' '}
-          <a href="#" className="underline hover:text-foreground">
+          <a href="/terms" className="underline hover:text-foreground">
             условиями использования
           </a>
         </p>

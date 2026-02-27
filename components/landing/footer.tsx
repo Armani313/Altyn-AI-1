@@ -7,9 +7,9 @@ const productLinks = [
 ]
 
 const companyLinks = [
-  { label: 'О нас', href: '#' },
-  { label: 'Связаться', href: '#' },
-  { label: 'Политика конфиденциальности', href: '#' },
+  { label: 'О нас',                       href: '#'              },
+  { label: 'Связаться',                   href: 'mailto:support@nurai.kz' },
+  { label: 'Условия использования',       href: '/terms'         },
 ]
 
 export function Footer() {

@@ -14,7 +14,7 @@
 
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { generateJewelryPhoto, assertSafeOutputUrl } from '@/lib/ai/replicate'
+import { generateJewelryPhoto } from '@/lib/ai/gemini'
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
 
 export const maxDuration = 60
@@ -125,15 +125,16 @@ export async function POST(request: Request) {
       return err('Не удалось получить доступ к загруженному файлу.', 500)
     }
 
-    // ── Call AI provider ─────────────────────────────────────────────────────
-    let aiOutputUrl: string
+    // ── Call Gemini ───────────────────────────────────────────────────────────
+    let aiImageBuffer: Buffer
+    let aiMimeType:    string
     try {
       const result = await generateJewelryPhoto({
         imageUrl:         signedData.signedUrl,
         templateCategory,
-        promptStrength:   0.55,
       })
-      aiOutputUrl = result.outputUrl
+      aiImageBuffer = result.imageBuffer
+      aiMimeType    = result.mimeType
     } catch (aiErr) {
       console.error('Demo AI generation error:', aiErr)
       return err(
@@ -144,28 +145,21 @@ export async function POST(request: Request) {
       )
     }
 
-    // ── Download AI result and re-upload to our Storage ──────────────────────
-    const outputPath    = `demo/${Date.now()}-result.jpg`
-    let resultPublicUrl = aiOutputUrl // fallback: direct Replicate URL
+    // ── Upload Gemini result to our Storage ───────────────────────────────────
+    const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'
+    const outputPath = `demo/${Date.now()}-result.${ext}`
 
-    try {
-      // CRIT-2: validate URL before server-side fetch (SSRF guard)
-      assertSafeOutputUrl(aiOutputUrl)
-      const aiRes = await fetch(aiOutputUrl, { signal: AbortSignal.timeout(30_000) })
-      if (aiRes.ok) {
-        const resultBytes = await aiRes.arrayBuffer()
-        const { error: resUploadErr } = await supabase.storage
-          .from(OUTPUT_BUCKET)
-          .upload(outputPath, resultBytes, { contentType: 'image/jpeg', upsert: true })
+    const { error: resUploadErr } = await supabase.storage
+      .from(OUTPUT_BUCKET)
+      .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: true })
 
-        if (!resUploadErr) {
-          const { data: pub } = supabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
-          resultPublicUrl = pub.publicUrl
-        }
-      }
-    } catch (downloadErr) {
-      console.warn('Demo result re-upload skipped:', downloadErr)
+    if (resUploadErr) {
+      console.error('Demo result upload error:', resUploadErr)
+      return err('Ошибка сохранения результата. Попробуйте снова.', 500)
     }
+
+    const { data: pub }   = supabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
+    const resultPublicUrl = pub.publicUrl
 
     // ── Record IP usage (HIGH-1) ─────────────────────────────────────────────
     if (clientIp !== 'unknown') {

@@ -1,0 +1,202 @@
+/**
+ * POST /api/generate/demo
+ *
+ * Free demo generation — no auth required.
+ * Rate limited to 1 request per browser session via httpOnly cookie.
+ *
+ * Request: multipart/form-data
+ *   image             File    — jewelry photo (JPG/PNG/WebP/HEIC, max 10 MB)
+ *   template_category string? — 'rings' | 'necklaces' | 'earrings' | 'bracelets'
+ *
+ * Response (JSON):
+ *   { success: true, outputUrl }
+ */
+
+import { NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import { generateJewelryPhoto, assertSafeOutputUrl } from '@/lib/ai/replicate'
+import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
+
+export const maxDuration = 60
+export const runtime = 'nodejs'
+
+const DEMO_COOKIE       = 'nurai_demo_used'
+const INPUT_BUCKET      = 'jewelry-uploads'
+const OUTPUT_BUCKET     = 'generated-images'
+const IP_WINDOW_MS      = 24 * 60 * 60 * 1000 // 24 h
+
+// HIGH-1: Server-side IP rate limit (single-instance; use Redis for multi-instance)
+// Keyed by real visitor IP; resets on container restart.
+const ipLog = new Map<string, number>()
+
+// HIGH-5: strict allowlist for template_category
+const VALID_CATEGORIES = ['rings', 'necklaces', 'earrings', 'bracelets', 'universal'] as const
+
+function getClientIp(req: Request): string {
+  // CF-Connecting-IP is set by Cloudflare with the real visitor IP (stripped by CF)
+  return (
+    req.headers.get('cf-connecting-ip') ??
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  )
+}
+
+export async function POST(request: Request) {
+  try {
+    // ── Rate limit 1: httpOnly cookie (UX layer) ─────────────────────────────
+    const cookieHeader = request.headers.get('cookie') ?? ''
+    if (cookieHeader.includes(`${DEMO_COOKIE}=1`)) {
+      return err(
+        'Вы уже использовали бесплатную генерацию. Зарегистрируйтесь для полного доступа.',
+        429
+      )
+    }
+
+    // ── Rate limit 2: server-side IP check (security layer) ──────────────────
+    // HIGH-1: cannot be bypassed by deleting the cookie
+    const clientIp = getClientIp(request)
+    if (clientIp !== 'unknown') {
+      const lastGen = ipLog.get(clientIp) ?? 0
+      if (Date.now() - lastGen < IP_WINDOW_MS) {
+        return err(
+          'Вы уже использовали бесплатную генерацию. Зарегистрируйтесь для полного доступа.',
+          429
+        )
+      }
+    }
+
+    // ── Parse multipart body ─────────────────────────────────────────────────
+    let formData: FormData
+    try {
+      formData = await request.formData()
+    } catch {
+      return err('Неверный формат запроса. Используйте multipart/form-data.', 400)
+    }
+
+    const imageFile  = formData.get('image') as File | null
+    const rawCategory = (formData.get('template_category') as string) || ''
+
+    // HIGH-5: validate against allowlist
+    const templateCategory = (VALID_CATEGORIES as readonly string[]).includes(rawCategory)
+      ? rawCategory
+      : 'rings'
+
+    if (!imageFile || imageFile.size === 0) {
+      return err('Файл изображения не найден. Пожалуйста, загрузите фото украшения.', 400)
+    }
+
+    if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(imageFile.type)) {
+      return err(
+        `Неподдерживаемый формат: ${imageFile.type}. Используйте JPG, PNG, WebP или HEIC.`,
+        400
+      )
+    }
+
+    if (imageFile.size > MAX_IMAGE_BYTES) {
+      return err(
+        `Файл ${(imageFile.size / 1024 / 1024).toFixed(1)} МБ превышает лимит 10 МБ.`,
+        413
+      )
+    }
+
+    // ── Upload source image via service-role client ──────────────────────────
+    // Service-role bypasses RLS so we can write to shared demo/ folder
+    const supabase  = createServiceClient()
+    const rawExt    = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const safeExt   = (SAFE_IMAGE_EXTENSIONS as readonly string[]).includes(rawExt) ? rawExt : 'jpg'
+    const inputPath = `demo/${Date.now()}-source.${safeExt}`
+    const fileBytes = await imageFile.arrayBuffer()
+
+    const { error: uploadErr } = await supabase.storage
+      .from(INPUT_BUCKET)
+      .upload(inputPath, fileBytes, { contentType: imageFile.type, upsert: false })
+
+    if (uploadErr) {
+      console.error('Demo storage upload error:', uploadErr)
+      return err('Ошибка загрузки файла. Проверьте соединение и попробуйте снова.', 500)
+    }
+
+    // Signed URL valid for 1 h — enough time for Replicate to fetch the image
+    const { data: signedData } = await supabase.storage
+      .from(INPUT_BUCKET)
+      .createSignedUrl(inputPath, 3600)
+
+    if (!signedData?.signedUrl) {
+      return err('Не удалось получить доступ к загруженному файлу.', 500)
+    }
+
+    // ── Call AI provider ─────────────────────────────────────────────────────
+    let aiOutputUrl: string
+    try {
+      const result = await generateJewelryPhoto({
+        imageUrl:         signedData.signedUrl,
+        templateCategory,
+        promptStrength:   0.55,
+      })
+      aiOutputUrl = result.outputUrl
+    } catch (aiErr) {
+      console.error('Demo AI generation error:', aiErr)
+      return err(
+        aiErr instanceof Error
+          ? aiErr.message
+          : 'Ошибка генерации. Попробуйте снова или выберите другой тип украшения.',
+        500
+      )
+    }
+
+    // ── Download AI result and re-upload to our Storage ──────────────────────
+    const outputPath    = `demo/${Date.now()}-result.jpg`
+    let resultPublicUrl = aiOutputUrl // fallback: direct Replicate URL
+
+    try {
+      // CRIT-2: validate URL before server-side fetch (SSRF guard)
+      assertSafeOutputUrl(aiOutputUrl)
+      const aiRes = await fetch(aiOutputUrl, { signal: AbortSignal.timeout(30_000) })
+      if (aiRes.ok) {
+        const resultBytes = await aiRes.arrayBuffer()
+        const { error: resUploadErr } = await supabase.storage
+          .from(OUTPUT_BUCKET)
+          .upload(outputPath, resultBytes, { contentType: 'image/jpeg', upsert: true })
+
+        if (!resUploadErr) {
+          const { data: pub } = supabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
+          resultPublicUrl = pub.publicUrl
+        }
+      }
+    } catch (downloadErr) {
+      console.warn('Demo result re-upload skipped:', downloadErr)
+    }
+
+    // ── Record IP usage (HIGH-1) ─────────────────────────────────────────────
+    if (clientIp !== 'unknown') {
+      ipLog.set(clientIp, Date.now())
+      // Prune entries older than 24 h to prevent unbounded memory growth
+      if (ipLog.size > 5_000) {
+        const cutoff = Date.now() - IP_WINDOW_MS
+        ipLog.forEach((v, k) => {
+          if (v < cutoff) ipLog.delete(k)
+        })
+      }
+    }
+
+    // ── Set cookie and return result ─────────────────────────────────────────
+    const response = NextResponse.json({ success: true, outputUrl: resultPublicUrl })
+    response.cookies.set(DEMO_COOKIE, '1', {
+      httpOnly: true,
+      sameSite: 'lax',
+      // MED-9: secure flag — cookie must only be sent over HTTPS in production
+      secure:   process.env.NODE_ENV === 'production',
+      maxAge:   60 * 60 * 24, // 24 hours
+      path:     '/',
+    })
+
+    return response
+  } catch (fatal) {
+    console.error('Demo generate route fatal error:', fatal)
+    return err('Внутренняя ошибка сервера. Попробуйте позже.', 500)
+  }
+}
+
+function err(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status })
+}

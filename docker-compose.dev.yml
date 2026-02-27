@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Development — docker-compose.dev.yml
+#
+# Mounts source code for hot reload. No build step needed.
+#
+# Usage:
+#   docker-compose -f docker-compose.dev.yml up
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code so hot-reload works
+      - .:/app
+      # Isolate node_modules inside the container (avoids macOS/Linux conflicts)
+      - node_modules_cache:/app/node_modules
+      # Isolate .next build cache
+      - next_cache:/app/.next
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+
+volumes:
+  node_modules_cache:
+  next_cache:

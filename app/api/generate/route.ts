@@ -29,7 +29,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { generateJewelryPhoto } from '@/lib/ai/replicate'
+import { generateJewelryPhoto, assertSafeOutputUrl } from '@/lib/ai/replicate'
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
 
 // Extend serverless timeout to 60 s for the Replicate polling step
@@ -40,6 +40,11 @@ export const runtime = 'nodejs'
 
 const INPUT_BUCKET  = 'jewelry-uploads'
 const OUTPUT_BUCKET = 'generated-images'
+
+// HIGH-5: strict allowlists for user-controlled inputs
+const VALID_CATEGORIES = ['rings', 'necklaces', 'earrings', 'bracelets', 'universal'] as const
+const VALID_RATIOS     = ['1:1', '9:16'] as const
+const UUID_REGEX       = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
@@ -83,10 +88,24 @@ export async function POST(request: Request) {
       return err('Неверный формат запроса. Используйте multipart/form-data.', 400)
     }
 
-    const imageFile      = formData.get('image') as File | null
-    const templateId     = (formData.get('template_id') as string | null) || null
-    const templateCategory = (formData.get('template_category') as string) || 'rings'
-    const aspectRatio    = (formData.get('aspect_ratio') as string) || '1:1'
+    const imageFile = formData.get('image') as File | null
+
+    // HIGH-5: validate all user-controlled fields against strict allowlists
+    const rawTemplateId  = (formData.get('template_id') as string | null) || null
+    const rawCategory    = (formData.get('template_category') as string) || ''
+    const rawRatio       = (formData.get('aspect_ratio') as string) || ''
+
+    const templateId = rawTemplateId !== null
+      ? (UUID_REGEX.test(rawTemplateId) ? rawTemplateId : null)
+      : null
+
+    const templateCategory = (VALID_CATEGORIES as readonly string[]).includes(rawCategory)
+      ? rawCategory
+      : 'rings'
+
+    const aspectRatio = (VALID_RATIOS as readonly string[]).includes(rawRatio)
+      ? rawRatio as '1:1' | '9:16'
+      : '1:1'
 
     if (!imageFile || imageFile.size === 0) {
       return err('Файл изображения не найден. Пожалуйста, загрузите фото украшения.', 400)
@@ -166,9 +185,13 @@ export async function POST(request: Request) {
       })
       aiOutputUrl = result.outputUrl
     } catch (aiErr) {
+      // HIGH-4: store only a safe user-facing message, never a raw exception string
+      const safeErrMsg = aiErr instanceof Error
+        ? aiErr.message.slice(0, 200)
+        : 'Ошибка генерации.'
       await supabase
         .from('generations')
-        .update({ status: 'failed', error_message: String(aiErr) } as never)
+        .update({ status: 'failed', error_message: safeErrMsg } as never)
         .eq('id', generationId)
 
       console.error('AI generation error:', aiErr)
@@ -186,6 +209,8 @@ export async function POST(request: Request) {
     let resultPublicUrl  = aiOutputUrl // fallback to direct Replicate URL
 
     try {
+      // CRIT-2: validate URL before server-side fetch (SSRF guard)
+      assertSafeOutputUrl(aiOutputUrl)
       const aiResponse = await fetch(aiOutputUrl, { signal: AbortSignal.timeout(30_000) })
       if (aiResponse.ok) {
         const resultBytes = await aiResponse.arrayBuffer()

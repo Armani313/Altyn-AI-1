@@ -1,0 +1,31 @@
+# Dependencies (re-installed inside Docker)
+node_modules
+npm-debug.log*
+
+# Next.js build output (built inside Docker)
+.next
+out
+
+# Local env files — NEVER bake secrets into image
+.env
+.env.local
+.env*.local
+
+# Git
+.git
+.gitignore
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo
+
+# Docker files themselves
+Dockerfile*
+docker-compose*
+
+# Dev tooling
+.claude/
+README.md
+supabase/

@@ -9,7 +9,7 @@
  *           https://mc.kaspi.kz/api/v1  (sandbox — use test credentials)
  */
 
-import { createHmac } from 'crypto'
+import { createHmac, timingSafeEqual as cryptoTimingSafeEqual } from 'crypto'
 import { PLAN_META } from '@/lib/config/plans'
 
 // ── Plan configuration ────────────────────────────────────────────────────────
@@ -142,26 +142,30 @@ export function verifyKaspiSignature(
   receivedSignature: string
 ): boolean {
   const secret = process.env.KASPI_WEBHOOK_SECRET
+
+  // HIGH-3: no secret = reject in ALL environments — never silently bypass
   if (!secret) {
-    console.warn('KASPI_WEBHOOK_SECRET not set — skipping signature verification')
-    return process.env.NODE_ENV !== 'production' // allow in dev, block in prod
+    console.error('KASPI_WEBHOOK_SECRET is not configured — rejecting webhook')
+    return false
   }
 
   const expected = createHmac('sha256', secret)
     .update(rawBody)
-    .digest('hex')
+    .digest() // Buffer, not hex string
 
-  // Constant-time comparison to prevent timing attacks
-  return timingSafeEqual(expected, receivedSignature)
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  // MED-7: use Node's native constant-time comparison (operates on Buffers)
+  let received: Buffer
+  try {
+    received = Buffer.from(receivedSignature, 'hex')
+  } catch {
+    return false
   }
-  return result === 0
+
+  // Lengths must match before calling cryptoTimingSafeEqual
+  // (both are HMAC-SHA256 = 32 bytes = 64 hex chars, so they should always match)
+  if (expected.length !== received.length) return false
+
+  return cryptoTimingSafeEqual(expected, received)
 }
 
 // ── Webhook payload types ─────────────────────────────────────────────────────

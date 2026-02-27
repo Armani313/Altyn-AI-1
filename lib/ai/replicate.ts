@@ -17,6 +17,46 @@
  *   lucataco/sdxl-controlnet    — precise composition control
  */
 
+// ── Security: SSRF guards ─────────────────────────────────────────────────────
+
+/** Regex for a valid Replicate model slug: "owner/name" */
+const MODEL_SLUG_REGEX = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/
+
+/**
+ * Trusted hostnames for AI-generated output images.
+ * Only HTTPS URLs from these hosts may be fetched server-side.
+ * Prevents SSRF if the AI provider is compromised or misconfigured.
+ */
+const SAFE_OUTPUT_HOSTS = [
+  'replicate.delivery',
+  'pbxt.replicate.delivery',
+  'storage.googleapis.com', // some Replicate models store output on GCS
+]
+
+/**
+ * Throws if the URL is not safe to fetch server-side.
+ * Call this before every `fetch(aiOutputUrl)`.
+ */
+export function assertSafeOutputUrl(url: string): void {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    throw new Error('AI-провайдер вернул некорректный URL результата.')
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error('AI-провайдер вернул URL без HTTPS.')
+  }
+  const host = parsed.hostname
+  const trusted = SAFE_OUTPUT_HOSTS.some(
+    (h) => host === h || host.endsWith(`.${h}`)
+  )
+  if (!trusted) {
+    console.error(`assertSafeOutputUrl: untrusted host "${host}"`)
+    throw new Error('AI-провайдер вернул URL с недоверенного хоста.')
+  }
+}
+
 // ── Prompt templates per jewelry category ────────────────────────────────────
 
 const CATEGORY_PROMPTS: Record<string, string> = {
@@ -94,6 +134,13 @@ export async function generateJewelryPhoto(
   if (!modelVersion && !modelSlug) {
     throw new Error(
       'Модель ИИ не настроена. Укажите REPLICATE_MODEL_VERSION или REPLICATE_MODEL в .env.local.'
+    )
+  }
+
+  // CRIT-3: prevent path-traversal / injection via REPLICATE_MODEL env var
+  if (modelSlug && !MODEL_SLUG_REGEX.test(modelSlug)) {
+    throw new Error(
+      'Неверный формат REPLICATE_MODEL. Ожидается формат "owner/name".'
     )
   }
 

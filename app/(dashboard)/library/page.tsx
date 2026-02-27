@@ -33,9 +33,11 @@ export default async function LibraryPage() {
     .eq('id', user.id)
     .single()
 
+  // INFO-3: select only the fields the UI actually needs —
+  // avoids exposing input_image_url, raw error_message, and full metadata.
   const { data: generationsRaw } = await supabase
     .from('generations')
-    .select('*')
+    .select('id, status, output_image_url, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(48)

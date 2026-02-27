@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Production — docker-compose.yml
+#
+# Usage:
+#   1. Copy .env.local.example to .env  and fill in all values
+#   2. docker-compose build
+#   3. docker-compose up -d
+#
+# For Cloudflare Tunnel (recommended, hides origin IP):
+#   Install cloudflared on the host and point it to http://localhost:3000
+#   No need to expose 3000 publicly in that case.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # NEXT_PUBLIC_* are baked into the JS bundle at build time
+      args:
+        NEXT_PUBLIC_SUPABASE_URL:      ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_APP_URL:           ${NEXT_PUBLIC_APP_URL}
+
+    image: nurai-ai-studio:latest
+
+    ports:
+      # Bind only to localhost when using Cloudflare Tunnel / reverse proxy.
+      # Change to "3000:3000" only if exposing directly.
+      - "127.0.0.1:3000:3000"
+
+    # Runtime secrets — never baked into the image
+    environment:
+      NODE_ENV:                    production
+      NEXT_TELEMETRY_DISABLED:     "1"
+      # Supabase (server-side only)
+      SUPABASE_SERVICE_ROLE_KEY:   ${SUPABASE_SERVICE_ROLE_KEY}
+      # Replicate AI
+      REPLICATE_API_TOKEN:         ${REPLICATE_API_TOKEN}
+      REPLICATE_MODEL:             ${REPLICATE_MODEL:-}
+      REPLICATE_MODEL_VERSION:     ${REPLICATE_MODEL_VERSION:-}
+      # Kaspi Pay
+      KASPI_MERCHANT_ID:           ${KASPI_MERCHANT_ID:-}
+      KASPI_API_KEY:               ${KASPI_API_KEY:-}
+      KASPI_WEBHOOK_SECRET:        ${KASPI_WEBHOOK_SECRET:-}
+
+    restart: unless-stopped
+
+    # Limit resources — tune to your VPS size
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 256M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

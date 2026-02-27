@@ -99,6 +99,22 @@ export async function POST(request: Request) {
 
   // ── 6. Handle payment status ───────────────────────────────────────────────
   if (Status === 'APPROVED') {
+    // MED-8: validate Amount against expected plan price before activating
+    const planConfig = KASPI_PLANS[sub.plan as PlanKey]
+    if (!planConfig) {
+      console.error(`Kaspi webhook: unknown plan "${sub.plan}" for subscription ${sub.id}`)
+      return NextResponse.json({ received: true })
+    }
+    if (!Amount || Amount < planConfig.priceKZT) {
+      console.error(
+        `Kaspi webhook: Amount ${Amount} KZT is less than expected ` +
+        `${planConfig.priceKZT} KZT for plan "${sub.plan}" — rejecting activation`
+      )
+      return NextResponse.json(
+        { error: 'Неверная сумма платежа.' },
+        { status: 400 }
+      )
+    }
     await handleApproved(supabase, sub, Amount)
   } else if (Status === 'DECLINED' || Status === 'REVERSED') {
     await handleDeclined(supabase, sub)

@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 
 export async function logout() {
   const supabase = await createClient()
-  await supabase.auth.signOut()
+  // LOW-8: scope: 'global' invalidates the session on all devices,
+  // not just the current browser tab.
+  await supabase.auth.signOut({ scope: 'global' })
   redirect('/login')
 }

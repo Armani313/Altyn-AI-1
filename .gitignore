@@ -32,6 +32,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Docker — production secrets file (never commit)
+.env
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

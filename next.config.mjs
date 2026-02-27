@@ -1,19 +1,15 @@
+const isDev = process.env.NODE_ENV === 'development'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // ── Docker: generate a self-contained server in .next/standalone ─────────
   // The Dockerfile's runner stage copies only this folder + .next/static.
   output: 'standalone',
 
-  // ── Cloudflare proxy: trust forwarded headers ────────────────────────────
-  // When sitting behind Cloudflare (or any reverse proxy), Next.js needs to
-  // trust X-Forwarded-For / X-Forwarded-Proto headers so that:
-  //   - request.url has the correct HTTPS scheme
-  //   - middleware sees the real visitor IP (not Cloudflare's edge IP)
-  experimental: {
-    // Tells Next.js to trust the X-Forwarded-* headers from upstream proxies.
-    // Safe because Cloudflare strips client-supplied X-Forwarded-* before forwarding.
-    trustHostHeader: true,
-  },
+  // ── Cloudflare proxy: real visitor IP ────────────────────────────────────
+  // Next.js App Router automatically exposes all request headers including
+  // CF-Connecting-IP (set by Cloudflare with the real visitor IP).
+  // No additional config required — API routes read it via request.headers.get('cf-connecting-ip').
 
   // ── Security & cache headers ─────────────────────────────────────────────
   async headers() {
@@ -34,7 +30,10 @@ const nextConfig = {
             key:   'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
+              // 'unsafe-eval' is needed by webpack HMR / React Refresh in dev only
+              isDev
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               // Supabase storage + Replicate CDN for generated images
               "img-src 'self' data: blob: https://*.supabase.co https://replicate.delivery https://*.replicate.delivery",

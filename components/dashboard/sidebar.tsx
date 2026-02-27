@@ -24,7 +24,7 @@ export function Sidebar({ profile }: SidebarProps) {
   const planMeta = PLAN_META[plan]
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-white border-r border-cream-200 flex flex-col z-40">
+    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-white border-r border-cream-200 hidden lg:flex flex-col z-40">
       {/* Logo */}
       <div className="px-5 py-5 border-b border-cream-200">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">

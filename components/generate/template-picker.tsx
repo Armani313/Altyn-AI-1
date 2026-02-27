@@ -87,7 +87,7 @@ export function TemplatePicker({ selectedId, onSelect }: TemplatePickerProps) {
       </div>
 
       {/* Templates grid */}
-      <div className="grid grid-cols-3 gap-2.5 overflow-y-auto flex-1 pr-0.5">
+      <div className="grid grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5">
         {filtered.map((template) => {
           const isSelected = selectedId === template.id
 

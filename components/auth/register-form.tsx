@@ -112,7 +112,7 @@ export function RegisterForm() {
         </div>
 
         {/* Two columns: contact name + phone */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="contact_name" className="text-sm font-medium">
               Ваше имя

@@ -1,6 +1,7 @@
 'use client'
 
-import { Download, Sparkles, ImageIcon, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { Download, Sparkles, ImageIcon, RefreshCw, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type AspectRatio = '1:1' | '9:16'
@@ -19,6 +20,23 @@ const RATIOS: { id: AspectRatio; label: string; class: string }[] = [
   { id: '9:16', label: '9:16 Сторис',  class: 'aspect-[9/16]' },
 ]
 
+async function downloadImage(url: string) {
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const ext = blob.type === 'image/png' ? 'png' : 'jpg'
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = `nurai-${Date.now()}.${ext}`
+    a.click()
+    URL.revokeObjectURL(blobUrl)
+  } catch {
+    // fallback — open in new tab
+    window.open(url, '_blank')
+  }
+}
+
 export function ResultViewer({
   isGenerating,
   resultUrl,
@@ -27,7 +45,15 @@ export function ResultViewer({
   onGenerate,
   canGenerate,
 }: ResultViewerProps) {
+  const [isDownloading, setIsDownloading] = useState(false)
   const currentRatio = RATIOS.find((r) => r.id === aspectRatio)!
+
+  const handleDownload = async () => {
+    if (!resultUrl || isDownloading) return
+    setIsDownloading(true)
+    await downloadImage(resultUrl)
+    setIsDownloading(false)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,17 +121,16 @@ export function ResultViewer({
             />
             {/* Download button — bottom-right corner, always visible */}
             <button
-              onClick={() => {
-                const a = document.createElement('a')
-                a.href = resultUrl
-                a.download = `nurai-${Date.now()}.jpg`
-                a.click()
-              }}
-              className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
               title="Скачать фото"
             >
-              <Download className="w-4 h-4 text-rose-gold-500 flex-shrink-0" />
-              Скачать
+              {isDownloading
+                ? <Loader2 className="w-4 h-4 text-rose-gold-500 animate-spin flex-shrink-0" />
+                : <Download className="w-4 h-4 text-rose-gold-500 flex-shrink-0" />
+              }
+              {isDownloading ? 'Загрузка...' : 'Скачать'}
             </button>
           </>
         )}

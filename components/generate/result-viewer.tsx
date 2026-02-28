@@ -93,22 +93,20 @@ export function ResultViewer({
               alt="Сгенерированное изображение"
               className="w-full h-full object-cover"
             />
-            {/* Download overlay */}
-            <div className="absolute inset-0 bg-black/0 hover:bg-black/15 transition-colors group flex items-center justify-center">
-              <Button
-                size="sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 hover:bg-white text-foreground shadow-card border-0"
-                onClick={() => {
-                  const a = document.createElement('a')
-                  a.href = resultUrl
-                  a.download = `nurai-${Date.now()}.jpg`
-                  a.click()
-                }}
-              >
-                <Download className="w-4 h-4 mr-1.5" />
-                Скачать
-              </Button>
-            </div>
+            {/* Download button — bottom-right corner, always visible */}
+            <button
+              onClick={() => {
+                const a = document.createElement('a')
+                a.href = resultUrl
+                a.download = `nurai-${Date.now()}.jpg`
+                a.click()
+              }}
+              className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+              title="Скачать фото"
+            >
+              <Download className="w-4 h-4 text-rose-gold-500 flex-shrink-0" />
+              Скачать
+            </button>
           </>
         )}
 
@@ -162,31 +160,16 @@ export function ResultViewer({
           )}
         </Button>
 
-        {/* Re-generate / download row */}
+        {/* Re-generate button */}
         {resultUrl && !isGenerating && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              className="border-cream-300 text-muted-foreground hover:text-foreground hover:bg-cream-100"
-              onClick={onGenerate}
-            >
-              <RefreshCw className="w-4 h-4 mr-1.5" />
-              Ещё раз
-            </Button>
-            <Button
-              variant="outline"
-              className="border-cream-300 text-muted-foreground hover:text-foreground hover:bg-cream-100"
-              onClick={() => {
-                const a = document.createElement('a')
-                a.href = resultUrl
-                a.download = `nurai-${Date.now()}.jpg`
-                a.click()
-              }}
-            >
-              <Download className="w-4 h-4 mr-1.5" />
-              Скачать
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            className="w-full border-cream-300 text-muted-foreground hover:text-foreground hover:bg-cream-100"
+            onClick={onGenerate}
+          >
+            <RefreshCw className="w-4 h-4 mr-1.5" />
+            Сгенерировать ещё раз
+          </Button>
         )}
 
         {/* Hint */}

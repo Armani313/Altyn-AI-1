@@ -1,209 +1,292 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Sparkles, ImageIcon, RefreshCw, Loader2 } from 'lucide-react'
+import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MODEL_PHOTO_MAP } from '@/lib/constants'
 
 type AspectRatio = '1:1' | '9:16'
 
-interface ResultViewerProps {
-  isGenerating: boolean
+export interface GenerationResult {
+  modelId:   string
+  status:    'generating' | 'done' | 'error'
   resultUrl: string | null
-  aspectRatio: AspectRatio
-  onAspectRatioChange: (ratio: AspectRatio) => void
-  onGenerate: () => void
-  canGenerate: boolean
+  error:     string | null
 }
 
-const RATIOS: { id: AspectRatio; label: string; class: string }[] = [
-  { id: '1:1',  label: '1:1 Пост',     class: 'aspect-square' },
-  { id: '9:16', label: '9:16 Сторис',  class: 'aspect-[9/16]' },
+interface ResultViewerProps {
+  results:             GenerationResult[]
+  aspectRatio:         AspectRatio
+  onAspectRatioChange: (ratio: AspectRatio) => void
+  onGenerate:          () => void
+  onRetryFailed:       () => void
+  canGenerate:         boolean
+  selectedCount:       number
+  creditsRemaining:    number | null
+}
+
+const RATIOS: { id: AspectRatio; label: string; cls: string }[] = [
+  { id: '1:1',  label: '1:1 Пост',    cls: 'aspect-square'  },
+  { id: '9:16', label: '9:16 Сторис', cls: 'aspect-[9/16]'  },
 ]
 
-async function downloadImage(url: string) {
+async function downloadImage(url: string, name: string) {
   try {
-    const res = await fetch(url)
+    const res  = await fetch(url)
     const blob = await res.blob()
-    const ext = blob.type === 'image/png' ? 'png' : 'jpg'
-    const blobUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = blobUrl
-    a.download = `nurai-${Date.now()}.${ext}`
+    const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
+    const tmp  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = tmp
+    a.download = `${name}.${ext}`
     a.click()
-    URL.revokeObjectURL(blobUrl)
+    URL.revokeObjectURL(tmp)
   } catch {
-    // fallback — open in new tab
     window.open(url, '_blank')
   }
 }
 
-export function ResultViewer({
-  isGenerating,
-  resultUrl,
-  aspectRatio,
-  onAspectRatioChange,
-  onGenerate,
-  canGenerate,
-}: ResultViewerProps) {
+/* ── Single result card ──────────────────────────────────────────────────── */
+function ResultCard({ result, aspectCls }: { result: GenerationResult; aspectCls: string }) {
   const [isDownloading, setIsDownloading] = useState(false)
-  const currentRatio = RATIOS.find((r) => r.id === aspectRatio)!
+  const model = MODEL_PHOTO_MAP[result.modelId]
 
   const handleDownload = async () => {
-    if (!resultUrl || isDownloading) return
+    if (!result.resultUrl || isDownloading) return
     setIsDownloading(true)
-    await downloadImage(resultUrl)
+    await downloadImage(result.resultUrl, `nurai-${result.modelId}-${Date.now()}`)
     setIsDownloading(false)
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Aspect ratio selector */}
-      <div className="flex gap-2 p-1 bg-cream-100 rounded-xl self-start">
-        {RATIOS.map((ratio) => (
-          <button
-            key={ratio.id}
-            onClick={() => onAspectRatioChange(ratio.id)}
-            className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
-              aspectRatio === ratio.id
-                ? 'bg-white text-foreground shadow-soft'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {ratio.label}
-          </button>
-        ))}
-      </div>
+    <div className={`relative w-full ${aspectCls} rounded-2xl overflow-hidden border border-cream-200 bg-white shadow-card`}>
 
-      {/* Result canvas */}
-      <div
-        className={`relative w-full ${currentRatio.class} rounded-2xl overflow-hidden border border-cream-200 bg-white shadow-card`}
-      >
-        {/* ── Generating state: animated skeleton ── */}
-        {isGenerating && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-cream-50 to-rose-gold-50">
-            {/* Pulsing rings */}
-            <div className="relative">
-              <div className="w-16 h-16 rounded-full border-2 border-rose-gold-300 animate-ping absolute inset-0 opacity-50" />
-              <div className="w-16 h-16 rounded-full border-2 border-rose-gold-400 animate-ping absolute inset-0 opacity-30 [animation-delay:0.3s]" />
-              <div className="w-16 h-16 rounded-full bg-rose-gold-100 flex items-center justify-center relative">
-                <Sparkles className="w-7 h-7 text-rose-gold-500 animate-pulse" />
-              </div>
-            </div>
-
-            <div className="text-center">
-              <p className="font-medium text-foreground text-sm mb-1">
-                ИИ создаёт ваш контент
-              </p>
-              <p className="text-xs text-muted-foreground">Обычно занимает 5–10 секунд</p>
-            </div>
-
-            {/* Shimmer bars */}
-            <div className="w-2/3 space-y-2">
-              {[100, 80, 60].map((w) => (
-                <div
-                  key={w}
-                  className="h-1.5 rounded-full shimmer"
-                  style={{ width: `${w}%` }}
-                />
-              ))}
+      {/* Generating */}
+      {result.status === 'generating' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-cream-50 to-rose-gold-50">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full border-2 border-rose-gold-300 animate-ping absolute inset-0 opacity-50" />
+            <div className="w-12 h-12 rounded-full bg-rose-gold-100 flex items-center justify-center relative">
+              <Sparkles className="w-5 h-5 text-rose-gold-500 animate-pulse" />
             </div>
           </div>
-        )}
+          <p className="text-xs text-muted-foreground font-medium px-4 text-center">
+            ИИ создаёт фото…
+          </p>
+          <div className="w-3/5 space-y-1.5">
+            {[100, 75, 50].map((w) => (
+              <div key={w} className="h-1 rounded-full shimmer" style={{ width: `${w}%` }} />
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* ── Result image ── */}
-        {resultUrl && !isGenerating && (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={resultUrl}
-              alt="Сгенерированное изображение"
-              className="w-full h-full object-cover"
-            />
-            {/* Download button — bottom-right corner, always visible */}
+      {/* Done: result image */}
+      {result.status === 'done' && result.resultUrl && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={result.resultUrl}
+            alt="Результат генерации"
+            className="w-full h-full object-cover"
+          />
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70"
+          >
+            {isDownloading
+              ? <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin flex-shrink-0" />
+              : <Download className="w-3.5 h-3.5 text-rose-gold-500 flex-shrink-0" />
+            }
+            {isDownloading ? 'Загрузка…' : 'Скачать'}
+          </button>
+        </>
+      )}
+
+      {/* Error */}
+      {result.status === 'error' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 bg-red-50">
+          <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
+          <p className="text-xs text-red-600 text-center leading-snug">
+            {result.error ?? 'Ошибка генерации'}
+          </p>
+        </div>
+      )}
+
+      {/* Model name badge — top-left */}
+      {model && (
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 max-w-[80%]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/models/${model.filename}`}
+            alt={model.name}
+            className="w-4 h-4 rounded-full object-cover object-top flex-shrink-0"
+          />
+          <span className="text-[10px] text-white font-medium truncate">
+            {model.name}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Main ResultViewer ───────────────────────────────────────────────────── */
+export function ResultViewer({
+  results,
+  aspectRatio,
+  onAspectRatioChange,
+  onGenerate,
+  onRetryFailed,
+  canGenerate,
+  selectedCount,
+  creditsRemaining,
+}: ResultViewerProps) {
+  const isAnyGenerating  = results.some((r) => r.status === 'generating')
+  const hasResults       = results.length > 0
+  const failedCount      = results.filter((r) => r.status === 'error').length
+  const enoughCredits    = creditsRemaining == null || creditsRemaining >= selectedCount
+  const currentRatio     = RATIOS.find((r) => r.id === aspectRatio)!
+
+  const genLabel = () => {
+    if (isAnyGenerating) {
+      const n = results.filter((r) => r.status === 'generating').length
+      return (
+        <span className="flex items-center gap-2.5">
+          <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+          Генерируем {n} {n === 1 ? 'фото' : 'фото'}…
+        </span>
+      )
+    }
+    if (!enoughCredits) {
+      return (
+        <span className="flex items-center gap-2.5">
+          <Zap className="w-5 h-5" />
+          Недостаточно кредитов
+        </span>
+      )
+    }
+    if (selectedCount === 0) {
+      return (
+        <span className="flex items-center gap-2.5">
+          <Sparkles className="w-5 h-5" />
+          Выберите модели
+        </span>
+      )
+    }
+    return (
+      <span className="flex items-center gap-2.5">
+        <Sparkles className="w-5 h-5" />
+        {selectedCount === 1 ? 'Сгенерировать фото' : `Сгенерировать ${selectedCount} фото`}
+        <span className="ml-0.5 text-white/70 text-sm font-normal">
+          ({selectedCount} кр.)
+        </span>
+      </span>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* Controls row */}
+      <div className="flex items-center justify-between gap-3">
+        {/* Aspect ratio selector */}
+        <div className="flex gap-1 p-1 bg-cream-100 rounded-xl">
+          {RATIOS.map((ratio) => (
             <button
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-              title="Скачать фото"
+              key={ratio.id}
+              onClick={() => onAspectRatioChange(ratio.id)}
+              className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                aspectRatio === ratio.id
+                  ? 'bg-white text-foreground shadow-soft'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
-              {isDownloading
-                ? <Loader2 className="w-4 h-4 text-rose-gold-500 animate-spin flex-shrink-0" />
-                : <Download className="w-4 h-4 text-rose-gold-500 flex-shrink-0" />
-              }
-              {isDownloading ? 'Загрузка...' : 'Скачать'}
+              {ratio.label}
             </button>
-          </>
+          ))}
+        </div>
+
+        {/* Credits badge */}
+        {creditsRemaining != null && (
+          <div className={`flex items-center gap-1.5 text-xs rounded-lg px-2.5 py-1.5 ${
+            !enoughCredits && selectedCount > 0
+              ? 'bg-red-50 text-red-600 border border-red-200'
+              : 'text-muted-foreground'
+          }`}>
+            <Zap className={`w-3.5 h-3.5 ${!enoughCredits && selectedCount > 0 ? 'text-red-500' : 'text-rose-gold-500'}`} />
+            <span>
+              <strong className="text-foreground">{creditsRemaining}</strong> кредитов
+            </span>
+          </div>
         )}
+      </div>
 
-        {/* ── Empty placeholder ── */}
-        {!isGenerating && !resultUrl && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6">
-            {/* Decorative glow */}
-            <div
-              aria-hidden
-              className="absolute inset-0 bg-gradient-to-br from-rose-gold-50/50 via-transparent to-cream-200/30"
+      {/* Generate button */}
+      <Button
+        onClick={onGenerate}
+        disabled={!canGenerate || isAnyGenerating || selectedCount === 0 || !enoughCredits}
+        className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
+          canGenerate && !isAnyGenerating && selectedCount > 0 && enoughCredits
+            ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow'
+            : 'bg-muted text-muted-foreground cursor-not-allowed'
+        }`}
+      >
+        {genLabel()}
+      </Button>
+
+      {/* Retry failed */}
+      {failedCount > 0 && !isAnyGenerating && (
+        <Button
+          variant="outline"
+          className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+          onClick={onRetryFailed}
+        >
+          <RefreshCw className="w-4 h-4 mr-1.5" />
+          Повторить {failedCount === 1 ? 'неудачную' : `${failedCount} неудачных`} генераций
+        </Button>
+      )}
+
+      {/* Results */}
+      {hasResults ? (
+        <div className={`grid gap-3 ${results.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {results.map((result) => (
+            <ResultCard
+              key={result.modelId}
+              result={result}
+              aspectCls={currentRatio.cls}
             />
-
+          ))}
+        </div>
+      ) : (
+        /* Empty placeholder */
+        <div className={`relative w-full ${currentRatio.cls} rounded-2xl overflow-hidden border border-cream-200 bg-white shadow-card`}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6">
+            <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-rose-gold-50/50 via-transparent to-cream-200/30" />
             <div className="relative z-10 flex flex-col items-center gap-3 text-center">
               <div className="w-14 h-14 rounded-2xl bg-cream-100 border border-cream-200 flex items-center justify-center">
                 <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
               </div>
               <div>
                 <p className="font-medium text-foreground/70 text-sm mb-0.5">
-                  Здесь появится результат
+                  Здесь появятся результаты
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Загрузите фото и нажмите «Сгенерировать»
+                  Загрузите фото и выберите модели
                 </p>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Action buttons */}
-      <div className="space-y-2.5">
-        <Button
-          onClick={onGenerate}
-          disabled={!canGenerate || isGenerating}
-          className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
-            canGenerate && !isGenerating
-              ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow'
-              : 'bg-muted text-muted-foreground cursor-not-allowed'
-          }`}
-        >
-          {isGenerating ? (
-            <span className="flex items-center gap-2.5">
-              <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Генерируем...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2.5">
-              <Sparkles className="w-5 h-5" />
-              Сгенерировать контент
-            </span>
-          )}
-        </Button>
-
-        {/* Re-generate button */}
-        {resultUrl && !isGenerating && (
-          <Button
-            variant="outline"
-            className="w-full border-cream-300 text-muted-foreground hover:text-foreground hover:bg-cream-100"
-            onClick={onGenerate}
-          >
-            <RefreshCw className="w-4 h-4 mr-1.5" />
-            Сгенерировать ещё раз
-          </Button>
-        )}
-
-        {/* Hint */}
-        {!canGenerate && (
-          <p className="text-center text-xs text-muted-foreground">
-            ↑ Загрузите фото украшения для начала
-          </p>
-        )}
-      </div>
+      {/* Hint */}
+      {!isAnyGenerating && !canGenerate && selectedCount > 0 && (
+        <p className="text-center text-xs text-muted-foreground">
+          ↑ Загрузите фото украшения для начала
+        </p>
+      )}
     </div>
   )
 }

@@ -35,14 +35,13 @@ services:
       NEXT_TELEMETRY_DISABLED:     "1"
       # Supabase (server-side only)
       SUPABASE_SERVICE_ROLE_KEY:   ${SUPABASE_SERVICE_ROLE_KEY}
-      # Replicate AI
-      REPLICATE_API_TOKEN:         ${REPLICATE_API_TOKEN}
-      REPLICATE_MODEL:             ${REPLICATE_MODEL:-}
-      REPLICATE_MODEL_VERSION:     ${REPLICATE_MODEL_VERSION:-}
+      # Google Gemini AI
+      GEMINI_API_KEY:              ${GEMINI_API_KEY}
+      GEMINI_MODEL:                ${GEMINI_MODEL:-}
       # Kaspi Pay
       KASPI_MERCHANT_ID:           ${KASPI_MERCHANT_ID:-}
       KASPI_API_KEY:               ${KASPI_API_KEY:-}
-      KASPI_WEBHOOK_SECRET:        ${KASPI_WEBHOOK_SECRET:-}
+      KASPI_WEBHOOK_SECRET:        ${KASPI_WEBHOOK_SECRET}
 
     restart: unless-stopped
 

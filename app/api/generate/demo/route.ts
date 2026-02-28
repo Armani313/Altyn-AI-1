@@ -34,9 +34,6 @@ const IP_WINDOW_MS      = 24 * 60 * 60 * 1000 // 24 h
 // Keyed by real visitor IP; resets on container restart.
 const ipLog = new Map<string, number>()
 
-// HIGH-5: strict allowlist for template_category
-const VALID_CATEGORIES = ['rings', 'necklaces', 'earrings', 'bracelets', 'universal'] as const
-
 function getClientIp(req: Request): string {
   // CF-Connecting-IP is set by Cloudflare with the real visitor IP (stripped by CF)
   return (
@@ -78,15 +75,10 @@ export async function POST(request: Request) {
       return err('Неверный формат запроса. Используйте multipart/form-data.', 400)
     }
 
-    const imageFile   = formData.get('image') as File | null
-    const rawCategory = (formData.get('template_category') as string) || ''
-    const rawModelId  = (formData.get('model_id') as string | null) || null
+    const imageFile  = formData.get('image') as File | null
+    const rawModelId = (formData.get('model_id') as string | null) || null
 
-    // HIGH-5: validate against allowlists
-    const templateCategory = (VALID_CATEGORIES as readonly string[]).includes(rawCategory)
-      ? rawCategory
-      : 'rings'
-
+    // HIGH-5: validate model_id against static allowlist
     const modelId = rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null
 
     if (!imageFile || imageFile.size === 0) {

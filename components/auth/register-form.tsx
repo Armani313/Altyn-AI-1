@@ -16,6 +16,7 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [hasSession, setHasSession] = useState(false)
   const router = useRouter()
 
   const {
@@ -30,7 +31,7 @@ export function RegisterForm() {
     setServerError('')
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -51,11 +52,19 @@ export function RegisterForm() {
       return
     }
 
-    setSuccess(true)
-    setTimeout(() => {
-      router.push('/dashboard')
-      router.refresh()
-    }, 1500)
+    if (authData.session) {
+      // Email confirmation disabled — session ready, redirect immediately
+      setHasSession(true)
+      setSuccess(true)
+      setTimeout(() => {
+        router.push('/dashboard')
+        router.refresh()
+      }, 1200)
+    } else {
+      // Email confirmation enabled — show "check your email" message
+      setHasSession(false)
+      setSuccess(true)
+    }
   }
 
   if (success) {
@@ -68,7 +77,9 @@ export function RegisterForm() {
           Аккаунт создан!
         </h2>
         <p className="text-muted-foreground text-sm">
-          Перенаправляем в студию...
+          {hasSession
+            ? 'Перенаправляем в студию...'
+            : 'Мы отправили письмо для подтверждения. Проверьте почту и перейдите по ссылке.'}
         </p>
       </div>
     )

@@ -31,6 +31,7 @@ import { NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { generateJewelryPhoto } from '@/lib/ai/gemini'
 import {
   ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
@@ -228,12 +229,13 @@ export async function POST(request: Request) {
     }
 
     // ── 7. Upload Gemini result to our Storage ────────────────────────────────
-    // Gemini returns raw bytes — upload directly, no re-fetch needed
+    // Use service-role client to bypass RLS — server-side operation, safe.
+    const serviceSupabase = createServiceClient()
     const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'
     const outputPath = `${user.id}/${generationId}-result.${ext}`
     let resultPublicUrl = ''
 
-    const { error: resultUploadErr } = await supabase.storage
+    const { error: resultUploadErr } = await serviceSupabase.storage
       .from(OUTPUT_BUCKET)
       .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: true })
 
@@ -242,7 +244,7 @@ export async function POST(request: Request) {
       return err('Ошибка сохранения результата. Попробуйте снова.', 500)
     }
 
-    const { data: pub } = supabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
+    const { data: pub } = serviceSupabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
     resultPublicUrl = pub.publicUrl
 
     // ── 8. Mark generation as completed ──────────────────────────────────────

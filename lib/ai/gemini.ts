@@ -168,7 +168,7 @@ export async function generateJewelryPhoto(
     throw new Error('Сервис генерации временно недоступен. Обратитесь в поддержку.')
   }
 
-  const model = (process.env.GEMINI_MODEL ?? DEFAULT_MODEL).trim()
+  const model = (process.env.GEMINI_MODEL || DEFAULT_MODEL).trim()
 
   // ── 1. Download jewelry image ──────────────────────────────────────────────
   const imageRes = await fetch(params.imageUrl, {
@@ -208,7 +208,7 @@ export async function generateJewelryPhoto(
   const body = JSON.stringify({
     contents: [{ parts }],
     generationConfig: {
-      responseModalities: ['IMAGE'],
+      responseModalities: ['IMAGE', 'TEXT'],
     },
   })
 
@@ -222,7 +222,14 @@ export async function generateJewelryPhoto(
     }
   )
 
-  const data = (await res.json()) as GeminiResponse
+  const rawText = await res.text()
+  let data: GeminiResponse = {}
+  try {
+    data = JSON.parse(rawText) as GeminiResponse
+  } catch {
+    console.error(`Gemini non-JSON response (${res.status}):`, rawText.slice(0, 300))
+    throw new Error(`Ошибка генерации (${res.status}). Попробуйте снова.`)
+  }
 
   if (!res.ok) {
     console.error('Gemini API error:', data.error)

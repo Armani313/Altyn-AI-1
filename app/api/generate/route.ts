@@ -203,7 +203,6 @@ export async function POST(request: Request) {
     try {
       const result = await generateJewelryPhoto({
         imageUrl:         signedData.signedUrl,
-        templateCategory,
         modelImageBuffer,
         modelMimeType,
       })

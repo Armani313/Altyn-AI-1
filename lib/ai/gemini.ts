@@ -1,13 +1,15 @@
 /**
  * Google Gemini AI Provider
  *
- * Model: Gemini 2.5 Flash Image (nano-banana-pro-preview)
+ * Model: gemini-2.5-flash-image
  *
  * Two modes:
  *   1. Model-based  — two images sent (model photo + jewelry photo).
- *                     Gemini composites the jewelry onto the model.
+ *                     Gemini auto-detects the jewelry type and composites
+ *                     only the pieces that fit onto visible body parts.
  *   2. Standalone   — one image sent (jewelry photo only).
- *                     Gemini generates a new lifestyle photo from scratch.
+ *                     Gemini auto-detects the jewelry type and generates
+ *                     an appropriate lifestyle scene from scratch.
  *
  * Set in .env.local:
  *   GEMINI_API_KEY   — your Google AI Studio API key
@@ -17,112 +19,91 @@
 const DEFAULT_MODEL   = 'gemini-2.5-flash-image'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-// ── Prompts: model-based compositing ──────────────────────────────────────────
-// Image 1 = model photo, Image 2 = jewelry product photo
+// ── Prompt: model-based compositing ───────────────────────────────────────────
+// Image 1 = model photo (canvas), Image 2 = jewelry product photo (reference)
+//
+// Key design decisions:
+//   • Gemini auto-detects jewelry type(s) from Image 2 — no category hint needed.
+//   • Gemini analyzes model body visibility from Image 1 — skips placements that
+//     would require inventing body parts not present (e.g. hands not visible →
+//     no rings/bracelets generated).
+//   • Works correctly for jewelry sets: only the subset matching visible body
+//     areas is placed.
 
-const MODEL_COMPOSITE_PROMPTS: Record<string, string> = {
-  rings:
-    'You are a professional jewelry photographer and digital retoucher. ' +
-    'The first image is a fashion model photo. The second image is a jewelry product photo showing a ring. ' +
-    'Task: Add this exact ring naturally to the model\'s finger(s) in the first image. ' +
-    'Keep the model\'s pose, face, hair, skin tone, and clothing EXACTLY as shown — do not alter them in any way. ' +
-    'Place the ring on an appropriate finger so it looks naturally worn. ' +
-    'Preserve the ring design exactly — do not alter shape, stones, metal, or finish. ' +
-    'Match the jewelry lighting to the existing photo lighting. ' +
-    'Result: a seamless, high-end jewelry editorial photo, 8k resolution, sharp focus.',
+const MODEL_COMPOSITE_PROMPT =
+  'You are a professional jewelry photographer and digital retoucher specializing ' +
+  'in high-end editorial compositing.\n\n' +
 
-  necklaces:
-    'You are a professional jewelry photographer and digital retoucher. ' +
-    'The first image is a fashion model photo. The second image is a jewelry product photo showing a necklace. ' +
-    'Task: Add this exact necklace to the model\'s neck and collarbone area in the first image. ' +
-    'Keep the model\'s pose, face, hair, skin tone, and clothing EXACTLY as shown — do not alter them in any way. ' +
-    'The necklace must drape naturally around the neck and over the collarbone. ' +
-    'Preserve the necklace design exactly — do not alter pendants, chain, stones, or finish. ' +
-    'Match the jewelry lighting to the existing photo lighting. ' +
-    'Result: a seamless, high-end jewelry editorial photo, 8k resolution, sharp focus.',
+  'You are given two images:\n' +
+  '• Image 1: A fashion model photo — this is your CANVAS. Preserve it exactly: ' +
+  'do NOT alter the model\'s pose, face, hair, skin tone, or clothing in any way.\n' +
+  '• Image 2: A product photo of jewelry — this is your REFERENCE.\n\n' +
 
-  earrings:
-    'You are a professional jewelry photographer and digital retoucher. ' +
-    'The first image is a fashion model photo. The second image is a jewelry product photo showing earrings. ' +
-    'Task: Add these exact earrings to the model\'s ear(s) in the first image. ' +
-    'Keep the model\'s pose, face, hair, skin tone, and clothing EXACTLY as shown — do not alter them in any way. ' +
-    'Position the earrings naturally on the earlobe(s) as if worn. ' +
-    'Preserve the earring design exactly — do not alter shape, stones, metal, or finish. ' +
-    'Match the jewelry lighting to the existing photo lighting. ' +
-    'Result: a seamless, high-end jewelry editorial photo, 8k resolution, sharp focus.',
+  'Follow these steps:\n\n' +
 
-  bracelets:
-    'You are a professional jewelry photographer and digital retoucher. ' +
-    'The first image is a fashion model photo. The second image is a jewelry product photo showing a bracelet. ' +
-    'Task: Add this exact bracelet to the model\'s wrist in the first image. ' +
-    'Keep the model\'s pose, face, hair, skin tone, and clothing EXACTLY as shown — do not alter them in any way. ' +
-    'Place the bracelet naturally on the wrist as if worn. ' +
-    'Preserve the bracelet design exactly — do not alter shape, stones, metal, or finish. ' +
-    'Match the jewelry lighting to the existing photo lighting. ' +
-    'Result: a seamless, high-end jewelry editorial photo, 8k resolution, sharp focus.',
+  'STEP 1 — JEWELRY ANALYSIS: Examine Image 2 and identify every piece of jewelry ' +
+  'shown (ring, earrings, necklace, bracelet, brooch, anklet, etc.) and memorize ' +
+  'their exact design: shape, stones, metal, finish, chain style, and proportions.\n\n' +
 
-  universal:
-    'You are a professional jewelry photographer and digital retoucher. ' +
-    'The first image is a fashion model photo. The second image is a jewelry product photo. ' +
-    'Task: Add this exact jewelry piece to the appropriate body part of the model in the first image. ' +
-    'Keep the model\'s pose, face, hair, skin tone, and clothing EXACTLY as shown — do not alter them in any way. ' +
-    'Position the jewelry naturally so it looks elegantly worn. ' +
-    'Preserve the jewelry design exactly — do not alter shape, stones, metal, or finish. ' +
-    'Match the jewelry lighting to the existing photo lighting. ' +
-    'Result: a seamless, high-end jewelry editorial photo, 8k resolution, sharp focus.',
-}
+  'STEP 2 — MODEL VISIBILITY ANALYSIS: Examine Image 1 and determine which body ' +
+  'areas are clearly visible and physically accessible for jewelry placement:\n' +
+  '  • Fingers or hands visible → ring placement possible\n' +
+  '  • Ear(s) visible → earring placement possible\n' +
+  '  • Neck and/or décolletage visible → necklace placement possible\n' +
+  '  • Wrist(s) visible → bracelet placement possible\n\n' +
 
-// ── Prompts: standalone generation (no model photo) ───────────────────────────
+  'STEP 3 — SELECTIVE PLACEMENT RULES (strictly follow):\n' +
+  '  • Place ONLY the jewelry pieces from Image 2 that correspond to body areas ' +
+  'confirmed VISIBLE in Step 2.\n' +
+  '  • If hands/fingers are NOT visible → skip rings and bracelets entirely.\n' +
+  '  • If ears are NOT visible → skip earrings entirely.\n' +
+  '  • If neck/chest area is NOT visible → skip necklace entirely.\n' +
+  '  • NEVER generate or show a body part that is not already present in Image 1. ' +
+  'Do not extend the frame, do not add hands, arms, or any other body part.\n\n' +
 
-const STANDALONE_PROMPTS: Record<string, string> = {
-  rings:
-    'You are a professional jewelry photographer. ' +
-    'Using this product photo as reference, generate a professional lifestyle photograph ' +
-    'showing this exact ring being worn on an elegant female hand. ' +
-    'Style: soft warm studio lighting, cream and ivory background, ' +
-    'high-end jewelry editorial, 8k resolution, sharp focus, luxury fashion photography. ' +
-    'Preserve the jewelry design exactly — do not alter the ring shape, stones, or metalwork.',
+  'STEP 4 — COMPOSITING: Add only the eligible jewelry with:\n' +
+  '  • Natural, realistic positioning as if the model is genuinely wearing it.\n' +
+  '  • Jewelry lighting matched to the existing photo\'s light source and color temperature.\n' +
+  '  • Correct shadows, reflections, and skin interaction.\n' +
+  '  • EXACT reproduction of the jewelry design — do not alter shape, stones, ' +
+  'metal color, chain links, engravings, or any detail.\n' +
+  '  • Seamless integration with no visible compositing artifacts.\n\n' +
 
-  necklaces:
-    'You are a professional jewelry photographer. ' +
-    'Using this product photo as reference, generate a professional lifestyle photograph ' +
-    'showing this exact necklace worn on an elegant female neck and décolletage. ' +
-    'Style: soft warm studio lighting, cream background, ' +
-    'high-end jewelry editorial, 8k resolution, sharp focus, luxury fashion photography. ' +
-    'Preserve the jewelry design exactly.',
+  'Result: a seamless, high-end jewelry editorial photograph, 8k resolution, ' +
+  'sharp focus, luxury fashion photography.'
 
-  earrings:
-    'You are a professional jewelry photographer. ' +
-    'Using this product photo as reference, generate a professional lifestyle photograph ' +
-    'showing these exact earrings on an elegant female ear, close-up side profile. ' +
-    'Style: soft warm studio lighting, cream background, ' +
-    'high-end jewelry editorial, 8k resolution, sharp focus, luxury fashion photography. ' +
-    'Preserve the jewelry design exactly.',
+// ── Prompt: standalone generation (no model photo) ────────────────────────────
+// Single image: jewelry product photo only.
+// Gemini auto-detects what it is and generates an appropriate lifestyle scene.
 
-  bracelets:
-    'You are a professional jewelry photographer. ' +
-    'Using this product photo as reference, generate a professional lifestyle photograph ' +
-    'showing this exact bracelet worn on an elegant female wrist. ' +
-    'Style: soft warm studio lighting, cream background, ' +
-    'high-end jewelry editorial, 8k resolution, sharp focus, luxury fashion photography. ' +
-    'Preserve the jewelry design exactly.',
+const STANDALONE_PROMPT =
+  'You are a professional jewelry photographer.\n\n' +
 
-  universal:
-    'You are a professional jewelry photographer. ' +
-    'Using this product photo as reference, generate a professional lifestyle photograph ' +
-    'showing this exact jewelry piece being worn elegantly. ' +
-    'Style: soft warm studio lighting, cream and ivory background, ' +
-    'high-end editorial, 8k resolution, sharp focus, luxury fashion photography. ' +
-    'Preserve the jewelry design exactly.',
-}
+  'Examine this product photo carefully and identify every piece of jewelry shown ' +
+  '(ring, earrings, necklace, bracelet, or a set of multiple pieces) and memorize ' +
+  'their exact design: shape, stones, metal, finish, and proportions.\n\n' +
+
+  'Based on what you identified, generate a professional lifestyle photograph ' +
+  'showing this exact jewelry being elegantly worn:\n' +
+  '  • Ring → graceful close-up of a female hand/fingers wearing the ring.\n' +
+  '  • Earrings → elegant close-up side-profile of a female ear wearing the earrings.\n' +
+  '  • Necklace → female neck and décolletage with the necklace draped naturally.\n' +
+  '  • Bracelet → female wrist with the bracelet worn naturally.\n' +
+  '  • Set (multiple pieces) → compose the shot to best showcase all pieces ' +
+  'together; show only the body parts required by the pieces in the set.\n\n' +
+
+  'Style: soft warm studio lighting, cream and ivory background, high-end jewelry ' +
+  'editorial, 8k resolution, sharp focus, luxury fashion photography.\n\n' +
+
+  'CRITICAL: The jewelry in the output must be IDENTICAL to the reference photo — ' +
+  'do not alter shape, stone cuts, metal color, chain style, or any design detail. ' +
+  'Preserve the exact piece as given.'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface GenerationParams {
   /** Signed URL to the uploaded jewelry photo */
   imageUrl:          string
-  /** Jewelry category: rings | necklaces | earrings | bracelets | universal */
-  templateCategory:  string
   /** Optional model reference photo — enables compositing mode */
   modelImageBuffer?: Buffer
   /** MIME type of modelImageBuffer */
@@ -152,11 +133,13 @@ interface GeminiResponse {
 /**
  * Generates a jewelry lifestyle photo via Gemini.
  *
- * If modelImageBuffer is provided (model-based mode):
- *   Sends model photo + jewelry photo → Gemini composites jewelry onto the model.
+ * Model-based mode (modelImageBuffer provided):
+ *   Sends model photo + jewelry photo → Gemini auto-detects jewelry type,
+ *   analyzes model body visibility, and places only the pieces that fit.
  *
- * Otherwise (standalone mode):
- *   Sends jewelry photo alone → Gemini generates a new lifestyle scene from scratch.
+ * Standalone mode (no modelImageBuffer):
+ *   Sends jewelry photo alone → Gemini auto-detects type and generates
+ *   an appropriate lifestyle scene from scratch.
  *
  * Throws a Russian-language Error on failure.
  */
@@ -184,23 +167,20 @@ export async function generateJewelryPhoto(
 
   // ── 2. Build request parts ─────────────────────────────────────────────────
   let parts: object[]
-  let prompt: string
 
   if (params.modelImageBuffer && params.modelMimeType) {
-    // Model-based compositing: send model photo first, then jewelry photo
+    // Model-based compositing: model photo first (canvas), then jewelry (reference)
     const modelBase64 = params.modelImageBuffer.toString('base64')
-    prompt = MODEL_COMPOSITE_PROMPTS[params.templateCategory] ?? MODEL_COMPOSITE_PROMPTS.universal
     parts = [
       { inlineData: { mimeType: params.modelMimeType, data: modelBase64 } },
       { inlineData: { mimeType: jewelryMimeType,      data: jewelryBase64 } },
-      { text: prompt },
+      { text: MODEL_COMPOSITE_PROMPT },
     ]
   } else {
     // Standalone: jewelry photo only
-    prompt = STANDALONE_PROMPTS[params.templateCategory] ?? STANDALONE_PROMPTS.universal
     parts = [
       { inlineData: { mimeType: jewelryMimeType, data: jewelryBase64 } },
-      { text: prompt },
+      { text: STANDALONE_PROMPT },
     ]
   }
 

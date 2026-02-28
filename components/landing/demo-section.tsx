@@ -161,8 +161,8 @@ export function DemoSection() {
               </span>
             </div>
 
-            {/* 2×3 photo grid */}
-            <div className="flex-1 grid grid-cols-3 gap-2.5 lg:gap-3">
+            {/* 2×3 photo grid — 2 col on mobile for comfortable card size */}
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2.5 lg:gap-3">
               {AFTER_PHOTOS.map((photo, i) => (
                 <motion.div
                   key={photo.src}
@@ -180,6 +180,7 @@ export function DemoSection() {
                     alt={`AI лайфстайл — ${photo.label}`}
                     className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                     draggable={false}
+                    loading="lazy"
                   />
 
                   {/* Bottom gradient */}

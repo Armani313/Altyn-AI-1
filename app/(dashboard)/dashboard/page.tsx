@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { Check } from 'lucide-react'
 import { Header } from '@/components/dashboard/header'
 import { UploadZone } from '@/components/generate/upload-zone'
 import { TemplatePicker } from '@/components/generate/template-picker'
@@ -9,6 +10,13 @@ import { createClient } from '@/lib/supabase/client'
 import { TEMPLATE_CATEGORY_MAP, MODEL_PHOTO_MAP } from '@/components/generate/template-picker'
 
 type AspectRatio = '1:1' | '9:16'
+type MobileStep = 1 | 2 | 3
+
+const MOBILE_STEPS = [
+  { id: 1 as MobileStep, label: 'Фото'   },
+  { id: 2 as MobileStep, label: 'Модель' },
+  { id: 3 as MobileStep, label: 'Создать'},
+]
 
 export default function DashboardPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -19,6 +27,7 @@ export default function DashboardPage() {
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
+  const [mobileStep, setMobileStep] = useState<MobileStep>(1)
 
   // Fetch credits on mount so the header shows the real balance
   useEffect(() => {
@@ -47,6 +56,8 @@ export default function DashboardPage() {
       setPreviewUrl(url)
       setResultUrl(null)
       setGenerateError(null)
+      // Auto-advance to model selection on mobile
+      setMobileStep(2)
     },
     [previewUrl]
   )
@@ -58,6 +69,12 @@ export default function DashboardPage() {
     setResultUrl(null)
     setGenerateError(null)
   }, [previewUrl])
+
+  const handleTemplateSelect = (id: string) => {
+    setSelectedTemplate(id)
+    // Auto-advance to generate step on mobile
+    setMobileStep(3)
+  }
 
   const handleGenerate = async () => {
     if (!uploadedFile) return
@@ -71,7 +88,6 @@ export default function DashboardPage() {
       formData.append('image', uploadedFile)
       if (selectedTemplate) {
         formData.append('model_id', selectedTemplate)
-        // Derive category from selected model to use the right Gemini prompt
         const category = MODEL_PHOTO_MAP[selectedTemplate]?.category
           ?? TEMPLATE_CATEGORY_MAP[selectedTemplate]
           ?? 'rings'
@@ -88,7 +104,6 @@ export default function DashboardPage() {
       }
 
       setResultUrl(data.outputUrl)
-      // Update credits chip live after a successful generation
       if (typeof data.creditsRemaining === 'number') {
         setCreditsRemaining(data.creditsRemaining)
       }
@@ -99,6 +114,9 @@ export default function DashboardPage() {
     }
   }
 
+  const step1Done = !!previewUrl
+  const step2Done = !!selectedTemplate
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header
@@ -107,12 +125,42 @@ export default function DashboardPage() {
         profile={creditsRemaining != null ? { credits_remaining: creditsRemaining } : null}
       />
 
-      {/* ── 3-column workspace ───────────────────────────────── */}
-      <div className="flex-1 p-5 xl:p-6">
-        <div className="max-w-[1400px] mx-auto h-full grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-[1fr_1.15fr_1fr] gap-5">
+      {/* ── Mobile step tabs ──────────────────────────────────────────── */}
+      <div className="lg:hidden sticky top-[57px] z-20 bg-white border-b border-cream-200 flex">
+        {MOBILE_STEPS.map((step) => {
+          const done    = step.id === 1 ? step1Done : step.id === 2 ? step2Done : false
+          const active  = mobileStep === step.id
+          return (
+            <button
+              key={step.id}
+              onClick={() => setMobileStep(step.id)}
+              className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors touch-manipulation ${
+                active
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground'
+              }`}
+            >
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-colors ${
+                done
+                  ? 'bg-emerald-400 text-white'
+                  : active
+                  ? 'gradient-rose-gold text-white'
+                  : 'bg-cream-200 text-muted-foreground'
+              }`}>
+                {done ? <Check className="w-3 h-3" /> : step.id}
+              </span>
+              {step.label}
+            </button>
+          )
+        })}
+      </div>
 
-          {/* ── Column 1: Upload ─────────────────────── */}
-          <div className="flex flex-col gap-3">
+      {/* ── Workspace ─────────────────────────────────────────────────── */}
+      <div className="flex-1 p-3 sm:p-5 xl:p-6">
+        <div className="max-w-[1400px] mx-auto h-full grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-[1fr_1.15fr_1fr] gap-3 sm:gap-5">
+
+          {/* ── Column 1: Upload ──── */}
+          <div className={`flex-col gap-3 ${mobileStep === 1 ? 'flex' : 'hidden lg:flex'}`}>
             <SectionLabel step="01" title="Загрузите фото" />
             <UploadZone
               previewUrl={previewUrl}
@@ -124,19 +172,19 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* ── Column 2: Templates ──────────────────── */}
-          <div className="flex flex-col gap-3">
+          {/* ── Column 2: Templates ── */}
+          <div className={`flex-col gap-3 ${mobileStep === 2 ? 'flex' : 'hidden lg:flex'}`}>
             <SectionLabel step="02" title="Выберите модель" />
-            <div className="flex-1 bg-white rounded-2xl border border-cream-200 p-4 shadow-soft">
+            <div className="flex-1 bg-white rounded-2xl border border-cream-200 p-3 sm:p-4 shadow-soft">
               <TemplatePicker
                 selectedId={selectedTemplate}
-                onSelect={setSelectedTemplate}
+                onSelect={handleTemplateSelect}
               />
             </div>
           </div>
 
-          {/* ── Column 3: Result ─────────────────────── */}
-          <div className="flex flex-col gap-3">
+          {/* ── Column 3: Result ──── */}
+          <div className={`flex-col gap-3 ${mobileStep === 3 ? 'flex' : 'hidden lg:flex'}`}>
             <SectionLabel step="03" title="Получите результат" />
             <ResultViewer
               isGenerating={isGenerating}

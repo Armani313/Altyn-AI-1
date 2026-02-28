@@ -104,8 +104,8 @@ export function UploadZone({ onUpload, onRemove, previewUrl }: UploadZoneProps) 
         onClick={() => inputRef.current?.click()}
         className={`
           relative flex flex-col items-center justify-center
-          aspect-square rounded-2xl border-2 border-dashed cursor-pointer
-          transition-all duration-300 select-none
+          aspect-[4/3] sm:aspect-square rounded-2xl border-2 border-dashed cursor-pointer
+          transition-all duration-300 select-none touch-manipulation
           ${isDragging
             ? 'border-primary bg-rose-gold-50 scale-[1.01] shadow-glow'
             : 'border-cream-300 bg-white hover:border-rose-gold-300 hover:bg-rose-gold-50/40'
@@ -122,10 +122,10 @@ export function UploadZone({ onUpload, onRemove, previewUrl }: UploadZoneProps) 
           }}
         />
 
-        <div className="relative z-10 flex flex-col items-center gap-4 p-8 text-center">
+        <div className="relative z-10 flex flex-col items-center gap-4 p-6 sm:p-8 text-center">
           {/* Icon */}
           <div
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-300 ${
+            className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-colors duration-300 ${
               isDragging ? 'bg-rose-gold-200' : 'bg-rose-gold-100'
             }`}
           >
@@ -136,12 +136,20 @@ export function UploadZone({ onUpload, onRemove, previewUrl }: UploadZoneProps) 
             )}
           </div>
 
-          {/* Text */}
+          {/* Text — device-aware copy */}
           <div>
             <p className="font-medium text-foreground mb-1">
-              {isDragging ? 'Отпустите файл здесь' : 'Перетащите фото украшения'}
+              {isDragging
+                ? 'Отпустите файл здесь'
+                : (
+                  <>
+                    <span className="hidden sm:inline">Перетащите фото украшения</span>
+                    <span className="sm:hidden">Нажмите, чтобы загрузить фото</span>
+                  </>
+                )
+              }
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground hidden sm:block">
               или{' '}
               <span className="text-primary font-medium underline underline-offset-2">
                 выберите файл

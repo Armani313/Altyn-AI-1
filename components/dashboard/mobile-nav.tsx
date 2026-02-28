@@ -32,7 +32,7 @@ export function MobileNav({ profile }: MobileNavProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden w-9 h-9 text-muted-foreground hover:bg-cream-100"
+          className="lg:hidden w-11 h-11 text-muted-foreground hover:bg-cream-100"
           aria-label="Открыть меню"
         >
           <Menu className="w-5 h-5" />

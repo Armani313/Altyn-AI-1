@@ -14,7 +14,7 @@ const fadeUp = (delay = 0) => ({
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center pt-16 pb-24 overflow-hidden">
+    <section className="relative pt-24 pb-14 sm:pb-20 lg:min-h-screen lg:flex lg:items-center overflow-hidden">
       {/* Background decoration */}
       <div
         aria-hidden
@@ -25,7 +25,7 @@ export function HeroSection() {
       </div>
 
       <div className="relative max-w-6xl mx-auto px-6 w-full">
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center">
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-16 items-center">
 
           {/* ── Text content ─────────────────────────────── */}
           <div>
@@ -40,7 +40,7 @@ export function HeroSection() {
             {/* Headline */}
             <motion.h1
               {...fadeUp(0.08)}
-              className="font-serif text-[clamp(2rem,5vw,3rem)] font-medium text-foreground leading-[1.15] tracking-tight mb-6"
+              className="font-serif text-[clamp(1.75rem,5vw,3rem)] font-medium text-foreground leading-[1.15] tracking-tight mb-5 sm:mb-6"
             >
               Контент для украшений —{' '}
               <em className="text-primary not-italic">без фотосессий.</em>
@@ -104,11 +104,12 @@ export function HeroSection() {
             </motion.p>
           </div>
 
-          {/* ── Before / After mock ──────────────────────── */}
+          {/* ── Before / After mock — desktop only ──────── */}
           <motion.div
             initial={{ opacity: 0, x: 48, scale: 0.96 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
+            className="hidden lg:block"
           >
             <BeforeAfterCard />
           </motion.div>

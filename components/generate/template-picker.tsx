@@ -65,8 +65,8 @@ export function TemplatePicker({ selectedId, onSelect }: TemplatePickerProps) {
         ))}
       </div>
 
-      {/* Model photo grid */}
-      <div className="grid grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5">
+      {/* Model photo grid — 2 cols on mobile, 3 on desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5">
         {filtered.map((model) => {
           const isSelected = selectedId === model.id
 
@@ -92,6 +92,7 @@ export function TemplatePicker({ selectedId, onSelect }: TemplatePickerProps) {
                   alt={model.name}
                   className="w-full h-full object-cover object-top"
                   draggable={false}
+                  loading="lazy"
                 />
               </div>
 

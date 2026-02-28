@@ -28,9 +28,14 @@
  */
 
 import { NextResponse } from 'next/server'
+import { promises as fs } from 'fs'
+import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { generateJewelryPhoto } from '@/lib/ai/gemini'
-import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
+import {
+  ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
+  MODEL_PHOTO_MAP, VALID_MODEL_IDS,
+} from '@/lib/constants'
 
 // Extend serverless timeout to 60 s for Gemini generation
 export const maxDuration = 60
@@ -94,6 +99,7 @@ export async function POST(request: Request) {
     const rawTemplateId  = (formData.get('template_id') as string | null) || null
     const rawCategory    = (formData.get('template_category') as string) || ''
     const rawRatio       = (formData.get('aspect_ratio') as string) || ''
+    const rawModelId     = (formData.get('model_id') as string | null) || null
 
     const templateId = rawTemplateId !== null
       ? (UUID_REGEX.test(rawTemplateId) ? rawTemplateId : null)
@@ -106,6 +112,9 @@ export async function POST(request: Request) {
     const aspectRatio = (VALID_RATIOS as readonly string[]).includes(rawRatio)
       ? rawRatio as '1:1' | '9:16'
       : '1:1'
+
+    // Validate model_id against static allowlist — never use raw user input in file paths
+    const modelId = rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null
 
     if (!imageFile || imageFile.size === 0) {
       return err('Файл изображения не найден. Пожалуйста, загрузите фото украшения.', 400)
@@ -161,6 +170,7 @@ export async function POST(request: Request) {
         metadata: {
           aspect_ratio:      aspectRatio,
           template_category: templateCategory,
+          model_id:          modelId ?? null,
         },
       } as never)
       .select('id')
@@ -176,12 +186,25 @@ export async function POST(request: Request) {
     const generationId = gen.id
 
     // ── 6. Call Gemini ────────────────────────────────────────────────────────
+    // If a model was selected, read it from the local public/ folder (safe — path
+    // is derived from a compile-time allowlist, never from raw user input).
+    let modelImageBuffer: Buffer | undefined
+    let modelMimeType:    string | undefined
+    if (modelId) {
+      const modelPhoto = MODEL_PHOTO_MAP[modelId]
+      const modelPath  = path.join(process.cwd(), 'public', 'models', modelPhoto.filename)
+      modelImageBuffer = await fs.readFile(modelPath)
+      modelMimeType    = modelPhoto.filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
+    }
+
     let aiImageBuffer: Buffer
     let aiMimeType:    string
     try {
       const result = await generateJewelryPhoto({
         imageUrl:         signedData.signedUrl,
         templateCategory,
+        modelImageBuffer,
+        modelMimeType,
       })
       aiImageBuffer = result.imageBuffer
       aiMimeType    = result.mimeType

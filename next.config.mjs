@@ -35,8 +35,8 @@ const nextConfig = {
                 ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
                 : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
-              // Supabase storage + Replicate CDN for generated images
-              "img-src 'self' data: blob: https://*.supabase.co https://replicate.delivery https://*.replicate.delivery",
+              // Supabase storage for generated images (Gemini returns bytes, no external CDN needed)
+              "img-src 'self' data: blob: https://*.supabase.co",
               // Google Fonts (if ever added)
               "font-src 'self' https://fonts.gstatic.com",
               // Supabase API + realtime
@@ -71,16 +71,12 @@ const nextConfig = {
     ]
   },
 
-  // ── Supabase Storage image domains ───────────────────────────────────────
-  // Allow next/image (if ever used) to optimize images from Supabase Storage.
+  // ── Image optimizer disabled ──────────────────────────────────────────────
+  // next/image is not used in this project (all images are plain <img> tags).
+  // Disabling the optimizer eliminates the /_next/image DoS attack surface
+  // (CVE-2025-59471 / GHSA-9g9p-9gw9-jx7f).
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-        pathname: '/storage/v1/object/**',
-      },
-    ],
+    unoptimized: true,
   },
 }
 

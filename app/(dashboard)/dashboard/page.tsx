@@ -6,7 +6,7 @@ import { UploadZone } from '@/components/generate/upload-zone'
 import { TemplatePicker } from '@/components/generate/template-picker'
 import { ResultViewer } from '@/components/generate/result-viewer'
 import { createClient } from '@/lib/supabase/client'
-import { TEMPLATE_CATEGORY_MAP } from '@/components/generate/template-picker'
+import { TEMPLATE_CATEGORY_MAP, MODEL_PHOTO_MAP } from '@/components/generate/template-picker'
 
 type AspectRatio = '1:1' | '9:16'
 
@@ -69,8 +69,14 @@ export default function DashboardPage() {
     try {
       const formData = new FormData()
       formData.append('image', uploadedFile)
-      if (selectedTemplate) formData.append('template_id', selectedTemplate)
-      formData.append('template_category', TEMPLATE_CATEGORY_MAP[selectedTemplate ?? ''] ?? 'rings')
+      if (selectedTemplate) {
+        formData.append('model_id', selectedTemplate)
+        // Derive category from selected model to use the right Gemini prompt
+        const category = MODEL_PHOTO_MAP[selectedTemplate]?.category
+          ?? TEMPLATE_CATEGORY_MAP[selectedTemplate]
+          ?? 'rings'
+        formData.append('template_category', category)
+      }
       formData.append('aspect_ratio', aspectRatio)
 
       const res = await fetch('/api/generate', { method: 'POST', body: formData })
@@ -97,7 +103,7 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col">
       <Header
         title="Создать контент"
-        subtitle="Загрузите украшение, выберите позу и получите лайфстайл-фото"
+        subtitle="Загрузите украшение, выберите модель и получите лайфстайл-фото"
         profile={creditsRemaining != null ? { credits_remaining: creditsRemaining } : null}
       />
 
@@ -120,7 +126,7 @@ export default function DashboardPage() {
 
           {/* ── Column 2: Templates ──────────────────── */}
           <div className="flex flex-col gap-3">
-            <SectionLabel step="02" title="Выберите позу модели" />
+            <SectionLabel step="02" title="Выберите модель" />
             <div className="flex-1 bg-white rounded-2xl border border-cream-200 p-4 shadow-soft">
               <TemplatePicker
                 selectedId={selectedTemplate}

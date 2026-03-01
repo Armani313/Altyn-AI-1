@@ -18,6 +18,7 @@ export type Database = {
           avatar_url: string | null
           plan: 'free' | 'starter' | 'pro' | 'enterprise'
           credits_remaining: number
+          custom_model_url: string | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +30,7 @@ export type Database = {
           avatar_url?: string | null
           plan?: 'free' | 'starter' | 'pro' | 'enterprise'
           credits_remaining?: number
+          custom_model_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -39,6 +41,7 @@ export type Database = {
           avatar_url?: string | null
           plan?: 'free' | 'starter' | 'pro' | 'enterprise'
           credits_remaining?: number
+          custom_model_url?: string | null
           updated_at?: string
         }
       }

@@ -35,7 +35,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { generateJewelryPhoto } from '@/lib/ai/gemini'
 import {
   ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
-  MODEL_PHOTO_MAP, VALID_MODEL_IDS,
+  MODEL_PHOTO_MAP, VALID_MODEL_IDS, VALID_PRODUCT_TYPES, CUSTOM_MODEL_ID,
+  type ProductType,
 } from '@/lib/constants'
 
 // Extend serverless timeout to 60 s for Gemini generation
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
     const rawCategory    = (formData.get('template_category') as string) || ''
     const rawRatio       = (formData.get('aspect_ratio') as string) || ''
     const rawModelId     = (formData.get('model_id') as string | null) || null
+    const rawProductType = (formData.get('product_type') as string) || ''
 
     const templateId = rawTemplateId !== null
       ? (UUID_REGEX.test(rawTemplateId) ? rawTemplateId : null)
@@ -114,8 +116,16 @@ export async function POST(request: Request) {
       ? rawRatio as '1:1' | '9:16'
       : '1:1'
 
-    // Validate model_id against static allowlist — never use raw user input in file paths
-    const modelId = rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null
+    // Validate model_id: allow static allowlist OR the special 'user-custom' value
+    const isCustomModel = rawModelId === CUSTOM_MODEL_ID
+    const modelId = isCustomModel
+      ? null
+      : (rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null)
+
+    // Validate product_type against allowlist
+    const productType: ProductType = (VALID_PRODUCT_TYPES as Set<string>).has(rawProductType)
+      ? rawProductType as ProductType
+      : 'jewelry'
 
     if (!imageFile || imageFile.size === 0) {
       return err('Файл изображения не найден. Пожалуйста, загрузите фото украшения.', 400)
@@ -172,6 +182,7 @@ export async function POST(request: Request) {
           aspect_ratio:      aspectRatio,
           template_category: templateCategory,
           model_id:          modelId ?? null,
+          product_type:      productType,
         },
       } as never)
       .select('id')
@@ -191,7 +202,31 @@ export async function POST(request: Request) {
     // is derived from a compile-time allowlist, never from raw user input).
     let modelImageBuffer: Buffer | undefined
     let modelMimeType:    string | undefined
-    if (modelId) {
+
+    if (isCustomModel) {
+      // Load custom model from user's profile URL
+      const { data: profileCustom } = await supabase
+        .from('profiles')
+        .select('custom_model_url')
+        .eq('id', user.id)
+        .single()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const customUrl = (profileCustom as any)?.custom_model_url as string | null
+
+      if (customUrl) {
+        try {
+          const modelRes = await fetch(customUrl, { signal: AbortSignal.timeout(30_000) })
+          if (modelRes.ok) {
+            modelImageBuffer = Buffer.from(await modelRes.arrayBuffer())
+            modelMimeType    = modelRes.headers.get('content-type')?.split(';')[0] ?? 'image/jpeg'
+          }
+        } catch {
+          // Custom model image unavailable — fall through to standalone mode
+          console.warn(`User ${user.id}: failed to fetch custom model image`)
+        }
+      }
+    } else if (modelId) {
       const modelPhoto = MODEL_PHOTO_MAP[modelId]
       const modelPath  = path.join(process.cwd(), 'public', 'models', modelPhoto.filename)
       modelImageBuffer = await fs.readFile(modelPath)
@@ -205,6 +240,7 @@ export async function POST(request: Request) {
         imageUrl:         signedData.signedUrl,
         modelImageBuffer,
         modelMimeType,
+        productType,
       })
       aiImageBuffer = result.imageBuffer
       aiMimeType    = result.mimeType

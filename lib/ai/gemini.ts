@@ -72,6 +72,69 @@ const MODEL_COMPOSITE_PROMPT =
   'Result: a seamless, high-end jewelry editorial photograph, 8k resolution, ' +
   'sharp focus, luxury fashion photography.'
 
+// ── Prompt: scarf/shawl model-based compositing ───────────────────────────────
+// Image 1 = model photo (canvas), Image 2 = scarf/shawl product photo (reference)
+
+const SCARF_MODEL_COMPOSITE_PROMPT =
+  'You are a professional fashion photographer and digital retoucher specializing ' +
+  'in luxury textile and accessories editorial work.\n\n' +
+
+  'You are given two images:\n' +
+  '• Image 1: A fashion model photo — this is your CANVAS. Preserve it EXACTLY: ' +
+  'do NOT alter the model\'s face, hair, skin tone, pose, or existing clothing in any way.\n' +
+  '• Image 2: A product photo of a scarf, shawl, or headscarf — this is your REFERENCE.\n\n' +
+
+  'Follow these steps:\n\n' +
+
+  'STEP 1 — TEXTILE ANALYSIS: Examine Image 2 carefully and memorize:\n' +
+  '  • Exact colors, pattern, and print design\n' +
+  '  • Fabric type (silk, wool, cotton, chiffon, etc.) and texture\n' +
+  '  • Shape and size (square, rectangular, triangular)\n' +
+  '  • Any decorative edges, fringe, or embellishments\n\n' +
+
+  'STEP 2 — MODEL ANALYSIS: Examine Image 1 and determine the most natural way ' +
+  'to style the scarf based on what body areas are visible:\n' +
+  '  • Shoulders and neck visible → drape as a stole or wrap around shoulders/neck\n' +
+  '  • Head and face visible → could tie elegantly as a headscarf\n' +
+  '  • Upper body clearly shown → wrap gracefully over one or both shoulders\n' +
+  '  • Choose the styling that looks most natural and fashionable for this specific model pose\n\n' +
+
+  'STEP 3 — DRAPING: Add the scarf with:\n' +
+  '  • Natural, realistic fabric physics — gravity-correct folds and soft draping\n' +
+  '  • EXACT reproduction of the color, pattern, and texture from Image 2\n' +
+  '  • Realistic fabric interaction with the model\'s clothing and body\n' +
+  '  • Correct lighting, shadows, and material sheen matching the photo\'s light source\n' +
+  '  • Seamless compositing with no visible artifacts\n\n' +
+
+  'Result: a seamless, high-end fashion editorial photograph showing the model ' +
+  'elegantly wearing the scarf, 8k resolution, sharp focus, luxury fashion photography.'
+
+// ── Prompt: scarf standalone generation (no model photo) ──────────────────────
+
+const SCARF_STANDALONE_PROMPT =
+  'You are a professional fashion photographer.\n\n' +
+
+  'Examine this product photo carefully and identify the textile item shown ' +
+  '(headscarf, shawl, pashmina, stole, wrap, etc.). Memorize its exact colors, ' +
+  'pattern, print design, texture, fabric type, shape, and any decorative details ' +
+  'such as fringe or embroidered edges.\n\n' +
+
+  'Generate a professional lifestyle fashion photograph showing this exact textile ' +
+  'being elegantly worn by a stylish female model:\n' +
+  '  • Square headscarf (платок) → tied gracefully as a headscarf or loosely ' +
+  'draped over the shoulders in a chic, modern way\n' +
+  '  • Rectangular stole or pashmina → draped elegantly over both shoulders or ' +
+  'wrapped loosely around the neck\n' +
+  '  • Triangular scarf → styled as a shoulder wrap or tied at the neck\n' +
+  '  • Large shawl → draped gracefully over shoulders in a fashion editorial pose\n\n' +
+
+  'Style: soft warm studio lighting, cream and ivory background, high-end fashion ' +
+  'editorial, 8k resolution, sharp focus, luxury fashion photography.\n\n' +
+
+  'CRITICAL: The textile in the output must be IDENTICAL to the reference photo — ' +
+  'preserve exact colors, pattern, print, texture, and any decorative details. ' +
+  'Do not alter the design in any way.'
+
 // ── Prompt: standalone generation (no model photo) ────────────────────────────
 // Single image: jewelry product photo only.
 // Gemini auto-detects what it is and generates an appropriate lifestyle scene.
@@ -102,12 +165,14 @@ const STANDALONE_PROMPT =
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface GenerationParams {
-  /** Signed URL to the uploaded jewelry photo */
+  /** Signed URL to the uploaded product photo (jewelry or scarf) */
   imageUrl:          string
   /** Optional model reference photo — enables compositing mode */
   modelImageBuffer?: Buffer
   /** MIME type of modelImageBuffer */
   modelMimeType?:    string
+  /** Product type — determines which prompts to use (default: 'jewelry') */
+  productType?:      'jewelry' | 'scarves'
 }
 
 export interface GenerationResult {
@@ -168,19 +233,23 @@ export async function generateJewelryPhoto(
   // ── 2. Build request parts ─────────────────────────────────────────────────
   let parts: object[]
 
+  const isScarves = params.productType === 'scarves'
+
   if (params.modelImageBuffer && params.modelMimeType) {
-    // Model-based compositing: model photo first (canvas), then jewelry (reference)
-    const modelBase64 = params.modelImageBuffer.toString('base64')
+    // Model-based compositing: model photo first (canvas), then product (reference)
+    const modelBase64    = params.modelImageBuffer.toString('base64')
+    const compositePrompt = isScarves ? SCARF_MODEL_COMPOSITE_PROMPT : MODEL_COMPOSITE_PROMPT
     parts = [
       { inlineData: { mimeType: params.modelMimeType, data: modelBase64 } },
       { inlineData: { mimeType: jewelryMimeType,      data: jewelryBase64 } },
-      { text: MODEL_COMPOSITE_PROMPT },
+      { text: compositePrompt },
     ]
   } else {
-    // Standalone: jewelry photo only
+    // Standalone: product photo only
+    const standalonePrompt = isScarves ? SCARF_STANDALONE_PROMPT : STANDALONE_PROMPT
     parts = [
       { inlineData: { mimeType: jewelryMimeType, data: jewelryBase64 } },
-      { text: STANDALONE_PROMPT },
+      { text: standalonePrompt },
     ]
   }
 

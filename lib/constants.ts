@@ -20,6 +20,14 @@ export const SAFE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'hei
 
 export type ModelCategory = 'necklaces' | 'earrings' | 'rings'
 
+// ── Custom user model ─────────────────────────────────────────────────────────
+/** Special model ID for user-uploaded custom model photos. */
+export const CUSTOM_MODEL_ID = 'user-custom' as const
+
+// ── Product types ─────────────────────────────────────────────────────────────
+export type ProductType = 'jewelry' | 'scarves'
+export const VALID_PRODUCT_TYPES = new Set<ProductType>(['jewelry', 'scarves'])
+
 export interface ModelPhoto {
   id:        string
   filename:  string

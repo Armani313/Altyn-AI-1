@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap } from 'lucide-react'
+import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex } from '@/lib/constants'
 
 type AspectRatio = '1:1' | '9:16'
@@ -53,10 +54,12 @@ function ResultCard({
   result,
   aspectCls,
   customModelUrls,
+  onExpand,
 }: {
-  result: GenerationResult
-  aspectCls: string
+  result:          GenerationResult
+  aspectCls:       string
   customModelUrls?: string[]
+  onExpand?:       () => void
 }) {
   const [isDownloading, setIsDownloading] = useState(false)
   const isCustom     = isCustomModelId(result.modelId)
@@ -102,6 +105,7 @@ function ResultCard({
             alt="Результат генерации"
             className="w-full h-full object-cover"
           />
+          {/* Download button */}
           <button
             onClick={handleDownload}
             disabled={isDownloading}
@@ -113,6 +117,17 @@ function ResultCard({
             }
             {isDownloading ? 'Загрузка…' : 'Скачать'}
           </button>
+
+          {/* Expand / lightbox button */}
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              className="absolute bottom-2 left-2 w-8 h-8 flex items-center justify-center bg-white/90 hover:bg-white backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+              aria-label="Открыть полноэкранно"
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-foreground/70" />
+            </button>
+          )}
         </>
       )}
 
@@ -156,11 +171,23 @@ export function ResultViewer({
   creditsRemaining,
   customModelUrls,
 }: ResultViewerProps) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
   const isAnyGenerating  = results.some((r) => r.status === 'generating')
   const hasResults       = results.length > 0
   const failedCount      = results.filter((r) => r.status === 'error').length
   const enoughCredits    = creditsRemaining == null || creditsRemaining >= selectedCount
   const currentRatio     = RATIOS.find((r) => r.id === aspectRatio)!
+
+  // Build lightbox list from done results
+  const lightboxImages: LightboxImage[] = results
+    .filter((r) => r.status === 'done' && r.resultUrl)
+    .map((r) => ({ url: r.resultUrl! }))
+
+  // Map a result's position among done results for the lightbox
+  function doneIndexOf(result: GenerationResult): number {
+    return lightboxImages.findIndex((img) => img.url === result.resultUrl)
+  }
 
   const genLabel = () => {
     if (isAnyGenerating) {
@@ -270,6 +297,11 @@ export function ResultViewer({
               result={result}
               aspectCls={currentRatio.cls}
               customModelUrls={customModelUrls}
+              onExpand={
+                result.status === 'done' && result.resultUrl
+                  ? () => setLightboxIndex(doneIndexOf(result))
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -301,6 +333,14 @@ export function ResultViewer({
           ↑ Загрузите фото украшения для начала
         </p>
       )}
+
+      {/* Lightbox */}
+      <Lightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex ?? 0}
+        open={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+      />
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { MODEL_PHOTO_MAP, CUSTOM_MODEL_ID } from '@/lib/constants'
+import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex } from '@/lib/constants'
 
 type AspectRatio = '1:1' | '9:16'
 
@@ -23,8 +23,8 @@ interface ResultViewerProps {
   canGenerate:         boolean
   selectedCount:       number
   creditsRemaining:    number | null
-  /** URL of the user's custom model — used for thumbnail in result cards */
-  customModelUrl?:     string | null
+  /** URLs of the user's custom models — used for thumbnails in result cards */
+  customModelUrls?:    string[]
 }
 
 const RATIOS: { id: AspectRatio; label: string; cls: string }[] = [
@@ -52,15 +52,16 @@ async function downloadImage(url: string, name: string) {
 function ResultCard({
   result,
   aspectCls,
-  customModelUrl,
+  customModelUrls,
 }: {
   result: GenerationResult
   aspectCls: string
-  customModelUrl?: string | null
+  customModelUrls?: string[]
 }) {
   const [isDownloading, setIsDownloading] = useState(false)
-  const isCustom = result.modelId === CUSTOM_MODEL_ID
-  const model    = isCustom ? null : MODEL_PHOTO_MAP[result.modelId]
+  const isCustom     = isCustomModelId(result.modelId)
+  const customIndex  = isCustom ? getCustomModelIndex(result.modelId) : -1
+  const model        = isCustom ? null : MODEL_PHOTO_MAP[result.modelId]
 
   const handleDownload = async () => {
     if (!result.resultUrl || isDownloading) return
@@ -130,12 +131,12 @@ function ResultCard({
         <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 max-w-[80%]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={isCustom ? (customModelUrl ?? '') : `/models/${model!.filename}`}
+            src={isCustom ? (customModelUrls?.[customIndex] ?? '') : `/models/${model!.filename}`}
             alt={isCustom ? 'Ваша модель' : model!.name}
             className="w-4 h-4 rounded-full object-cover object-top flex-shrink-0"
           />
           <span className="text-[10px] text-white font-medium truncate">
-            {isCustom ? 'Ваша модель' : model!.name}
+            {isCustom ? `Моя модель${(customModelUrls?.length ?? 0) > 1 ? ` ${customIndex + 1}` : ''}` : model!.name}
           </span>
         </div>
       )}
@@ -153,7 +154,7 @@ export function ResultViewer({
   canGenerate,
   selectedCount,
   creditsRemaining,
-  customModelUrl,
+  customModelUrls,
 }: ResultViewerProps) {
   const isAnyGenerating  = results.some((r) => r.status === 'generating')
   const hasResults       = results.length > 0
@@ -268,7 +269,7 @@ export function ResultViewer({
               key={result.modelId}
               result={result}
               aspectCls={currentRatio.cls}
-              customModelUrl={customModelUrl}
+              customModelUrls={customModelUrls}
             />
           ))}
         </div>

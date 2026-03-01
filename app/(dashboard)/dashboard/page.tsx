@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Check, Gem, Shirt } from 'lucide-react'
+import { Check, Gem, Wind, Glasses, Shirt, Layers, Watch, ShoppingBag } from 'lucide-react'
 import { Header }         from '@/components/dashboard/header'
 import { UploadZone }     from '@/components/generate/upload-zone'
 import { TemplatePicker } from '@/components/generate/template-picker'
@@ -20,19 +20,14 @@ const MOBILE_STEPS = [
   { id: 3 as MobileStep, label: 'Создать'},
 ]
 
-const PRODUCT_TYPES: { id: ProductType; label: string; icon: React.ElementType; hint: string }[] = [
-  {
-    id:    'jewelry',
-    label: 'Украшения',
-    icon:  Gem,
-    hint:  'Кольца, серьги, колье, браслеты',
-  },
-  {
-    id:    'scarves',
-    label: 'Платки',
-    icon:  Shirt,
-    hint:  'Шали, платки, палантины',
-  },
+const PRODUCT_TYPES: { id: ProductType; label: string; icon: React.ElementType }[] = [
+  { id: 'jewelry',    label: 'Украшения',      icon: Gem         },
+  { id: 'scarves',    label: 'Платки',          icon: Wind        },
+  { id: 'headwear',   label: 'Гол. уборы',      icon: Glasses     },
+  { id: 'outerwear',  label: 'Верх. одежда',    icon: Shirt       },
+  { id: 'bottomwear', label: 'Низ. одежда',     icon: Layers      },
+  { id: 'watches',    label: 'Часы',            icon: Watch       },
+  { id: 'bags',       label: 'Сумки',           icon: ShoppingBag },
 ]
 
 export default function DashboardPage() {
@@ -43,7 +38,7 @@ export default function DashboardPage() {
   const [aspectRatio,        setAspectRatio]        = useState<AspectRatio>('1:1')
   const [generationResults,  setGenerationResults]  = useState<GenerationResult[]>([])
   const [creditsRemaining,   setCreditsRemaining]   = useState<number | null>(null)
-  const [customModelUrl,     setCustomModelUrl]     = useState<string | null>(null)
+  const [customModelUrls,    setCustomModelUrls]    = useState<string[]>([])
   const [mobileStep,         setMobileStep]         = useState<MobileStep>(1)
 
   // Fetch credits on mount
@@ -53,7 +48,7 @@ export default function DashboardPage() {
       if (!user) return
       supabase
         .from('profiles')
-        .select('credits_remaining, custom_model_url')
+        .select('credits_remaining, custom_model_urls')
         .eq('id', user.id)
         .single()
         .then(({ data }) => {
@@ -62,8 +57,8 @@ export default function DashboardPage() {
           if (profile?.credits_remaining != null) {
             setCreditsRemaining(profile.credits_remaining as number)
           }
-          if (profile?.custom_model_url != null) {
-            setCustomModelUrl(profile.custom_model_url as string)
+          if (Array.isArray(profile?.custom_model_urls)) {
+            setCustomModelUrls(profile.custom_model_urls as string[])
           }
         })
     })
@@ -193,12 +188,26 @@ export default function DashboardPage() {
   const step1Done = !!previewUrl
   const step2Done = selectedTemplates.length > 0
 
-  const uploadLabel = productType === 'jewelry'
-    ? 'Загрузите фото украшения'
-    : 'Загрузите фото платка'
-  const uploadHint = productType === 'jewelry'
-    ? 'Сфотографируйте украшение на любом фоне'
-    : 'Сфотографируйте платок или шаль на любом фоне'
+  const UPLOAD_LABELS: Record<ProductType, string> = {
+    jewelry:    'Загрузите фото украшения',
+    scarves:    'Загрузите фото платка',
+    headwear:   'Загрузите фото аксессуара',
+    outerwear:  'Загрузите фото одежды',
+    bottomwear: 'Загрузите фото одежды',
+    watches:    'Загрузите фото часов',
+    bags:       'Загрузите фото сумки',
+  }
+  const UPLOAD_HINTS: Record<ProductType, string> = {
+    jewelry:    'Сфотографируйте украшение на любом фоне',
+    scarves:    'Сфотографируйте платок или шаль на любом фоне',
+    headwear:   'Сфотографируйте очки или аксессуар для волос',
+    outerwear:  'Сфотографируйте куртку, пальто или блузу',
+    bottomwear: 'Сфотографируйте юбку, брюки или шорты',
+    watches:    'Сфотографируйте часы или браслет на любом фоне',
+    bags:       'Сфотографируйте сумку или клатч на любом фоне',
+  }
+  const uploadLabel = UPLOAD_LABELS[productType]
+  const uploadHint  = UPLOAD_HINTS[productType]
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -210,31 +219,28 @@ export default function DashboardPage() {
 
       {/* ── Product type switcher ──────────────────────────────────────── */}
       <div className="px-3 sm:px-5 xl:px-6 pt-3 sm:pt-5">
-        <div className="max-w-[1400px] mx-auto flex gap-1.5 p-1 bg-cream-100 rounded-2xl border border-cream-200">
-          {PRODUCT_TYPES.map((type) => {
-            const Icon   = type.icon
-            const active = productType === type.id
-            return (
-              <button
-                key={type.id}
-                onClick={() => handleProductTypeChange(type.id)}
-                disabled={isAnyGenerating}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-60 ${
-                  active
-                    ? 'bg-white text-foreground shadow-soft'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${active ? 'text-primary' : ''}`} />
-                {type.label}
-                {active && (
-                  <span className="hidden sm:inline text-xs font-normal text-muted-foreground ml-0.5">
-                    — {type.hint}
-                  </span>
-                )}
-              </button>
-            )
-          })}
+        <div className="max-w-[1400px] mx-auto overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1.5 p-1 bg-cream-100 rounded-2xl border border-cream-200 min-w-max">
+            {PRODUCT_TYPES.map((type) => {
+              const Icon   = type.icon
+              const active = productType === type.id
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => handleProductTypeChange(type.id)}
+                  disabled={isAnyGenerating}
+                  className={`flex items-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 disabled:opacity-60 ${
+                    active
+                      ? 'bg-white text-foreground shadow-soft'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-primary' : ''}`} />
+                  {type.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -305,8 +311,8 @@ export default function DashboardPage() {
                 maxSelect={MAX_PARALLEL}
                 disabled={isAnyGenerating}
                 productType={productType}
-                customModelUrl={customModelUrl}
-                onCustomModelChange={setCustomModelUrl}
+                customModelUrls={customModelUrls}
+                onCustomModelUrlsChange={setCustomModelUrls}
               />
             </div>
           </div>
@@ -323,7 +329,7 @@ export default function DashboardPage() {
               canGenerate={!!uploadedFile && !isAnyGenerating}
               selectedCount={selectedTemplates.length}
               creditsRemaining={creditsRemaining}
-              customModelUrl={customModelUrl}
+              customModelUrls={customModelUrls}
             />
           </div>
 

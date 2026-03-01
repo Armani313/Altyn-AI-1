@@ -4,31 +4,20 @@
  * Model: gemini-2.5-flash-image
  *
  * Two modes:
- *   1. Model-based  — two images sent (model photo + jewelry photo).
- *                     Gemini auto-detects the jewelry type and composites
- *                     only the pieces that fit onto visible body parts.
- *   2. Standalone   — one image sent (jewelry photo only).
- *                     Gemini auto-detects the jewelry type and generates
- *                     an appropriate lifestyle scene from scratch.
+ *   1. Model-based  — two images sent (model photo + product photo).
+ *   2. Standalone   — one image sent (product photo only).
  *
  * Set in .env.local:
  *   GEMINI_API_KEY   — your Google AI Studio API key
  *   GEMINI_MODEL     — optional override (default: gemini-2.5-flash-image)
  */
 
+import type { ProductType } from '@/lib/constants'
+
 const DEFAULT_MODEL   = 'gemini-2.5-flash-image'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-// ── Prompt: model-based compositing ───────────────────────────────────────────
-// Image 1 = model photo (canvas), Image 2 = jewelry product photo (reference)
-//
-// Key design decisions:
-//   • Gemini auto-detects jewelry type(s) from Image 2 — no category hint needed.
-//   • Gemini analyzes model body visibility from Image 1 — skips placements that
-//     would require inventing body parts not present (e.g. hands not visible →
-//     no rings/bracelets generated).
-//   • Works correctly for jewelry sets: only the subset matching visible body
-//     areas is placed.
+// ── Jewelry ───────────────────────────────────────────────────────────────────
 
 const MODEL_COMPOSITE_PROMPT =
   'You are a professional jewelry photographer and digital retoucher specializing ' +
@@ -39,140 +28,366 @@ const MODEL_COMPOSITE_PROMPT =
   'do NOT alter the model\'s pose, face, hair, skin tone, or clothing in any way.\n' +
   '• Image 2: A product photo of jewelry — this is your REFERENCE.\n\n' +
 
-  'Follow these steps:\n\n' +
+  'STEP 1 — JEWELRY ANALYSIS: Identify every piece of jewelry (ring, earrings, ' +
+  'necklace, bracelet, brooch, etc.) and memorize their exact design: shape, stones, ' +
+  'metal, finish, chain style, and proportions.\n\n' +
 
-  'STEP 1 — JEWELRY ANALYSIS: Examine Image 2 and identify every piece of jewelry ' +
-  'shown (ring, earrings, necklace, bracelet, brooch, anklet, etc.) and memorize ' +
-  'their exact design: shape, stones, metal, finish, chain style, and proportions.\n\n' +
-
-  'STEP 2 — MODEL VISIBILITY ANALYSIS: Examine Image 1 and determine which body ' +
-  'areas are clearly visible and physically accessible for jewelry placement:\n' +
-  '  • Fingers or hands visible → ring placement possible\n' +
+  'STEP 2 — MODEL VISIBILITY ANALYSIS: Determine which body areas are clearly visible:\n' +
+  '  • Fingers/hands visible → ring placement possible\n' +
   '  • Ear(s) visible → earring placement possible\n' +
-  '  • Neck and/or décolletage visible → necklace placement possible\n' +
+  '  • Neck/décolletage visible → necklace placement possible\n' +
   '  • Wrist(s) visible → bracelet placement possible\n\n' +
 
-  'STEP 3 — SELECTIVE PLACEMENT RULES (strictly follow):\n' +
-  '  • Place ONLY the jewelry pieces from Image 2 that correspond to body areas ' +
-  'confirmed VISIBLE in Step 2.\n' +
-  '  • If hands/fingers are NOT visible → skip rings and bracelets entirely.\n' +
-  '  • If ears are NOT visible → skip earrings entirely.\n' +
-  '  • If neck/chest area is NOT visible → skip necklace entirely.\n' +
-  '  • NEVER generate or show a body part that is not already present in Image 1. ' +
-  'Do not extend the frame, do not add hands, arms, or any other body part.\n\n' +
+  'STEP 3 — SELECTIVE PLACEMENT: Place ONLY jewelry matching visible body areas. ' +
+  'NEVER generate body parts not already present in Image 1.\n\n' +
 
-  'STEP 4 — COMPOSITING: Add only the eligible jewelry with:\n' +
-  '  • Natural, realistic positioning as if the model is genuinely wearing it.\n' +
-  '  • Jewelry lighting matched to the existing photo\'s light source and color temperature.\n' +
-  '  • Correct shadows, reflections, and skin interaction.\n' +
-  '  • EXACT reproduction of the jewelry design — do not alter shape, stones, ' +
-  'metal color, chain links, engravings, or any detail.\n' +
-  '  • Seamless integration with no visible compositing artifacts.\n\n' +
+  'STEP 4 — COMPOSITING: Add eligible jewelry with natural positioning, matched lighting, ' +
+  'correct shadows and reflections, EXACT design reproduction.\n\n' +
 
-  'Result: a seamless, high-end jewelry editorial photograph, 8k resolution, ' +
-  'sharp focus, luxury fashion photography.'
+  'Result: seamless high-end jewelry editorial photograph, 8k resolution, sharp focus, ' +
+  'luxury fashion photography.'
 
-// ── Prompt: scarf/shawl model-based compositing ───────────────────────────────
-// Image 1 = model photo (canvas), Image 2 = scarf/shawl product photo (reference)
+const STANDALONE_PROMPT =
+  'You are a professional jewelry photographer.\n\n' +
+
+  'Examine this product photo and identify every piece of jewelry shown. Memorize ' +
+  'their exact design: shape, stones, metal, finish, and proportions.\n\n' +
+
+  'Generate a professional lifestyle photograph showing this exact jewelry being worn:\n' +
+  '  • Ring → close-up of a female hand/fingers\n' +
+  '  • Earrings → elegant close-up of a female ear\n' +
+  '  • Necklace → female neck and décolletage\n' +
+  '  • Bracelet → female wrist\n' +
+  '  • Set → compose to best showcase all pieces together\n\n' +
+
+  'Style: soft warm studio lighting, cream and ivory background, high-end jewelry ' +
+  'editorial, 8k resolution, sharp focus, luxury fashion photography.\n\n' +
+
+  'CRITICAL: Jewelry in output must be IDENTICAL to the reference — do not alter ' +
+  'shape, stones, metal color, chain style, or any design detail.'
+
+// ── Scarves ───────────────────────────────────────────────────────────────────
 
 const SCARF_MODEL_COMPOSITE_PROMPT =
   'You are a professional fashion photographer and digital retoucher specializing ' +
   'in luxury textile and accessories editorial work.\n\n' +
 
   'You are given two images:\n' +
-  '• Image 1: A fashion model photo — this is your CANVAS. Preserve it EXACTLY: ' +
-  'do NOT alter the model\'s face, hair, skin tone, pose, or existing clothing in any way.\n' +
-  '• Image 2: A product photo of a scarf, shawl, or headscarf — this is your REFERENCE.\n\n' +
+  '• Image 1: A fashion model photo — CANVAS. Preserve EXACTLY: do NOT alter ' +
+  'the model\'s face, hair, skin tone, pose, or existing clothing.\n' +
+  '• Image 2: A product photo of a scarf, shawl, or headscarf — REFERENCE.\n\n' +
 
-  'Follow these steps:\n\n' +
+  'STEP 1 — TEXTILE ANALYSIS: Memorize exact colors, pattern, print, fabric type ' +
+  '(silk, wool, chiffon, etc.), shape, size, fringe or embellishments.\n\n' +
 
-  'STEP 1 — TEXTILE ANALYSIS: Examine Image 2 carefully and memorize:\n' +
-  '  • Exact colors, pattern, and print design\n' +
-  '  • Fabric type (silk, wool, cotton, chiffon, etc.) and texture\n' +
-  '  • Shape and size (square, rectangular, triangular)\n' +
-  '  • Any decorative edges, fringe, or embellishments\n\n' +
+  'STEP 2 — STYLING: Choose the most natural draping based on visible body areas:\n' +
+  '  • Shoulders/neck visible → drape as stole or wrap\n' +
+  '  • Head visible → tie as elegant headscarf\n\n' +
 
-  'STEP 2 — MODEL ANALYSIS: Examine Image 1 and determine the most natural way ' +
-  'to style the scarf based on what body areas are visible:\n' +
-  '  • Shoulders and neck visible → drape as a stole or wrap around shoulders/neck\n' +
-  '  • Head and face visible → could tie elegantly as a headscarf\n' +
-  '  • Upper body clearly shown → wrap gracefully over one or both shoulders\n' +
-  '  • Choose the styling that looks most natural and fashionable for this specific model pose\n\n' +
+  'STEP 3 — DRAPING: Add scarf with natural fabric physics, gravity-correct folds, ' +
+  'EXACT color/pattern reproduction, correct lighting and shadows.\n\n' +
 
-  'STEP 3 — DRAPING: Add the scarf with:\n' +
-  '  • Natural, realistic fabric physics — gravity-correct folds and soft draping\n' +
-  '  • EXACT reproduction of the color, pattern, and texture from Image 2\n' +
-  '  • Realistic fabric interaction with the model\'s clothing and body\n' +
-  '  • Correct lighting, shadows, and material sheen matching the photo\'s light source\n' +
-  '  • Seamless compositing with no visible artifacts\n\n' +
-
-  'Result: a seamless, high-end fashion editorial photograph showing the model ' +
-  'elegantly wearing the scarf, 8k resolution, sharp focus, luxury fashion photography.'
-
-// ── Prompt: scarf standalone generation (no model photo) ──────────────────────
+  'Result: seamless high-end fashion editorial, 8k resolution, luxury fashion photography.'
 
 const SCARF_STANDALONE_PROMPT =
   'You are a professional fashion photographer.\n\n' +
 
-  'Examine this product photo carefully and identify the textile item shown ' +
-  '(headscarf, shawl, pashmina, stole, wrap, etc.). Memorize its exact colors, ' +
-  'pattern, print design, texture, fabric type, shape, and any decorative details ' +
-  'such as fringe or embroidered edges.\n\n' +
+  'Examine this product photo and identify the textile item (headscarf, shawl, ' +
+  'pashmina, stole, wrap). Memorize exact colors, pattern, texture, fabric, shape, ' +
+  'and decorative details.\n\n' +
 
-  'Generate a professional lifestyle fashion photograph showing this exact textile ' +
-  'being elegantly worn by a stylish female model:\n' +
-  '  • Square headscarf (платок) → tied gracefully as a headscarf or loosely ' +
-  'draped over the shoulders in a chic, modern way\n' +
-  '  • Rectangular stole or pashmina → draped elegantly over both shoulders or ' +
-  'wrapped loosely around the neck\n' +
-  '  • Triangular scarf → styled as a shoulder wrap or tied at the neck\n' +
-  '  • Large shawl → draped gracefully over shoulders in a fashion editorial pose\n\n' +
+  'Generate a professional lifestyle fashion photograph showing this textile worn:\n' +
+  '  • Square headscarf → tied as headscarf or draped over shoulders\n' +
+  '  • Rectangular stole/pashmina → draped over both shoulders or around neck\n' +
+  '  • Large shawl → draped gracefully over shoulders\n\n' +
 
-  'Style: soft warm studio lighting, cream and ivory background, high-end fashion ' +
-  'editorial, 8k resolution, sharp focus, luxury fashion photography.\n\n' +
+  'Style: soft warm studio lighting, cream background, high-end fashion editorial, ' +
+  '8k resolution, sharp focus, luxury fashion photography.\n\n' +
 
-  'CRITICAL: The textile in the output must be IDENTICAL to the reference photo — ' +
-  'preserve exact colors, pattern, print, texture, and any decorative details. ' +
-  'Do not alter the design in any way.'
+  'CRITICAL: Textile must be IDENTICAL to reference — preserve exact colors, pattern, ' +
+  'texture, and decorative details. Do not alter the design.'
 
-// ── Prompt: standalone generation (no model photo) ────────────────────────────
-// Single image: jewelry product photo only.
-// Gemini auto-detects what it is and generates an appropriate lifestyle scene.
+// ── Headwear (очки, аксессуары для волос) ────────────────────────────────────
 
-const STANDALONE_PROMPT =
-  'You are a professional jewelry photographer.\n\n' +
+const HEADWEAR_MODEL_COMPOSITE_PROMPT =
+  'You are a professional fashion photographer and digital retoucher specializing ' +
+  'in accessories editorial work.\n\n' +
 
-  'Examine this product photo carefully and identify every piece of jewelry shown ' +
-  '(ring, earrings, necklace, bracelet, or a set of multiple pieces) and memorize ' +
-  'their exact design: shape, stones, metal, finish, and proportions.\n\n' +
+  'You are given two images:\n' +
+  '• Image 1: A fashion model photo — CANVAS. Preserve EXACTLY: do NOT alter ' +
+  'pose, face, hair, skin tone, or existing clothing in any way.\n' +
+  '• Image 2: A product photo of a headwear accessory — REFERENCE.\n\n' +
 
-  'Based on what you identified, generate a professional lifestyle photograph ' +
-  'showing this exact jewelry being elegantly worn:\n' +
-  '  • Ring → graceful close-up of a female hand/fingers wearing the ring.\n' +
-  '  • Earrings → elegant close-up side-profile of a female ear wearing the earrings.\n' +
-  '  • Necklace → female neck and décolletage with the necklace draped naturally.\n' +
-  '  • Bracelet → female wrist with the bracelet worn naturally.\n' +
-  '  • Set (multiple pieces) → compose the shot to best showcase all pieces ' +
-  'together; show only the body parts required by the pieces in the set.\n\n' +
+  'STEP 1 — ACCESSORY ANALYSIS: Identify the exact item type:\n' +
+  '  • Sunglasses or eyeglasses → memorize exact frame shape, color, lens tint, ' +
+  'temple design, bridge width\n' +
+  '  • Headband → memorize width, color, material, embellishments\n' +
+  '  • Hair clip, barrette, or pin → memorize shape, size, finish\n' +
+  '  • Hat or beret → memorize silhouette, material, color\n\n' +
 
-  'Style: soft warm studio lighting, cream and ivory background, high-end jewelry ' +
-  'editorial, 8k resolution, sharp focus, luxury fashion photography.\n\n' +
+  'STEP 2 — PLACEMENT ANALYSIS: Check Image 1 for visibility:\n' +
+  '  • Face and ears clearly visible → glasses placement is possible\n' +
+  '  • Hair/top of head visible → headband or hair accessory is possible\n' +
+  '  • If the required area is NOT visible → do not force the placement\n\n' +
 
-  'CRITICAL: The jewelry in the output must be IDENTICAL to the reference photo — ' +
-  'do not alter shape, stone cuts, metal color, chain style, or any design detail. ' +
-  'Preserve the exact piece as given.'
+  'STEP 3 — PLACEMENT: Add the accessory naturally:\n' +
+  '  • Glasses → positioned on nose bridge, temples resting on ears, lens tint ' +
+  'matching reference exactly\n' +
+  '  • Headband → sitting naturally across the forehead/crown, interacting with hair\n' +
+  '  • Clip/pin → secured in hair at a natural position\n' +
+  '  • Correct perspective, lighting matched to photo, realistic shadows\n\n' +
+
+  'Result: seamless high-end fashion editorial, 8k resolution, sharp focus, ' +
+  'luxury fashion photography.'
+
+const HEADWEAR_STANDALONE_PROMPT =
+  'You are a professional fashion photographer.\n\n' +
+
+  'Examine this product photo and identify the headwear accessory (sunglasses, ' +
+  'eyeglasses, headband, hair clip, hat, etc.). Memorize its exact design: shape, ' +
+  'color, material, and every decorative detail.\n\n' +
+
+  'Generate a professional lifestyle fashion photograph:\n' +
+  '  • Sunglasses/eyeglasses → worn by a stylish female model, face slightly turned ' +
+  'to showcase both frames and lenses\n' +
+  '  • Headband → worn in hair of a female model, hair styled naturally\n' +
+  '  • Hair clip/barrette → securing hair elegantly on a female model\n' +
+  '  • Hat/beret → worn at a fashionable angle\n\n' +
+
+  'Style: soft warm studio lighting, neutral background, high-end fashion editorial, ' +
+  '8k resolution, sharp focus.\n\n' +
+
+  'CRITICAL: The accessory in the output must be IDENTICAL to the reference photo.'
+
+// ── Outerwear (верхняя одежда) ────────────────────────────────────────────────
+
+const OUTERWEAR_MODEL_COMPOSITE_PROMPT =
+  'You are a professional fashion photographer and digital retoucher specializing ' +
+  'in clothing editorial work.\n\n' +
+
+  'You are given two images:\n' +
+  '• Image 1: A fashion model photo — CANVAS. Preserve the model\'s face, hair, ' +
+  'skin tone, and pose EXACTLY. You may replace or add the upper-body garment.\n' +
+  '• Image 2: A product photo of an upper-body garment — REFERENCE.\n\n' +
+
+  'STEP 1 — GARMENT ANALYSIS: Identify the exact item (jacket, coat, blazer, blouse, ' +
+  'top, shirt, etc.). Memorize:\n' +
+  '  • Exact colors and any print or pattern\n' +
+  '  • Cut, silhouette, and length\n' +
+  '  • Collar, lapels, buttons, pockets, sleeves, and all details\n' +
+  '  • Fabric texture (leather, denim, wool, chiffon, etc.)\n\n' +
+
+  'STEP 2 — FITTING: Dress the model in the garment naturally:\n' +
+  '  • Correct fit for the model\'s body proportions\n' +
+  '  • Natural fabric folds, draping, and gravity-correct creases\n' +
+  '  • Sleeves ending at natural wrist position if arms are visible\n\n' +
+
+  'STEP 3 — COMPOSITING: EXACT color and pattern reproduction, realistic fabric ' +
+  'texture, matched lighting and shadows, seamless integration.\n\n' +
+
+  'Result: seamless high-end fashion editorial photograph, 8k resolution, sharp focus.'
+
+const OUTERWEAR_STANDALONE_PROMPT =
+  'You are a professional fashion photographer.\n\n' +
+
+  'Examine this product photo and identify the upper-body garment (jacket, coat, ' +
+  'blazer, blouse, top, shirt, etc.). Memorize exact colors, pattern, cut, fabric ' +
+  'texture, and every design detail.\n\n' +
+
+  'Generate a professional lifestyle fashion photograph:\n' +
+  '  • Show a stylish female model wearing this exact garment\n' +
+  '  • Natural confident pose that best showcases the garment\'s cut and details\n' +
+  '  • If the garment has a distinctive print or pattern, choose a pose that ' +
+  'displays it prominently\n\n' +
+
+  'Style: soft warm studio or natural light, elegant background, high-end fashion ' +
+  'editorial, 8k resolution, sharp focus.\n\n' +
+
+  'CRITICAL: The garment must be IDENTICAL to the reference — preserve exact colors, ' +
+  'pattern, cut, and every design detail.'
+
+// ── Bottomwear (нижняя одежда) ────────────────────────────────────────────────
+
+const BOTTOMWEAR_MODEL_COMPOSITE_PROMPT =
+  'You are a professional fashion photographer and digital retoucher specializing ' +
+  'in clothing editorial work.\n\n' +
+
+  'You are given two images:\n' +
+  '• Image 1: A fashion model photo — CANVAS. Preserve the model\'s face, hair, ' +
+  'skin tone, and pose EXACTLY. You may replace the lower-body garment.\n' +
+  '• Image 2: A product photo of a lower-body garment — REFERENCE.\n\n' +
+
+  'STEP 1 — GARMENT ANALYSIS: Identify the exact item (skirt, trousers, pants, ' +
+  'shorts, leggings, etc.). Memorize:\n' +
+  '  • Exact colors, pattern, and print\n' +
+  '  • Silhouette (A-line, straight, wide-leg, mini, midi, maxi, etc.)\n' +
+  '  • Waistband, pockets, buttons, zippers, and all details\n' +
+  '  • Fabric texture and weight\n\n' +
+
+  'STEP 2 — VISIBILITY CHECK: The model\'s lower body must be visible. If the lower ' +
+  'body is not visible in Image 1, generate the complete image showing the full outfit.\n\n' +
+
+  'STEP 3 — FITTING: Dress the model naturally:\n' +
+  '  • Correct fit and silhouette for the model\'s proportions\n' +
+  '  • Natural fabric folds at waist, hips, knees\n' +
+  '  • Hemline at correct length as per the reference\n\n' +
+
+  'STEP 4 — COMPOSITING: EXACT color and pattern reproduction, realistic fabric ' +
+  'texture, matched lighting, seamless integration.\n\n' +
+
+  'Result: seamless high-end fashion editorial photograph, 8k resolution, sharp focus.'
+
+const BOTTOMWEAR_STANDALONE_PROMPT =
+  'You are a professional fashion photographer.\n\n' +
+
+  'Examine this product photo and identify the lower-body garment (skirt, trousers, ' +
+  'pants, shorts, leggings, etc.). Memorize exact colors, pattern, silhouette, ' +
+  'fabric, and all design details.\n\n' +
+
+  'Generate a professional lifestyle fashion photograph:\n' +
+  '  • Show a stylish female model wearing this exact garment\n' +
+  '  • Full-length or 3/4 shot that showcases the garment\'s silhouette and length\n' +
+  '  • Natural elegant pose with complementary neutral top\n\n' +
+
+  'Style: soft warm studio or natural light, elegant background, high-end fashion ' +
+  'editorial, 8k resolution, sharp focus.\n\n' +
+
+  'CRITICAL: The garment must be IDENTICAL to the reference — preserve exact colors, ' +
+  'pattern, silhouette, and every design detail.'
+
+// ── Watches / wrist accessories ───────────────────────────────────────────────
+
+const WATCHES_MODEL_COMPOSITE_PROMPT =
+  'You are a professional watch and accessories photographer and digital retoucher ' +
+  'specializing in high-end editorial compositing.\n\n' +
+
+  'You are given two images:\n' +
+  '• Image 1: A fashion model photo — CANVAS. Preserve it exactly: do NOT alter ' +
+  'pose, face, hair, skin tone, or clothing in any way.\n' +
+  '• Image 2: A product photo of a watch or wrist accessory — REFERENCE.\n\n' +
+
+  'STEP 1 — PRODUCT ANALYSIS: Identify the exact item (watch, wristwatch, cuff ' +
+  'bracelet, charm bracelet, ring, etc.). Memorize:\n' +
+  '  • Exact design: case shape, dial, strap/bracelet material and color\n' +
+  '  • For rings: band style, stone, metal color\n' +
+  '  • Every surface detail, finish, and proportion\n\n' +
+
+  'STEP 2 — VISIBILITY CHECK:\n' +
+  '  • Wrist(s) visible → watch or bracelet placement possible\n' +
+  '  • Fingers/hands visible → ring placement possible\n' +
+  '  • NEVER generate body parts not present in Image 1\n\n' +
+
+  'STEP 3 — PLACEMENT: Add the accessory naturally:\n' +
+  '  • Watch/bracelet → on the wrist, correct orientation, clasp on underside\n' +
+  '  • Ring → on the appropriate finger, correct perspective\n' +
+  '  • Matched lighting, reflections on metal/glass, realistic shadows\n' +
+  '  • EXACT reproduction of all design details\n\n' +
+
+  'Result: seamless high-end editorial photograph, 8k resolution, sharp focus, ' +
+  'luxury watch/accessories photography.'
+
+const WATCHES_STANDALONE_PROMPT =
+  'You are a professional watch and accessories photographer.\n\n' +
+
+  'Examine this product photo and identify the item (wristwatch, bracelet, cuff, ' +
+  'ring, etc.). Memorize exact design: dial, case, strap, metal finish, stones, ' +
+  'and every detail.\n\n' +
+
+  'Generate a professional lifestyle photograph:\n' +
+  '  • Watch/bracelet → elegant close-up on a female wrist, watch face prominently ' +
+  'visible, natural hand/wrist pose\n' +
+  '  • Ring → graceful close-up of a female hand/fingers wearing the ring\n' +
+  '  • Cuff bracelet → wrist shown at a flattering angle\n\n' +
+
+  'Style: soft warm studio lighting, clean neutral background, high-end luxury ' +
+  'editorial, 8k resolution, sharp focus, professional watch/jewelry photography.\n\n' +
+
+  'CRITICAL: The accessory in the output must be IDENTICAL to the reference — ' +
+  'preserve every design detail, finish, and proportion.'
+
+// ── Bags / clutches ───────────────────────────────────────────────────────────
+
+const BAGS_MODEL_COMPOSITE_PROMPT =
+  'You are a professional fashion photographer and digital retoucher specializing ' +
+  'in luxury bag and accessories editorial work.\n\n' +
+
+  'You are given two images:\n' +
+  '• Image 1: A fashion model photo — CANVAS. Preserve it exactly: do NOT alter ' +
+  'pose, face, hair, skin tone, or clothing in any way.\n' +
+  '• Image 2: A product photo of a bag or clutch — REFERENCE.\n\n' +
+
+  'STEP 1 — BAG ANALYSIS: Identify the exact bag type (clutch, handbag, shoulder ' +
+  'bag, tote, crossbody, etc.). Memorize:\n' +
+  '  • Exact shape, dimensions, and silhouette\n' +
+  '  • Color, material (leather, suede, fabric), and texture\n' +
+  '  • Hardware: clasps, chains, handles, zippers\n' +
+  '  • Any logo, pattern, or embellishment\n\n' +
+
+  'STEP 2 — NATURAL PLACEMENT based on bag type and model pose:\n' +
+  '  • Clutch → held in one hand at waist or side\n' +
+  '  • Handbag with handle → held in hand or at elbow crease\n' +
+  '  • Shoulder bag → hanging from shoulder strap\n' +
+  '  • Do NOT obscure the model\'s face or significantly alter her pose\n\n' +
+
+  'STEP 3 — COMPOSITING: EXACT color, material, and detail reproduction. ' +
+  'Realistic weight and gravity in how the bag hangs or is held. ' +
+  'Matched lighting and shadows.\n\n' +
+
+  'Result: seamless high-end fashion editorial photograph, 8k resolution, sharp focus.'
+
+const BAGS_STANDALONE_PROMPT =
+  'You are a professional fashion and product photographer.\n\n' +
+
+  'Examine this product photo and identify the bag type (clutch, handbag, shoulder ' +
+  'bag, tote, crossbody, etc.). Memorize exact shape, color, material, hardware, ' +
+  'and every design detail.\n\n' +
+
+  'Generate a professional lifestyle photograph:\n' +
+  '  • Clutch → held elegantly in a female hand against a stylish background, or ' +
+  'placed on a luxurious surface (marble, velvet, etc.)\n' +
+  '  • Handbag/shoulder bag → carried by a stylish female model or placed on a ' +
+  'pedestal/surface in a fashion setting\n' +
+  '  • Showcase the bag\'s shape, hardware, and texture prominently\n\n' +
+
+  'Style: soft warm lighting, elegant luxury background, high-end fashion editorial, ' +
+  '8k resolution, sharp focus.\n\n' +
+
+  'CRITICAL: The bag in the output must be IDENTICAL to the reference — preserve ' +
+  'exact shape, color, material, hardware, and every design detail.'
+
+// ── Prompt lookup maps ────────────────────────────────────────────────────────
+
+const COMPOSITE_PROMPTS: Record<ProductType, string> = {
+  jewelry:    MODEL_COMPOSITE_PROMPT,
+  scarves:    SCARF_MODEL_COMPOSITE_PROMPT,
+  headwear:   HEADWEAR_MODEL_COMPOSITE_PROMPT,
+  outerwear:  OUTERWEAR_MODEL_COMPOSITE_PROMPT,
+  bottomwear: BOTTOMWEAR_MODEL_COMPOSITE_PROMPT,
+  watches:    WATCHES_MODEL_COMPOSITE_PROMPT,
+  bags:       BAGS_MODEL_COMPOSITE_PROMPT,
+}
+
+const STANDALONE_PROMPTS: Record<ProductType, string> = {
+  jewelry:    STANDALONE_PROMPT,
+  scarves:    SCARF_STANDALONE_PROMPT,
+  headwear:   HEADWEAR_STANDALONE_PROMPT,
+  outerwear:  OUTERWEAR_STANDALONE_PROMPT,
+  bottomwear: BOTTOMWEAR_STANDALONE_PROMPT,
+  watches:    WATCHES_STANDALONE_PROMPT,
+  bags:       BAGS_STANDALONE_PROMPT,
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface GenerationParams {
-  /** Signed URL to the uploaded product photo (jewelry or scarf) */
+  /** Signed URL to the uploaded product photo */
   imageUrl:          string
   /** Optional model reference photo — enables compositing mode */
   modelImageBuffer?: Buffer
   /** MIME type of modelImageBuffer */
   modelMimeType?:    string
   /** Product type — determines which prompts to use (default: 'jewelry') */
-  productType?:      'jewelry' | 'scarves'
+  productType?:      ProductType
 }
 
 export interface GenerationResult {
@@ -195,19 +410,6 @@ interface GeminiResponse {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-/**
- * Generates a jewelry lifestyle photo via Gemini.
- *
- * Model-based mode (modelImageBuffer provided):
- *   Sends model photo + jewelry photo → Gemini auto-detects jewelry type,
- *   analyzes model body visibility, and places only the pieces that fit.
- *
- * Standalone mode (no modelImageBuffer):
- *   Sends jewelry photo alone → Gemini auto-detects type and generates
- *   an appropriate lifestyle scene from scratch.
- *
- * Throws a Russian-language Error on failure.
- */
 export async function generateJewelryPhoto(
   params: GenerationParams
 ): Promise<GenerationResult> {
@@ -216,49 +418,40 @@ export async function generateJewelryPhoto(
     throw new Error('Сервис генерации временно недоступен. Обратитесь в поддержку.')
   }
 
-  const model = (process.env.GEMINI_MODEL || DEFAULT_MODEL).trim()
+  const model      = (process.env.GEMINI_MODEL || DEFAULT_MODEL).trim()
+  const productType: ProductType = params.productType ?? 'jewelry'
 
-  // ── 1. Download jewelry image ──────────────────────────────────────────────
-  const imageRes = await fetch(params.imageUrl, {
-    signal: AbortSignal.timeout(30_000),
-  })
+  // ── 1. Download product image ──────────────────────────────────────────────
+  const imageRes = await fetch(params.imageUrl, { signal: AbortSignal.timeout(30_000) })
   if (!imageRes.ok) {
     throw new Error('Не удалось загрузить исходное изображение для обработки.')
   }
 
-  const jewelryBuffer   = Buffer.from(await imageRes.arrayBuffer())
-  const jewelryMimeType = imageRes.headers.get('content-type')?.split(';')[0] ?? 'image/jpeg'
-  const jewelryBase64   = jewelryBuffer.toString('base64')
+  const productBuffer   = Buffer.from(await imageRes.arrayBuffer())
+  const productMimeType = imageRes.headers.get('content-type')?.split(';')[0] ?? 'image/jpeg'
+  const productBase64   = productBuffer.toString('base64')
 
   // ── 2. Build request parts ─────────────────────────────────────────────────
   let parts: object[]
 
-  const isScarves = params.productType === 'scarves'
-
   if (params.modelImageBuffer && params.modelMimeType) {
-    // Model-based compositing: model photo first (canvas), then product (reference)
-    const modelBase64    = params.modelImageBuffer.toString('base64')
-    const compositePrompt = isScarves ? SCARF_MODEL_COMPOSITE_PROMPT : MODEL_COMPOSITE_PROMPT
+    const modelBase64 = params.modelImageBuffer.toString('base64')
     parts = [
       { inlineData: { mimeType: params.modelMimeType, data: modelBase64 } },
-      { inlineData: { mimeType: jewelryMimeType,      data: jewelryBase64 } },
-      { text: compositePrompt },
+      { inlineData: { mimeType: productMimeType,      data: productBase64 } },
+      { text: COMPOSITE_PROMPTS[productType] },
     ]
   } else {
-    // Standalone: product photo only
-    const standalonePrompt = isScarves ? SCARF_STANDALONE_PROMPT : STANDALONE_PROMPT
     parts = [
-      { inlineData: { mimeType: jewelryMimeType, data: jewelryBase64 } },
-      { text: standalonePrompt },
+      { inlineData: { mimeType: productMimeType, data: productBase64 } },
+      { text: STANDALONE_PROMPTS[productType] },
     ]
   }
 
   // ── 3. Call Gemini ─────────────────────────────────────────────────────────
   const body = JSON.stringify({
     contents: [{ parts }],
-    generationConfig: {
-      responseModalities: ['IMAGE', 'TEXT'],
-    },
+    generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
   })
 
   const res = await fetch(

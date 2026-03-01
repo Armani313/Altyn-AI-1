@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Sparkles, Lock, Check, Upload, Loader2, User, RefreshCw } from 'lucide-react'
-import { MODEL_PHOTOS, MODEL_PHOTO_MAP, CUSTOM_MODEL_ID, type ModelCategory, type ProductType } from '@/lib/constants'
+import { Sparkles, Lock, Check, Upload, Loader2, User, X } from 'lucide-react'
+import {
+  MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelCategory, type ProductType,
+  MAX_CUSTOM_MODELS, makeCustomModelId, isCustomModelId,
+} from '@/lib/constants'
 
 type TabCategory = 'all' | ModelCategory
 
@@ -19,13 +22,13 @@ const TABS: { id: TabCategory; label: string }[] = [
 ]
 
 interface TemplatePickerProps {
-  selectedIds:           string[]
-  onSelect:              (ids: string[]) => void
-  maxSelect?:            number
-  disabled?:             boolean
-  productType?:          ProductType
-  customModelUrl?:       string | null
-  onCustomModelChange?:  (url: string | null) => void
+  selectedIds:              string[]
+  onSelect:                 (ids: string[]) => void
+  maxSelect?:               number
+  disabled?:                boolean
+  productType?:             ProductType
+  customModelUrls:          string[]
+  onCustomModelUrlsChange:  (urls: string[]) => void
 }
 
 export function TemplatePicker({
@@ -34,17 +37,18 @@ export function TemplatePicker({
   maxSelect = 4,
   disabled = false,
   productType = 'jewelry',
-  customModelUrl = null,
-  onCustomModelChange,
+  customModelUrls,
+  onCustomModelUrlsChange,
 }: TemplatePickerProps) {
-  const [activeTab,       setActiveTab]       = useState<TabCategory>('all')
-  const [isUploading,     setIsUploading]     = useState(false)
-  const [uploadError,     setUploadError]     = useState<string | null>(null)
+  const [activeTab,    setActiveTab]    = useState<TabCategory>('all')
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
+  const [deletingIdx,  setDeletingIdx]  = useState<number | null>(null)
+  const [uploadError,  setUploadError]  = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadTargetRef = useRef<'new' | number>('new')
 
-  const isScarves   = productType === 'scarves'
-  const isCustomSel = selectedIds.includes(CUSTOM_MODEL_ID)
-  const atMax       = selectedIds.length >= maxSelect
+  const isScarves = productType === 'scarves'
+  const atMax     = selectedIds.length >= maxSelect
 
   const filtered = isScarves
     ? MODEL_PHOTOS
@@ -69,21 +73,47 @@ export function TemplatePicker({
     onSelect(picks)
   }
 
-  const handleUploadClick = () => {
-    if (disabled || isUploading) return
+  // Open file picker — either for a new slot or to replace an existing one
+  const openFilePicker = (target: 'new' | number) => {
+    if (disabled || uploadingIdx !== null) return
+    uploadTargetRef.current = target
     fileInputRef.current?.click()
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Reset input so same file can be re-selected
     e.target.value = ''
 
-    setIsUploading(true)
+    const target = uploadTargetRef.current
+    const slotIndex = target === 'new' ? customModelUrls.length : target
+
+    setUploadingIdx(slotIndex)
     setUploadError(null)
 
     try {
+      // If replacing an existing slot — delete old one first
+      if (target !== 'new' && customModelUrls[target] !== undefined) {
+        const delRes = await fetch('/api/models/delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ index: target }),
+        })
+        if (!delRes.ok) {
+          const delData = await delRes.json()
+          setUploadError(delData.error ?? 'Ошибка замены модели')
+          return
+        }
+        const delData = await delRes.json()
+        // Update URL list locally after deletion (before upload)
+        onCustomModelUrlsChange(delData.urls)
+        // Deselect the old ID for this slot
+        const oldId = makeCustomModelId(target)
+        if (selectedIds.includes(oldId)) {
+          onSelect(selectedIds.filter((s) => s !== oldId))
+        }
+      }
+
       const fd = new FormData()
       fd.append('image', file)
 
@@ -95,18 +125,62 @@ export function TemplatePicker({
         return
       }
 
-      onCustomModelChange?.(data.url)
+      onCustomModelUrlsChange(data.urls)
 
-      // Auto-select the custom model after upload
-      if (!selectedIds.includes(CUSTOM_MODEL_ID) && selectedIds.length < maxSelect) {
-        onSelect([CUSTOM_MODEL_ID, ...selectedIds])
+      // Auto-select the new slot if there's room
+      const newId = makeCustomModelId(data.index)
+      if (!selectedIds.includes(newId) && selectedIds.length < maxSelect) {
+        onSelect([newId, ...selectedIds.filter((s) => !isCustomModelId(s) || s !== newId)])
       }
     } catch {
       setUploadError('Ошибка соединения. Попробуйте снова.')
     } finally {
-      setIsUploading(false)
+      setUploadingIdx(null)
     }
   }
+
+  const handleDelete = async (index: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (disabled || deletingIdx !== null) return
+
+    setDeletingIdx(index)
+    try {
+      const res  = await fetch('/api/models/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setUploadError(data.error ?? 'Ошибка удаления')
+        return
+      }
+      onCustomModelUrlsChange(data.urls)
+      // Deselect the removed model
+      const removedId = makeCustomModelId(index)
+      // After deletion, the IDs of models after `index` shift down
+      // Rebuild selected custom IDs based on new array
+      const newCustomSelected = selectedIds
+        .filter((s) => isCustomModelId(s))
+        .map((s) => {
+          const i = parseInt(s.replace('user-custom-', ''), 10)
+          if (i === index) return null         // deleted
+          if (i > index)   return makeCustomModelId(i - 1) // shifted
+          return s
+        })
+        .filter(Boolean) as string[]
+      const staticSelected = selectedIds.filter((s) => !isCustomModelId(s))
+      onSelect([...newCustomSelected, ...staticSelected])
+      void removedId
+    } catch {
+      setUploadError('Ошибка соединения.')
+    } finally {
+      setDeletingIdx(null)
+    }
+  }
+
+  // How many custom cards to show: all existing + one "add" slot (if < max)
+  const customCardCount = Math.min(customModelUrls.length + 1, MAX_CUSTOM_MODELS)
 
   return (
     <div className="flex flex-col h-full">
@@ -178,97 +252,117 @@ export function TemplatePicker({
       {/* Model grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5">
 
-        {/* ── Custom model card (always first) ─────────────────────────── */}
-        <button
-          onClick={customModelUrl ? () => toggle(CUSTOM_MODEL_ID) : handleUploadClick}
-          disabled={isUploading || disabled || (!customModelUrl && false) || (atMax && !isCustomSel)}
-          className={`
-            relative group rounded-xl overflow-hidden border-2 transition-all duration-200
-            ${isCustomSel
-              ? 'border-primary shadow-glow scale-[0.97]'
-              : customModelUrl
-              ? 'border-rose-gold-300 hover:border-primary hover:shadow-soft'
-              : 'border-dashed border-rose-gold-200 hover:border-rose-gold-400 hover:bg-rose-gold-50/50'
-            }
-            ${(atMax && !isCustomSel) ? 'opacity-50 cursor-not-allowed' : ''}
-          `}
-        >
-          <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-rose-gold-50 to-cream-100">
-            {isUploading ? (
-              /* Upload in progress */
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                <Loader2 className="w-6 h-6 text-rose-gold-400 animate-spin" />
-                <p className="text-[10px] text-rose-gold-600 font-medium px-2 text-center">
-                  Загрузка…
-                </p>
-              </div>
-            ) : customModelUrl ? (
-              /* Existing custom model photo */
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={customModelUrl}
-                alt="Ваша модель"
-                className="w-full h-full object-cover object-top"
-                draggable={false}
-                loading="lazy"
-              />
-            ) : (
-              /* Upload prompt */
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-3">
-                <div className="w-10 h-10 rounded-full bg-white border-2 border-dashed border-rose-gold-300 flex items-center justify-center group-hover:border-rose-gold-500 transition-colors">
-                  <Upload className="w-4 h-4 text-rose-gold-400 group-hover:text-rose-gold-600 transition-colors" />
-                </div>
-                <p className="text-[10px] font-semibold text-rose-gold-600 text-center leading-snug">
-                  Загрузить свою модель
-                </p>
-              </div>
-            )}
-          </div>
+        {/* ── Custom model cards (always first) ────────────────────────── */}
+        {Array.from({ length: customCardCount }).map((_, cardIdx) => {
+          const url        = customModelUrls[cardIdx] ?? null
+          const modelId    = makeCustomModelId(cardIdx)
+          const isSelected = selectedIds.includes(modelId)
+          const isLoading  = uploadingIdx === cardIdx
+          const isDeleting = deletingIdx  === cardIdx
+          const isAddSlot  = url === null   // last card = "add new"
+          const isDisabledCard = isLoading || isDeleting || disabled || (atMax && !isSelected && !isAddSlot)
 
-          {/* Selected order badge */}
-          {isCustomSel && (
-            <div className="absolute inset-0 bg-primary/15 flex items-start justify-end p-2">
-              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-soft">
-                <span className="text-white text-[10px] font-bold">
-                  {selectedIds.indexOf(CUSTOM_MODEL_ID) + 1}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* "Ваша модель" label */}
-          {customModelUrl && (
-            <div className="absolute top-1.5 left-1.5">
-              <span className="text-[9px] font-bold uppercase tracking-wide bg-primary text-white px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
-                <User className="w-2.5 h-2.5" />
-                Моя
-              </span>
-            </div>
-          )}
-
-          {/* Re-upload button — appears on hover when model exists */}
-          {customModelUrl && !isUploading && !disabled && (
+          return (
             <button
-              onClick={(e) => { e.stopPropagation(); handleUploadClick() }}
-              className="absolute bottom-7 right-1.5 w-6 h-6 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Заменить фото"
+              key={`custom-${cardIdx}`}
+              onClick={() => isAddSlot ? openFilePicker('new') : toggle(modelId)}
+              disabled={isDisabledCard}
+              className={`
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200
+                ${isSelected
+                  ? 'border-primary shadow-glow scale-[0.97]'
+                  : isAddSlot
+                  ? 'border-dashed border-rose-gold-200 hover:border-rose-gold-400 hover:bg-rose-gold-50/50'
+                  : 'border-rose-gold-300 hover:border-primary hover:shadow-soft'
+                }
+                ${isDisabledCard && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
             >
-              <RefreshCw className="w-3 h-3 text-white" />
-            </button>
-          )}
+              <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-rose-gold-50 to-cream-100">
+                {isLoading || isDeleting ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="w-6 h-6 text-rose-gold-400 animate-spin" />
+                    <p className="text-[10px] text-rose-gold-600 font-medium px-2 text-center">
+                      {isDeleting ? 'Удаление…' : 'Загрузка…'}
+                    </p>
+                  </div>
+                ) : url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={url}
+                    alt={`Моя модель ${cardIdx + 1}`}
+                    className="w-full h-full object-cover object-top"
+                    draggable={false}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-3">
+                    <div className="w-10 h-10 rounded-full bg-white border-2 border-dashed border-rose-gold-300 flex items-center justify-center group-hover:border-rose-gold-500 transition-colors">
+                      <Upload className="w-4 h-4 text-rose-gold-400 group-hover:text-rose-gold-600 transition-colors" />
+                    </div>
+                    <p className="text-[10px] font-semibold text-rose-gold-600 text-center leading-snug">
+                      Загрузить модель
+                    </p>
+                  </div>
+                )}
+              </div>
 
-          {/* Bottom name bar */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent px-1.5 py-2">
-            <p className="text-[9px] font-medium text-white text-center leading-tight">
-              {customModelUrl ? 'Ваша модель' : 'Своя модель'}
-            </p>
-          </div>
-        </button>
+              {/* Selection badge */}
+              {isSelected && (
+                <div className="absolute inset-0 bg-primary/15 flex items-start justify-end p-2">
+                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-soft">
+                    <span className="text-white text-[10px] font-bold">
+                      {selectedIds.indexOf(modelId) + 1}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* "Моя" badge */}
+              {url && (
+                <div className="absolute top-1.5 left-1.5">
+                  <span className="text-[9px] font-bold uppercase tracking-wide bg-primary text-white px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                    <User className="w-2.5 h-2.5" />
+                    Моя {customModelUrls.length > 1 ? cardIdx + 1 : ''}
+                  </span>
+                </div>
+              )}
+
+              {/* Delete button */}
+              {url && !disabled && !isLoading && !isDeleting && (
+                <button
+                  onClick={(e) => handleDelete(cardIdx, e)}
+                  className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                  title="Удалить"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              )}
+
+              {/* Replace button (click on photo area) */}
+              {url && !disabled && !isLoading && !isDeleting && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); openFilePicker(cardIdx) }}
+                  className="absolute bottom-7 right-1.5 text-[8px] font-semibold bg-black/50 hover:bg-black/70 text-white rounded-full px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  Заменить
+                </button>
+              )}
+
+              {/* Bottom name bar */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent px-1.5 py-2">
+                <p className="text-[9px] font-medium text-white text-center leading-tight">
+                  {url ? `Моя модель${customModelUrls.length > 1 ? ` ${cardIdx + 1}` : ''}` : 'Своя модель'}
+                </p>
+              </div>
+            </button>
+          )
+        })}
 
         {/* ── Regular model cards ───────────────────────────────────────── */}
         {filtered.map((model) => {
-          const isSelected    = selectedIds.includes(model.id)
-          const isDisabled    = model.premium || disabled || (atMax && !isSelected)
+          const isSelected     = selectedIds.includes(model.id)
+          const isDisabled     = model.premium || disabled || (atMax && !isSelected)
           const selectionIndex = selectedIds.indexOf(model.id)
 
           return (
@@ -299,9 +393,7 @@ export function TemplatePicker({
               {isSelected && (
                 <div className="absolute inset-0 bg-primary/15 flex items-start justify-end p-2">
                   <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-soft">
-                    <span className="text-white text-[10px] font-bold">
-                      {selectionIndex + 1}
-                    </span>
+                    <span className="text-white text-[10px] font-bold">{selectionIndex + 1}</span>
                   </div>
                 </div>
               )}

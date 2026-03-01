@@ -35,7 +35,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { generateJewelryPhoto } from '@/lib/ai/gemini'
 import {
   ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
-  MODEL_PHOTO_MAP, VALID_MODEL_IDS, VALID_PRODUCT_TYPES, CUSTOM_MODEL_ID,
+  MODEL_PHOTO_MAP, VALID_MODEL_IDS, VALID_PRODUCT_TYPES,
+  isCustomModelId, getCustomModelIndex,
   type ProductType,
 } from '@/lib/constants'
 
@@ -116,8 +117,8 @@ export async function POST(request: Request) {
       ? rawRatio as '1:1' | '9:16'
       : '1:1'
 
-    // Validate model_id: allow static allowlist OR the special 'user-custom' value
-    const isCustomModel = rawModelId === CUSTOM_MODEL_ID
+    // Validate model_id: allow static allowlist OR user-custom-N pattern
+    const isCustomModel = rawModelId !== null && isCustomModelId(rawModelId)
     const modelId = isCustomModel
       ? null
       : (rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null)
@@ -204,15 +205,17 @@ export async function POST(request: Request) {
     let modelMimeType:    string | undefined
 
     if (isCustomModel) {
-      // Load custom model from user's profile URL
+      // Load custom model from user's profile array
       const { data: profileCustom } = await supabase
         .from('profiles')
-        .select('custom_model_url')
+        .select('custom_model_urls')
         .eq('id', user.id)
         .single()
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const customUrl = (profileCustom as any)?.custom_model_url as string | null
+      const urls: string[] = (profileCustom as any)?.custom_model_urls ?? []
+      const customIndex = getCustomModelIndex(rawModelId!)
+      const customUrl = urls[customIndex] ?? null
 
       if (customUrl) {
         try {

@@ -18,7 +18,7 @@ export type Database = {
           avatar_url: string | null
           plan: 'free' | 'starter' | 'pro' | 'enterprise'
           credits_remaining: number
-          custom_model_url: string | null
+          custom_model_urls: string[]
           created_at: string
           updated_at: string
         }

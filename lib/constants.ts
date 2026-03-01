@@ -20,13 +20,38 @@ export const SAFE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'hei
 
 export type ModelCategory = 'necklaces' | 'earrings' | 'rings'
 
-// ── Custom user model ─────────────────────────────────────────────────────────
-/** Special model ID for user-uploaded custom model photos. */
-export const CUSTOM_MODEL_ID = 'user-custom' as const
+// ── Custom user models (up to 5 per user) ─────────────────────────────────────
+export const CUSTOM_MODEL_ID_PREFIX = 'user-custom-' as const
+export const MAX_CUSTOM_MODELS = 5
+
+/** Returns true if the model ID belongs to a user-uploaded custom model. */
+export function isCustomModelId(id: string): boolean {
+  return id.startsWith(CUSTOM_MODEL_ID_PREFIX)
+}
+
+/** Extracts the 0-based array index from a custom model ID, e.g. 'user-custom-2' → 2. */
+export function getCustomModelIndex(id: string): number {
+  return parseInt(id.slice(CUSTOM_MODEL_ID_PREFIX.length), 10)
+}
+
+/** Builds a custom model ID from a 0-based index, e.g. 2 → 'user-custom-2'. */
+export function makeCustomModelId(index: number): string {
+  return `${CUSTOM_MODEL_ID_PREFIX}${index}`
+}
 
 // ── Product types ─────────────────────────────────────────────────────────────
-export type ProductType = 'jewelry' | 'scarves'
-export const VALID_PRODUCT_TYPES = new Set<ProductType>(['jewelry', 'scarves'])
+export type ProductType =
+  | 'jewelry'    // украшения (кольца, серьги, колье, браслеты)
+  | 'scarves'    // платки, шали, палантины
+  | 'headwear'   // головные уборы (очки, аксессуары для волос)
+  | 'outerwear'  // верхняя одежда (куртки, пальто, блузы, топы)
+  | 'bottomwear' // нижняя одежда (юбки, брюки, шорты)
+  | 'watches'    // часы, наручные браслеты, кольца
+  | 'bags'       // сумки, клатчи
+
+export const VALID_PRODUCT_TYPES = new Set<ProductType>([
+  'jewelry', 'scarves', 'headwear', 'outerwear', 'bottomwear', 'watches', 'bags',
+])
 
 export interface ModelPhoto {
   id:        string

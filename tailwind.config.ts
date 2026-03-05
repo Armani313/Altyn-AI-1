@@ -98,10 +98,20 @@ const config: Config = {
           "0%":   { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        marquee: {
+          "0%":   { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        "marquee-reverse": {
+          "0%":   { transform: "translateX(-50%)" },
+          "100%": { transform: "translateX(0%)" },
+        },
       },
       animation: {
-        "fade-in": "fade-in 0.4s ease-out",
-        shimmer:   "shimmer 2s infinite linear",
+        "fade-in":        "fade-in 0.4s ease-out",
+        shimmer:          "shimmer 2s infinite linear",
+        marquee:          "marquee 35s linear infinite",
+        "marquee-reverse":"marquee-reverse 35s linear infinite",
       },
     },
   },

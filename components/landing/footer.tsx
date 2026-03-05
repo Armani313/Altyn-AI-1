@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Separator } from '@/components/ui/separator'
 
 const productLinks = [
@@ -19,14 +20,14 @@ export function Footer() {
         <div className="grid md:grid-cols-3 gap-10 mb-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
+            <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group">
               <div className="w-7 h-7 rounded-lg gradient-rose-gold flex items-center justify-center">
                 <span className="text-white text-xs font-bold font-serif">N</span>
               </div>
-              <span className="font-serif text-lg font-semibold text-foreground">
+              <span className="font-serif text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
                 Nurai AI Studio
               </span>
-            </div>
+            </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
               ИИ-фото украшений для ювелирных магазинов Казахстана.
             </p>

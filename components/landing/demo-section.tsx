@@ -1,62 +1,76 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Sparkles, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { EASE } from '@/lib/motion'
 
-const GALLERY: { src: string; label: string }[] = [
-  { src: '/examples/01.jpg', label: 'Кольцо с бриллиантом' },
-  { src: '/examples/02.jpg', label: 'Золотые серьги' },
-  { src: '/examples/03.jpg', label: 'Жемчужное колье' },
-  { src: '/examples/04.jpg', label: 'Платиновый браслет' },
-  { src: '/examples/05.jpg', label: 'Изумрудное кольцо' },
-  { src: '/examples/06.jpg', label: 'Розовое золото' },
-  { src: '/examples/07.jpg', label: 'Бриллиантовый браслет' },
-  { src: '/examples/08.jpg', label: 'Сапфировые серьги' },
-  { src: '/examples/09.jpg', label: 'Обручальное кольцо' },
-  { src: '/examples/10.jpg', label: 'Рубиновая подвеска' },
-  { src: '/examples/11.jpg', label: 'Белое золото' },
-  { src: '/examples/12.jpg', label: 'Жёлтое золото' },
-  { src: '/examples/13.jpg', label: 'Ювелирный гарнитур' },
-  { src: '/examples/14.jpg', label: 'Кольцо с гравировкой' },
-  { src: '/examples/15.jpg', label: 'Перстень' },
-  { src: '/examples/16.jpg', label: 'Свадебные украшения' },
-  { src: '/examples/17.jpg', label: 'Бриллиантовые серьги' },
-  { src: '/examples/18.jpg', label: 'Кольцо с рубином' },
-  { src: '/examples/19.jpg', label: 'Золотая цепочка' },
-  { src: '/examples/20.jpg', label: 'Бриллиантовое колье' },
+const GALLERY: string[] = [
+  '/examples/hf_20260309_090944_181c07c5-1859-48f5-adcb-adad853a4359.png',
+  '/examples/hf_20260309_091339_c63663cf-1940-4bb5-988c-32b7367a63da.png',
+  '/examples/hf_20260309_100705_5ae3050b-b4c2-41f8-8321-fe15ee688dd2.jpeg',
+  '/examples/hf_20260309_100716_9e1b2c51-3176-411c-bea3-ee09229b5c1d.png',
+  '/examples/hf_20260309_100754_159869fe-1384-4d12-b080-38b08432e12f.jpeg',
+  '/examples/hf_20260309_100805_74ac7b57-8b5d-4eab-8534-871a80daeb06.jpeg',
+  '/examples/hf_20260309_100946_e8f23a6b-3692-4f0b-9a7a-b5ec3c71e146.png',
+  '/examples/hf_20260309_101146_d00781c1-567e-44ef-b3e0-3375aea94882.png',
+  '/examples/hf_20260309_101324_0ef08ea8-da9b-40dc-9e4f-70633771d096.jpeg',
+  '/examples/hf_20260309_101337_e8cba187-b823-4a3e-9214-809856ac4b6f.jpeg',
+  '/examples/hf_20260309_101400_47df8ee7-354e-433f-b88c-4a6a3c17d847.jpeg',
+  '/examples/hf_20260309_101506_a9272f5b-67dc-474b-a8b6-60e4265dd993.jpeg',
+  '/examples/hf_20260309_101526_5b19ce3a-53f0-4209-b205-88c84697f64f.jpeg',
+  '/examples/hf_20260309_101555_388887e3-ac74-4f1d-bc3f-c2b45f102489.jpeg',
+  '/examples/hf_20260309_101706_9c1f54f0-8e12-49ea-9aad-7b59ba74593d.png',
+  '/examples/hf_20260309_102059_56498183-d54a-4f99-86ea-89a838feadc1.jpeg',
+  '/examples/hf_20260309_102108_ba7dc28c-782e-425b-a9d5-e76c8d0b9120.jpeg',
+  '/examples/hf_20260309_102118_117c83bc-7ca3-4016-bce1-f511efdddbfd.png',
+  '/examples/hf_20260309_102225_45338418-938e-4beb-9c93-619d25e2c44c.jpeg',
+  '/examples/hf_20260309_102243_0dab95c5-cd31-4dc1-a92e-5c36f17e0531.png',
+  '/examples/hf_20260309_102257_02257779-0701-4b52-816d-f9bf33faee3d.jpeg',
+  '/examples/hf_20260309_102316_cb3d2c39-f510-42fe-a0cf-7bee41cbc259.jpeg',
+  '/examples/hf_20260309_102353_3c7782e5-d889-4579-b904-654c5e0d2e4e.jpeg',
+  '/examples/hf_20260309_102402_3ef32fb0-ebe3-41f0-a16d-5a203030596f.jpeg',
+  '/examples/hf_20260309_102424_394f0c30-a498-4a3d-ad4b-9279e7340f29.jpeg',
 ]
 
-const ROW_1 = GALLERY.slice(0, 10)
-const ROW_2 = GALLERY.slice(10, 20)
+const ROW_1 = GALLERY.slice(0, 13)
+const ROW_2 = GALLERY.slice(13)
 
-function GalleryCard({ src, label }: { src: string; label: string }) {
+const GalleryRows = dynamic(() => Promise.resolve(GalleryRowsInner), { ssr: false })
+
+function GalleryCard({ src }: { src: string }) {
   return (
     <div className="relative flex-shrink-0 w-56 h-64 rounded-2xl overflow-hidden border border-cream-200 shadow-card group">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt={label}
+        alt=""
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <p className="text-white text-xs font-medium truncate">{label}</p>
+    </div>
+  )
+}
+
+function MarqueeRow({ items, reverse = false }: { items: string[]; reverse?: boolean }) {
+  const doubled = [...items, ...items]
+  return (
+    <div className="flex overflow-hidden select-none">
+      <div className={`flex gap-4 ${reverse ? 'animate-marquee-reverse' : 'animate-marquee'}`}>
+        {doubled.map((src, i) => (
+          <GalleryCard key={`${src}-${i}`} src={src} />
+        ))}
       </div>
     </div>
   )
 }
 
-function MarqueeRow({ items, reverse = false }: { items: typeof ROW_1; reverse?: boolean }) {
-  const doubled = [...items, ...items]
+function GalleryRowsInner() {
   return (
-    <div className="flex overflow-hidden select-none">
-      <div className={`flex gap-4 ${reverse ? 'animate-marquee-reverse' : 'animate-marquee'}`}>
-        {doubled.map((item, i) => (
-          <GalleryCard key={`${item.src}-${i}`} src={item.src} label={item.label} />
-        ))}
-      </div>
-    </div>
+    <>
+      <MarqueeRow items={ROW_1} />
+      <MarqueeRow items={ROW_2} reverse />
+    </>
   )
 }
 
@@ -95,8 +109,7 @@ export function DemoSection() {
         transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
         className="flex flex-col gap-4"
       >
-        <MarqueeRow items={ROW_1} />
-        <MarqueeRow items={ROW_2} reverse />
+        <GalleryRows />
       </motion.div>
 
       {/* ── CTA ──────────────────────────────────────────────── */}

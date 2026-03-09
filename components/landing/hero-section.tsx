@@ -1,10 +1,14 @@
 'use client'
 
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowRight, Sparkles, Clock, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EASE } from '@/lib/motion'
+
+const BeforeAfterCard = dynamic(() => Promise.resolve(BeforeAfterCardInner), { ssr: false })
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 28 },
@@ -119,7 +123,9 @@ export function HeroSection() {
   )
 }
 
-function BeforeAfterCard() {
+function BeforeAfterCardInner() {
+  const [afterMode, setAfterMode] = useState<'photo' | 'video'>('photo')
+
   return (
     <div className="relative">
       {/* Glow halo */}
@@ -147,21 +153,14 @@ function BeforeAfterCard() {
               До
             </span>
 
-            {/* Plain product photo simulation */}
-            <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-[#F5F5F5] to-[#E8E8E8] flex items-center justify-center relative overflow-hidden">
-              {/* Ring silhouette */}
-              <svg
-                viewBox="0 0 80 80"
-                className="w-24 h-24 text-[#C8C8C8]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-              >
-                <ellipse cx="40" cy="40" rx="22" ry="22" />
-                <ellipse cx="40" cy="40" rx="14" ry="14" />
-                <ellipse cx="40" cy="22" rx="6" ry="4" fill="currentColor" strokeWidth="0" opacity="0.5" />
-              </svg>
-              <span className="absolute bottom-3 left-0 right-0 text-center text-[10px] text-[#AAAAAA]">
+            {/* Plain product photo */}
+            <div className="w-full aspect-square rounded-xl overflow-hidden relative">
+              <img
+                src="/jewelry-before.jpeg"
+                alt="фото на телефон"
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute bottom-3 left-0 right-0 text-center text-[10px] text-white drop-shadow">
                 фото на телефон
               </span>
             </div>
@@ -169,46 +168,48 @@ function BeforeAfterCard() {
 
           {/* After */}
           <div className="p-5 flex flex-col items-center gap-3 bg-gradient-to-br from-rose-gold-50 to-[#FDF5EE]">
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-rose-gold-600">
-              <Sparkles className="w-3 h-3" />
-              После AI
-            </span>
-
-            {/* Lifestyle photo simulation */}
-            <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-rose-gold-200 via-[#D4946A] to-rose-gold-400 flex items-center justify-center relative overflow-hidden shadow-soft">
-              {/* Warm ambient light */}
-              <div className="absolute inset-0 bg-gradient-to-tl from-transparent via-white/10 to-white/20" />
-
-              {/* Stylised hand + ring */}
-              <div className="relative flex items-end justify-center h-full w-full pb-4">
-                {/* Palm */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 items-end">
-                  {/* Fingers */}
-                  {[28, 36, 34, 28].map((h, i) => (
-                    <div
-                      key={i}
-                      className="rounded-full bg-gradient-to-b from-[#F5D5C0] to-[#E8BAA0] relative"
-                      style={{ width: 10, height: h }}
-                    >
-                      {/* Ring on middle finger */}
-                      {i === 1 && (
-                        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[18px] h-[7px] -translate-x-[4px]">
-                          <div className="w-full h-full rounded-full bg-gradient-to-r from-[#E8C99A] via-[#F5E0B8] to-[#C4934F] shadow-md" />
-                          {/* Stone */}
-                          <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-3 h-2.5 rounded-sm bg-gradient-to-br from-white/90 to-white/40" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Soft bokeh orbs */}
-                <div className="absolute top-4 right-6 w-8 h-8 rounded-full bg-white/20 blur-sm" />
-                <div className="absolute top-8 left-4 w-5 h-5 rounded-full bg-white/15 blur-sm" />
+            <div className="w-full flex items-center justify-between">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-rose-gold-600">
+                <Sparkles className="w-3 h-3" />
+                После AI
+              </span>
+              {/* Photo / Video toggle */}
+              <div className="flex items-center gap-1 bg-white/60 rounded-lg p-0.5 border border-cream-200">
+                <button
+                  onClick={() => setAfterMode('photo')}
+                  className={`text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all ${afterMode === 'photo' ? 'bg-white shadow-sm text-rose-gold-600' : 'text-muted-foreground'}`}
+                >
+                  Фото
+                </button>
+                <button
+                  onClick={() => setAfterMode('video')}
+                  className={`text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all ${afterMode === 'video' ? 'bg-white shadow-sm text-rose-gold-600' : 'text-muted-foreground'}`}
+                >
+                  Видео
+                </button>
               </div>
+            </div>
 
-              <span className="absolute bottom-2.5 left-0 right-0 text-center text-[10px] text-white/80 font-medium">
-                лайфстайл фото
+            {/* Result media */}
+            <div className="w-full aspect-square rounded-xl overflow-hidden relative shadow-soft">
+              {afterMode === 'photo' ? (
+                <img
+                  src="/after1.png"
+                  alt="лайфстайл фото"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <video
+                  src="/after2.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              )}
+              <span className="absolute bottom-2.5 left-0 right-0 text-center text-[10px] text-white drop-shadow font-medium">
+                {afterMode === 'photo' ? 'лайфстайл фото' : 'видео ролик'}
               </span>
             </div>
           </div>

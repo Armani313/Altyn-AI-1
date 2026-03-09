@@ -6,15 +6,16 @@ import { Button } from '@/components/ui/button'
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_MB } from '@/lib/constants'
 
 interface UploadZoneProps {
-  onUpload: (file: File, previewUrl: string) => void
-  onRemove: () => void
+  onUpload:   (file: File, previewUrl: string) => void
+  onRemove:   () => void
   previewUrl: string | null
+  dragLabel?: string
 }
 
 const ACCEPTED_TYPES = ACCEPTED_IMAGE_TYPES
 const MAX_SIZE_MB = MAX_IMAGE_MB
 
-export function UploadZone({ onUpload, onRemove, previewUrl }: UploadZoneProps) {
+export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Перетащите фото сюда' }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState('')
@@ -144,7 +145,7 @@ export function UploadZone({ onUpload, onRemove, previewUrl }: UploadZoneProps) 
                 ? 'Отпустите файл здесь'
                 : (
                   <>
-                    <span className="hidden sm:inline">Перетащите фото украшения</span>
+                    <span className="hidden sm:inline">{dragLabel}</span>
                     <span className="sm:hidden">Нажмите, чтобы загрузить фото</span>
                   </>
                 )

@@ -43,3 +43,6 @@ Thumbs.db
 .claude/
 .idea/
 .vscode/settings.json
+
+# ── Agent skills ──────────────────────────────────────────────────────────────
+.agents/

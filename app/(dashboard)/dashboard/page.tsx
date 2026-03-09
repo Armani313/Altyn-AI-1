@@ -208,13 +208,23 @@ export default function DashboardPage() {
     watches:    'Сфотографируйте часы или браслет на любом фоне',
     bags:       'Сфотографируйте сумку или клатч на любом фоне',
   }
+  const DRAG_LABELS: Record<ProductType, string> = {
+    jewelry:    'Перетащите фото украшения',
+    scarves:    'Перетащите фото платка',
+    headwear:   'Перетащите фото аксессуара',
+    outerwear:  'Перетащите фото одежды',
+    bottomwear: 'Перетащите фото одежды',
+    watches:    'Перетащите фото часов',
+    bags:       'Перетащите фото сумки',
+  }
   const uploadLabel = UPLOAD_LABELS[productType]
   const uploadHint  = UPLOAD_HINTS[productType]
+  const dragLabel   = DRAG_LABELS[productType]
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header
-        title="Создать контент"
+        title="Лайфстайл фото"
         subtitle="Загрузите товар, выберите модели и получите лайфстайл-фото"
         profile={creditsRemaining != null ? { credits_remaining: creditsRemaining } : null}
       />
@@ -290,6 +300,7 @@ export default function DashboardPage() {
               previewUrl={previewUrl}
               onUpload={handleUpload}
               onRemove={handleRemove}
+              dragLabel={dragLabel}
             />
             <p className="text-xs text-muted-foreground text-center">
               {uploadHint}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -108,12 +108,12 @@ export function HeroSection() {
             </motion.p>
           </div>
 
-          {/* ── Before / After mock — desktop only ──────── */}
+          {/* ── Before / After mock ─────────────────────── */}
           <motion.div
             initial={{ opacity: 0, x: 48, scale: 0.96 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
-            className="hidden lg:block"
+            className="w-full max-w-sm mx-auto lg:max-w-none"
           >
             <BeforeAfterCard />
           </motion.div>
@@ -124,7 +124,32 @@ export function HeroSection() {
 }
 
 function BeforeAfterCardInner() {
-  const [afterMode, setAfterMode] = useState<'photo' | 'video'>('photo')
+  const [afterMode, setAfterMode] = useState<'photo' | 'video'>('video')
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const switchToVideo = useCallback(() => {
+    setAfterMode('video')
+  }, [])
+
+  // When video ends → show photo for 3 s → back to video
+  const handleVideoEnded = useCallback(() => {
+    setAfterMode('photo')
+    timerRef.current = setTimeout(switchToVideo, 3000)
+  }, [switchToVideo])
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [])
+
+  // When mode switches to video, play the video
+  useEffect(() => {
+    if (afterMode === 'video' && videoRef.current) {
+      videoRef.current.currentTime = 0
+      videoRef.current.play().catch(() => {})
+    }
+  }, [afterMode])
 
   return (
     <div className="relative">
@@ -176,13 +201,13 @@ function BeforeAfterCardInner() {
               {/* Photo / Video toggle */}
               <div className="flex items-center gap-1 bg-white/60 rounded-lg p-0.5 border border-cream-200">
                 <button
-                  onClick={() => setAfterMode('photo')}
+                  onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); setAfterMode('photo') }}
                   className={`text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all ${afterMode === 'photo' ? 'bg-white shadow-sm text-rose-gold-600' : 'text-muted-foreground'}`}
                 >
                   Фото
                 </button>
                 <button
-                  onClick={() => setAfterMode('video')}
+                  onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); setAfterMode('video') }}
                   className={`text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all ${afterMode === 'video' ? 'bg-white shadow-sm text-rose-gold-600' : 'text-muted-foreground'}`}
                 >
                   Видео
@@ -200,11 +225,12 @@ function BeforeAfterCardInner() {
                 />
               ) : (
                 <video
+                  ref={videoRef}
                   src="/after2.mp4"
                   autoPlay
-                  loop
                   muted
                   playsInline
+                  onEnded={handleVideoEnded}
                   className="w-full h-full object-cover"
                 />
               )}

@@ -103,7 +103,7 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="px-3 py-2.5 rounded-lg text-base text-foreground hover:bg-cream-200 transition-colors"
+                  className="px-3 py-3.5 rounded-lg text-base text-foreground hover:bg-cream-200 transition-colors touch-manipulation"
                 >
                   {link.label}
                 </a>

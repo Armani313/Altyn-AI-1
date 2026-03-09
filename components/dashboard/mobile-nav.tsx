@@ -65,7 +65,7 @@ export function MobileNav({ profile }: MobileNavProps) {
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   active
                     ? 'bg-rose-gold-50 text-rose-gold-700 border border-rose-gold-100'
                     : 'text-muted-foreground hover:bg-cream-100 hover:text-foreground'
@@ -150,7 +150,7 @@ export function MobileNav({ profile }: MobileNavProps) {
                 type="submit"
                 variant="ghost"
                 size="icon"
-                className="w-7 h-7 text-muted-foreground hover:text-foreground hover:bg-cream-200 flex-shrink-0"
+                className="w-9 h-9 text-muted-foreground hover:text-foreground hover:bg-cream-200 flex-shrink-0"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="sr-only">Выйти</span>

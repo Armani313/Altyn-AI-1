@@ -328,22 +328,22 @@ export function TemplatePicker({
                 </div>
               )}
 
-              {/* Delete button */}
+              {/* Delete button — always visible for touch devices */}
               {url && !disabled && !isLoading && !isDeleting && (
                 <button
                   onClick={(e) => handleDelete(cardIdx, e)}
-                  className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors"
                   title="Удалить"
                 >
-                  <X className="w-3 h-3 text-white" />
+                  <X className="w-3.5 h-3.5 text-white" />
                 </button>
               )}
 
-              {/* Replace button (click on photo area) */}
+              {/* Replace button — always visible for touch devices */}
               {url && !disabled && !isLoading && !isDeleting && (
                 <button
                   onClick={(e) => { e.stopPropagation(); openFilePicker(cardIdx) }}
-                  className="absolute bottom-7 right-1.5 text-[8px] font-semibold bg-black/50 hover:bg-black/70 text-white rounded-full px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute bottom-7 right-1.5 text-[8px] font-semibold bg-black/50 hover:bg-black/70 text-white rounded-full px-1.5 py-0.5 transition-colors"
                 >
                   Заменить
                 </button>

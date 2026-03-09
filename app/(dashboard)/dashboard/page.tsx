@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [creditsRemaining,   setCreditsRemaining]   = useState<number | null>(null)
   const [customModelUrls,    setCustomModelUrls]    = useState<string[]>([])
   const [mobileStep,         setMobileStep]         = useState<MobileStep>(1)
+  const [userPrompt,         setUserPrompt]         = useState('')
 
   // Fetch credits on mount
   useEffect(() => {
@@ -109,6 +110,7 @@ export default function DashboardPage() {
             fd.append('model_id', modelId)
             fd.append('aspect_ratio', aspectRatio)
             fd.append('product_type', productType)
+            if (userPrompt.trim()) fd.append('user_prompt', userPrompt.trim())
 
             const res  = await fetch('/api/generate', { method: 'POST', body: fd })
             const data = await res.json()
@@ -147,7 +149,7 @@ export default function DashboardPage() {
         })
       )
     },
-    [uploadedFile, aspectRatio, productType]
+    [uploadedFile, aspectRatio, productType, userPrompt]
   )
 
   const handleGenerate = async () => {
@@ -330,6 +332,8 @@ export default function DashboardPage() {
               selectedCount={selectedTemplates.length}
               creditsRemaining={creditsRemaining}
               customModelUrls={customModelUrls}
+              userPrompt={userPrompt}
+              onUserPromptChange={setUserPrompt}
             />
           </div>
 

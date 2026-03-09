@@ -13,6 +13,7 @@
  */
 
 import type { ProductType } from '@/lib/constants'
+import { buildUserPromptSuffix } from '@/lib/ai/moderation'
 
 const DEFAULT_MODEL   = 'gemini-2.5-flash-image'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -388,6 +389,8 @@ export interface GenerationParams {
   modelMimeType?:    string
   /** Product type — determines which prompts to use (default: 'jewelry') */
   productType?:      ProductType
+  /** Optional sanitized user style hint (already passed through moderation) */
+  userPrompt?:       string
 }
 
 export interface GenerationResult {
@@ -434,17 +437,19 @@ export async function generateJewelryPhoto(
   // ── 2. Build request parts ─────────────────────────────────────────────────
   let parts: object[]
 
+  const promptSuffix = params.userPrompt ? buildUserPromptSuffix(params.userPrompt) : ''
+
   if (params.modelImageBuffer && params.modelMimeType) {
     const modelBase64 = params.modelImageBuffer.toString('base64')
     parts = [
       { inlineData: { mimeType: params.modelMimeType, data: modelBase64 } },
       { inlineData: { mimeType: productMimeType,      data: productBase64 } },
-      { text: COMPOSITE_PROMPTS[productType] },
+      { text: COMPOSITE_PROMPTS[productType] + promptSuffix },
     ]
   } else {
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },
-      { text: STANDALONE_PROMPTS[productType] },
+      { text: STANDALONE_PROMPTS[productType] + promptSuffix },
     ]
   }
 

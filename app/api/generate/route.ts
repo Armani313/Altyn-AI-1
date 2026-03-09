@@ -39,6 +39,7 @@ import {
   isCustomModelId, getCustomModelIndex,
   type ProductType,
 } from '@/lib/constants'
+import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
 
 // Extend serverless timeout to 60 s for Gemini generation
 export const maxDuration = 60
@@ -104,6 +105,14 @@ export async function POST(request: Request) {
     const rawRatio       = (formData.get('aspect_ratio') as string) || ''
     const rawModelId     = (formData.get('model_id') as string | null) || null
     const rawProductType = (formData.get('product_type') as string) || ''
+    const rawUserPrompt  = (formData.get('user_prompt') as string | null) || ''
+
+    // Moderation: sanitize + check user prompt before any heavy I/O
+    const userPrompt = sanitizePrompt(rawUserPrompt)
+    if (userPrompt) {
+      const mod = checkPrompt(userPrompt)
+      if (!mod.safe) return err(mod.message!, 400)
+    }
 
     const templateId = rawTemplateId !== null
       ? (UUID_REGEX.test(rawTemplateId) ? rawTemplateId : null)
@@ -244,6 +253,7 @@ export async function POST(request: Request) {
         modelImageBuffer,
         modelMimeType,
         productType,
+        userPrompt:       userPrompt || undefined,
       })
       aiImageBuffer = result.imageBuffer
       aiMimeType    = result.mimeType

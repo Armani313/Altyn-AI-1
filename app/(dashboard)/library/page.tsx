@@ -42,7 +42,7 @@ export default async function LibraryPage() {
         profile={profile}
       />
 
-      <div className="flex-1 p-5 xl:p-6">
+      <div className="flex-1 p-3 sm:p-5 xl:p-6">
         <div className="max-w-6xl mx-auto">
 
           {/* ── Empty state ──────────────────────────────── */}
@@ -69,7 +69,7 @@ export default async function LibraryPage() {
 // ── Empty state ───────────────────────────────────────────────
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
+    <div className="flex flex-col items-center justify-center py-12 sm:py-24 text-center">
       {/* Decorative gradient orb */}
       <div className="relative mb-8">
         <div className="w-28 h-28 rounded-full bg-gradient-to-br from-rose-gold-100 to-rose-gold-200 flex items-center justify-center">

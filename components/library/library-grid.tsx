@@ -101,20 +101,20 @@ export function LibraryGrid({ generations }: LibraryGridProps) {
                   <div className="flex gap-1.5">
                     <button
                       onClick={() => downloadImage(gen.output_image_url!, `nurai-${gen.id.slice(0, 8)}`)}
-                      className="flex-1 flex items-center justify-center gap-1 bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 text-[10px] font-semibold py-1.5 rounded-lg transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 text-[10px] font-semibold py-2.5 rounded-lg transition-colors touch-manipulation"
                       aria-label="Скачать"
                     >
-                      <Download className="w-3 h-3" />
+                      <Download className="w-3.5 h-3.5" />
                       Скачать
                     </button>
 
                     {canExpand && (
                       <button
                         onClick={() => setLightboxIndex(lbIndex)}
-                        className="w-8 flex items-center justify-center bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 rounded-lg transition-colors"
+                        className="w-10 flex items-center justify-center bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 rounded-lg transition-colors touch-manipulation"
                         aria-label="Открыть полноэкранно"
                       >
-                        <Maximize2 className="w-3 h-3" />
+                        <Maximize2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>

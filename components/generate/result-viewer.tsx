@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2 } from 'lucide-react'
+import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2, ChevronDown, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex } from '@/lib/constants'
@@ -26,6 +26,8 @@ interface ResultViewerProps {
   creditsRemaining:    number | null
   /** URLs of the user's custom models — used for thumbnails in result cards */
   customModelUrls?:    string[]
+  userPrompt:          string
+  onUserPromptChange:  (v: string) => void
 }
 
 const RATIOS: { id: AspectRatio; label: string; cls: string }[] = [
@@ -109,7 +111,7 @@ function ResultCard({
           <button
             onClick={handleDownload}
             disabled={isDownloading}
-            className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70"
+            className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-xs font-semibold px-3 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70 touch-manipulation"
           >
             {isDownloading
               ? <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin flex-shrink-0" />
@@ -122,7 +124,7 @@ function ResultCard({
           {onExpand && (
             <button
               onClick={onExpand}
-              className="absolute bottom-2 left-2 w-8 h-8 flex items-center justify-center bg-white/90 hover:bg-white backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+              className="absolute bottom-2 left-2 w-9 h-9 flex items-center justify-center bg-white/90 hover:bg-white backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 touch-manipulation"
               aria-label="Открыть полноэкранно"
             >
               <Maximize2 className="w-3.5 h-3.5 text-foreground/70" />
@@ -170,8 +172,11 @@ export function ResultViewer({
   selectedCount,
   creditsRemaining,
   customModelUrls,
+  userPrompt,
+  onUserPromptChange,
 }: ResultViewerProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [promptOpen,    setPromptOpen]    = useState(false)
 
   const isAnyGenerating  = results.some((r) => r.status === 'generating')
   const hasResults       = results.length > 0
@@ -259,6 +264,46 @@ export function ResultViewer({
             <span>
               <strong className="text-foreground">{creditsRemaining}</strong> кредитов
             </span>
+          </div>
+        )}
+      </div>
+
+      {/* Optional prompt */}
+      <div className="rounded-xl border border-cream-200 bg-white overflow-hidden">
+        <button
+          onClick={() => setPromptOpen((o) => !o)}
+          className="w-full flex items-center justify-between px-3.5 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Wand2 className="w-3.5 h-3.5 text-rose-gold-400" />
+            <span className="font-medium">
+              {userPrompt.trim() ? 'Пожелание добавлено' : 'Добавить пожелание'}
+            </span>
+            {userPrompt.trim() && (
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-gold-400" />
+            )}
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${promptOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {promptOpen && (
+          <div className="px-3.5 pb-3.5 border-t border-cream-100">
+            <textarea
+              value={userPrompt}
+              onChange={(e) => onUserPromptChange(e.target.value)}
+              placeholder="Например: золотой час, закат, цветочный фон, студийный свет…"
+              maxLength={300}
+              rows={3}
+              className="mt-3 w-full resize-none rounded-lg border border-cream-200 bg-cream-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-rose-gold-300 focus:border-transparent transition-all"
+            />
+            <div className="flex items-center justify-between mt-1.5">
+              <p className="text-[11px] text-muted-foreground">
+                Опишите желаемый стиль, фон или атмосферу
+              </p>
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {userPrompt.length}/300
+              </span>
+            </div>
           </div>
         )}
       </div>

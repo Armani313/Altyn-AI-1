@@ -14,6 +14,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'
+import { assertSafeImageBytes } from '@/lib/utils/security'
+import { checkRateLimit } from '@/lib/rate-limit'
+
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -21,6 +25,15 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Необходимо авторизоваться.' }, { status: 401 })
+  }
+
+  // HIGH-NEW-4: rate limit — 20 uploads per minute per user
+  const rl = checkRateLimit('upload', user.id, 20, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.` },
+      { status: 429 }
+    )
   }
 
   let formData: FormData
@@ -53,6 +66,16 @@ export async function POST(request: Request) {
   const safeExt = (SAFE_IMAGE_EXTENSIONS as readonly string[]).includes(rawExt) ? rawExt : 'jpg'
   const path    = `${user.id}/${Date.now()}-upload.${safeExt}`
   const bytes   = await file.arrayBuffer()
+
+  // MED-NEW-1: verify actual file content via magic bytes
+  try {
+    assertSafeImageBytes(new Uint8Array(bytes))
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'Недопустимый формат файла.' },
+      { status: 400 }
+    )
+  }
 
   const { error: uploadErr } = await supabase.storage
     .from('jewelry-uploads')

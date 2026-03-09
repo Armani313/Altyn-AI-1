@@ -449,7 +449,10 @@ export async function generateJewelryPhoto(
     throw new Error('Сервис генерации временно недоступен. Обратитесь в поддержку.')
   }
 
-  const model      = (process.env.GEMINI_MODEL || DEFAULT_MODEL).trim()
+  // HIGH-NEW-3: validate model slug to prevent URL injection from env var
+  const MODEL_SLUG_REGEX = /^[a-zA-Z0-9._-]+$/
+  const rawModel = (process.env.GEMINI_MODEL || DEFAULT_MODEL).trim()
+  const model    = MODEL_SLUG_REGEX.test(rawModel) ? rawModel : DEFAULT_MODEL
   const productType: ProductType = params.productType ?? 'jewelry'
 
   // ── 1. Download product image ──────────────────────────────────────────────
@@ -513,10 +516,9 @@ export async function generateJewelryPhoto(
   }
 
   if (!res.ok) {
+    // HIGH-NEW-2: log full error server-side, throw only a sanitized message
     console.error('Gemini API error:', data.error)
-    throw new Error(
-      data.error?.message ?? 'Ошибка при генерации изображения. Попробуйте снова.'
-    )
+    throw new Error('Ошибка при генерации изображения. Попробуйте снова.')
   }
 
   // ── 4. Extract image from response ─────────────────────────────────────────

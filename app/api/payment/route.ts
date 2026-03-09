@@ -8,14 +8,6 @@
  *
  * Response (JSON):
  *   { paymentUrl: string }  — redirect user to this URL
- *
- * Flow:
- *   1. Auth check
- *   2. Validate plan
- *   3. Create a pending subscription row
- *   4. Call Kaspi Pay API → get payment URL
- *   5. Update subscription row with kaspiOrderId
- *   6. Return paymentUrl to frontend
  */
 
 import { NextResponse } from 'next/server'
@@ -25,6 +17,8 @@ import {
   KASPI_PLANS,
   type PlanKey,
 } from '@/lib/payments/kaspi'
+import { assertSafePaymentUrl } from '@/lib/utils/security'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -32,9 +26,7 @@ export async function POST(request: Request) {
   try {
     // ── 1. Auth ────────────────────────────────────────────────────────────
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json(
@@ -43,8 +35,30 @@ export async function POST(request: Request) {
       )
     }
 
-    // ── 2. Validate plan ───────────────────────────────────────────────────
-    const body = (await request.json()) as { plan?: string }
+    // ── 2. Rate limit (HIGH-NEW-4: 5 payment attempts per hour) ───────────
+    const rl = checkRateLimit('payment', user.id, 5, 60 * 60_000)
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: `Слишком много попыток оплаты. Повторите через ${rl.retryAfterSec} сек.` },
+        { status: 429 }
+      )
+    }
+
+    // ── 3. Validate Content-Type + parse body (LOW-NEW-6) ─────────────────
+    if (!request.headers.get('content-type')?.includes('application/json')) {
+      return NextResponse.json(
+        { error: 'Ожидается Content-Type: application/json.' },
+        { status: 415 }
+      )
+    }
+
+    let body: { plan?: string }
+    try {
+      body = (await request.json()) as { plan?: string }
+    } catch {
+      return NextResponse.json({ error: 'Неверный формат JSON.' }, { status: 400 })
+    }
+
     const planKey = body.plan as PlanKey | undefined
 
     if (!planKey || !(planKey in KASPI_PLANS)) {
@@ -54,25 +68,24 @@ export async function POST(request: Request) {
       )
     }
 
-    const plan = KASPI_PLANS[planKey]
+    const plan   = KASPI_PLANS[planKey]
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
-    // ── 3. Create pending subscription record ──────────────────────────────
+    // ── 4. Create pending subscription record ──────────────────────────────
     const subscriptionsRaw = await supabase
       .from('subscriptions')
       .insert({
-        user_id: user.id,
-        plan: planKey,
-        status: 'pending',
-        amount: plan.priceKZT,
+        user_id:  user.id,
+        plan:     planKey,
+        status:   'pending',
+        amount:   plan.priceKZT,
         currency: 'KZT',
       } as never)
       .select('id')
       .single()
 
-    // We use `as any` because the DB types need a real Supabase project to resolve.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const subData = subscriptionsRaw.data as any
+    const subData  = subscriptionsRaw.data as any
     const subError = subscriptionsRaw.error
 
     if (subError || !subData?.id) {
@@ -85,43 +98,53 @@ export async function POST(request: Request) {
 
     const subscriptionId: string = subData.id
 
-    // ── 4. Create Kaspi Pay order ──────────────────────────────────────────
-    let paymentUrl: string
+    // ── 5. Create Kaspi Pay order ──────────────────────────────────────────
+    let paymentUrl:  string
     let kaspiOrderId: string
 
     try {
       const result = await createKaspiOrder({
-        orderId: subscriptionId,
+        orderId:   subscriptionId,
         planKey,
         returnUrl: `${appUrl}/settings/billing?status=success`,
       })
-      paymentUrl = result.paymentUrl
+      paymentUrl   = result.paymentUrl
       kaspiOrderId = result.kaspiOrderId
-    } catch (err) {
-      // Roll back pending subscription on payment API failure
+    } catch {
+      // HIGH-NEW-2: never expose raw Kaspi API error details to the client
       await supabase
         .from('subscriptions')
         .update({ status: 'cancelled' } as never)
         .eq('id', subscriptionId)
 
       return NextResponse.json(
-        {
-          error:
-            err instanceof Error
-              ? err.message
-              : 'Ошибка платёжного шлюза. Попробуйте позже.',
-        },
+        { error: 'Ошибка платёжного шлюза. Попробуйте позже.' },
         { status: 502 }
       )
     }
 
-    // ── 5. Store kaspiOrderId ──────────────────────────────────────────────
+    // ── 6. Validate paymentUrl (MED-NEW-3: prevent open redirect) ─────────
+    try {
+      assertSafePaymentUrl(paymentUrl)
+    } catch (e) {
+      console.error('Kaspi returned unsafe paymentUrl:', paymentUrl, e)
+      await supabase
+        .from('subscriptions')
+        .update({ status: 'cancelled' } as never)
+        .eq('id', subscriptionId)
+
+      return NextResponse.json(
+        { error: 'Платёжный шлюз вернул некорректный ответ. Попробуйте позже.' },
+        { status: 502 }
+      )
+    }
+
+    // ── 7. Store kaspiOrderId ──────────────────────────────────────────────
     await supabase
       .from('subscriptions')
       .update({ kaspi_order_id: kaspiOrderId } as never)
       .eq('id', subscriptionId)
 
-    // ── 6. Return payment URL ──────────────────────────────────────────────
     return NextResponse.json({ paymentUrl })
   } catch (err) {
     console.error('Payment route error:', err)

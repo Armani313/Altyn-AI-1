@@ -29,9 +29,14 @@ export function isCustomModelId(id: string): boolean {
   return id.startsWith(CUSTOM_MODEL_ID_PREFIX)
 }
 
-/** Extracts the 0-based array index from a custom model ID, e.g. 'user-custom-2' → 2. */
+/**
+ * Extracts the 0-based array index from a custom model ID, e.g. 'user-custom-2' → 2.
+ * Returns -1 if the ID is malformed (MED-NEW-6: prevents NaN propagation).
+ */
 export function getCustomModelIndex(id: string): number {
-  return parseInt(id.slice(CUSTOM_MODEL_ID_PREFIX.length), 10)
+  const n = parseInt(id.slice(CUSTOM_MODEL_ID_PREFIX.length), 10)
+  if (!Number.isInteger(n) || n < 0 || n >= MAX_CUSTOM_MODELS) return -1
+  return n
 }
 
 /** Builds a custom model ID from a 0-based index, e.g. 2 → 'user-custom-2'. */

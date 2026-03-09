@@ -1,10 +1,10 @@
 /**
  * POST /api/generate
  *
- * Full AI generation pipeline for jewelry lifestyle photos.
+ * Full AI generation pipeline for lifestyle photos.
  *
  * Request: multipart/form-data
- *   image             File    — jewelry photo (JPG/PNG/WebP/HEIC, max 10 MB)
+ *   image             File    — product photo (JPG/PNG/WebP/HEIC, max 10 MB)
  *   template_id       string? — template UUID from the templates table
  *   template_category string? — 'rings' | 'necklaces' | 'earrings' | 'bracelets'
  *   aspect_ratio      string? — '1:1' | '9:16'  (default: '1:1')
@@ -14,17 +14,17 @@
  *
  * Pipeline:
  *   1.  Auth check
- *   2.  Credits pre-check (fast fail before any I/O)
- *   3.  Validate & parse multipart body
- *   4.  Upload source image → Supabase Storage (jewelry-uploads/)
- *   5.  Create "processing" generation record
- *   6.  Call Replicate API (image-to-image)
- *   7.  Download AI result → re-upload to Storage (generated-images/)
- *   8.  Mark generation as "completed"
- *   9.  Atomic credit decrement via DB function
- *   10. Return result
- *
- * All errors returned in professional Russian.
+ *   2.  Rate limit check (10 req / 60 s per user)
+ *   3.  Credits pre-check (fast fail before any I/O)
+ *   4.  Validate & parse multipart body + magic bytes check
+ *   5.  Upload source image → Supabase Storage
+ *   6.  Create "processing" generation record
+ *   7.  Atomic credit decrement BEFORE AI call (prevents free generations on race)
+ *   8.  Call Gemini AI
+ *        → On failure: refund credit, mark failed, return error
+ *   9.  Upload AI result → Storage
+ *   10. Mark generation completed
+ *   11. Return result
  */
 
 import { NextResponse } from 'next/server'
@@ -41,22 +41,18 @@ import {
   type ProductType,
 } from '@/lib/constants'
 import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
+import { assertSafeStorageUrl, assertSafeImageBytes } from '@/lib/utils/security'
+import { checkRateLimit } from '@/lib/rate-limit'
 
-// Extend serverless timeout to 60 s for Gemini generation
 export const maxDuration = 60
 export const runtime = 'nodejs'
-
-// ── Constants ─────────────────────────────────────────────────────────────────
 
 const INPUT_BUCKET  = 'jewelry-uploads'
 const OUTPUT_BUCKET = 'generated-images'
 
-// HIGH-5: strict allowlists for user-controlled inputs
 const VALID_CATEGORIES = ['rings', 'necklaces', 'earrings', 'bracelets', 'universal'] as const
-const VALID_RATIOS     = ['1:1', '9:16'] as const
+const VALID_RATIOS     = ['1:1', '9:16', '4:5'] as const
 const UUID_REGEX       = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   try {
@@ -64,13 +60,20 @@ export async function POST(request: Request) {
 
     // ── 1. Auth ──────────────────────────────────────────────────────────────
     const { data: { user } } = await supabase.auth.getUser()
-
     if (!user) {
       return err('Необходимо авторизоваться для генерации изображений.', 401)
     }
 
-    // ── 2. Credits pre-check ─────────────────────────────────────────────────
-    // Non-atomic fast fail — actual deduction at step 9 is atomic.
+    // ── 2. Rate limit (HIGH-NEW-4) ────────────────────────────────────────────
+    const rl = checkRateLimit('generate', user.id, 10, 60_000)
+    if (!rl.ok) {
+      return err(
+        `Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.`,
+        429
+      )
+    }
+
+    // ── 3. Credits pre-check ─────────────────────────────────────────────────
     const { data: profileRaw } = await supabase
       .from('profiles')
       .select('credits_remaining, plan')
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // ── 3. Parse multipart body ───────────────────────────────────────────────
+    // ── 4. Parse & validate multipart body ───────────────────────────────────
     let formData: FormData
     try {
       formData = await request.formData()
@@ -100,7 +103,6 @@ export async function POST(request: Request) {
 
     const imageFile = formData.get('image') as File | null
 
-    // HIGH-5: validate all user-controlled fields against strict allowlists
     const rawTemplateId  = (formData.get('template_id') as string | null) || null
     const rawCategory    = (formData.get('template_category') as string) || ''
     const rawRatio       = (formData.get('aspect_ratio') as string) || ''
@@ -108,7 +110,6 @@ export async function POST(request: Request) {
     const rawProductType = (formData.get('product_type') as string) || ''
     const rawUserPrompt  = (formData.get('user_prompt') as string | null) || ''
 
-    // Moderation: sanitize + check user prompt before any heavy I/O
     const userPrompt = sanitizePrompt(rawUserPrompt)
     if (userPrompt) {
       const mod = checkPrompt(userPrompt)
@@ -124,10 +125,9 @@ export async function POST(request: Request) {
       : 'rings'
 
     const aspectRatio = (VALID_RATIOS as readonly string[]).includes(rawRatio)
-      ? rawRatio as '1:1' | '9:16'
+      ? rawRatio as '1:1' | '9:16' | '4:5'
       : '1:1'
 
-    // Validate model_id: allow static allowlist, user-custom-N pattern, or macro-shot
     const isMacroShot   = rawModelId !== null && isMacroShotId(rawModelId)
     const isCustomModel = !isMacroShot && rawModelId !== null && isCustomModelId(rawModelId)
     const modelId = isCustomModel
@@ -136,13 +136,12 @@ export async function POST(request: Request) {
       ? MACRO_SHOT_ID
       : (rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null)
 
-    // Validate product_type against allowlist
     const productType: ProductType = (VALID_PRODUCT_TYPES as Set<string>).has(rawProductType)
       ? rawProductType as ProductType
       : 'jewelry'
 
     if (!imageFile || imageFile.size === 0) {
-      return err('Файл изображения не найден. Пожалуйста, загрузите фото украшения.', 400)
+      return err('Файл изображения не найден. Пожалуйста, загрузите фото.', 400)
     }
 
     if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(imageFile.type)) {
@@ -154,17 +153,24 @@ export async function POST(request: Request) {
 
     if (imageFile.size > MAX_IMAGE_BYTES) {
       return err(
-        `Файл ${(imageFile.size / 1024 / 1024).toFixed(1)} МБ превышает лимит 10 МБ. ` +
-        'Сожмите изображение и попробуйте снова.',
+        `Файл ${(imageFile.size / 1024 / 1024).toFixed(1)} МБ превышает лимит 10 МБ.`,
         413
       )
     }
 
-    // ── 4. Upload source image ────────────────────────────────────────────────
+    const fileBytes = await imageFile.arrayBuffer()
+
+    // MED-NEW-1: verify actual file content via magic bytes (not just Content-Type)
+    try {
+      assertSafeImageBytes(new Uint8Array(fileBytes))
+    } catch (e) {
+      return err(e instanceof Error ? e.message : 'Недопустимый формат файла.', 400)
+    }
+
+    // ── 5. Upload source image ────────────────────────────────────────────────
     const rawExt    = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
     const safeExt   = (SAFE_IMAGE_EXTENSIONS as readonly string[]).includes(rawExt) ? rawExt : 'jpg'
     const inputPath = `${user.id}/${Date.now()}-source.${safeExt}`
-    const fileBytes = await imageFile.arrayBuffer()
 
     const { error: uploadErr } = await supabase.storage
       .from(INPUT_BUCKET)
@@ -175,7 +181,6 @@ export async function POST(request: Request) {
       return err('Ошибка загрузки файла. Проверьте соединение и попробуйте снова.', 500)
     }
 
-    // Signed URL valid for 1 h — long enough for Replicate to fetch the image
     const { data: signedData } = await supabase.storage
       .from(INPUT_BUCKET)
       .createSignedUrl(inputPath, 3600)
@@ -184,7 +189,7 @@ export async function POST(request: Request) {
       return err('Не удалось получить доступ к загруженному файлу.', 500)
     }
 
-    // ── 5. Create "processing" generation record ──────────────────────────────
+    // ── 6. Create "processing" generation record ──────────────────────────────
     const { data: genRaw, error: genInsertErr } = await supabase
       .from('generations')
       .insert({
@@ -209,19 +214,37 @@ export async function POST(request: Request) {
       return err('Ошибка создания задания. Попробуйте снова.', 500)
     }
 
-    const generationId = gen.id
+    const generationId  = gen.id
+    const serviceSupabase = createServiceClient()
 
-    // ── 6. Call Gemini ────────────────────────────────────────────────────────
-    // If a model was selected, read it from the local public/ folder (safe — path
-    // is derived from a compile-time allowlist, never from raw user input).
+    // ── 7. Atomic credit decrement BEFORE AI (MED-NEW-4) ─────────────────────
+    // Must use service client so auth.role() = 'service_role' — the trigger in
+    // 003_security.sql only allows credits_remaining updates from service_role.
+    // Returns -1 if no credits left (race condition: another request got the last one).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: creditsAfter, error: rpcErr } = await (serviceSupabase as any)
+      .rpc('decrement_credits', { p_user_id: user.id })
+
+    if (rpcErr) {
+      console.error('Credit decrement RPC error:', rpcErr)
+      return err('Ошибка списания кредита. Попробуйте снова.', 500)
+    }
+
+    if (creditsAfter === -1) {
+      // Race: another concurrent request used the last credit first
+      return err(
+        'Недостаточно кредитов. Пополните баланс в разделе «Настройки → Оплата».',
+        402
+      )
+    }
+
+    // ── 8. Load model image ───────────────────────────────────────────────────
     let modelImageBuffer: Buffer | undefined
     let modelMimeType:    string | undefined
 
-    // Macro-shot mode uses no model image — skip model loading entirely
     if (isMacroShot) {
-      // no-op: isMacroShot flag is passed to generateJewelryPhoto below
+      // no model image needed
     } else if (isCustomModel) {
-      // Load custom model from user's profile array
       const { data: profileCustom } = await supabase
         .from('profiles')
         .select('custom_model_urls')
@@ -229,20 +252,23 @@ export async function POST(request: Request) {
         .single()
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const urls: string[] = (profileCustom as any)?.custom_model_urls ?? []
-      const customIndex = getCustomModelIndex(rawModelId!)
-      const customUrl = urls[customIndex] ?? null
+      const urls: string[]  = (profileCustom as any)?.custom_model_urls ?? []
+      const customIndex     = getCustomModelIndex(rawModelId!)
+      // MED-NEW-6: getCustomModelIndex returns -1 for malformed IDs
+      const customUrl       = customIndex >= 0 ? (urls[customIndex] ?? null) : null
 
       if (customUrl) {
         try {
+          // HIGH-NEW-1: validate URL is a Supabase Storage URL before fetching (SSRF guard)
+          assertSafeStorageUrl(customUrl)
           const modelRes = await fetch(customUrl, { signal: AbortSignal.timeout(30_000) })
           if (modelRes.ok) {
             modelImageBuffer = Buffer.from(await modelRes.arrayBuffer())
             modelMimeType    = modelRes.headers.get('content-type')?.split(';')[0] ?? 'image/jpeg'
           }
         } catch {
-          // Custom model image unavailable — fall through to standalone mode
-          console.warn(`User ${user.id}: failed to fetch custom model image`)
+          // Custom model unavailable or unsafe URL — fall through to standalone mode
+          console.warn(`User ${user.id}: custom model image unavailable`)
         }
       }
     } else if (modelId) {
@@ -252,6 +278,7 @@ export async function POST(request: Request) {
       modelMimeType    = modelPhoto.filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
     }
 
+    // ── 9. Call Gemini ────────────────────────────────────────────────────────
     let aiImageBuffer: Buffer
     let aiMimeType:    string
     try {
@@ -266,34 +293,31 @@ export async function POST(request: Request) {
       aiImageBuffer = result.imageBuffer
       aiMimeType    = result.mimeType
     } catch (aiErr) {
-      // HIGH-4: store only a safe user-facing message, never a raw exception string
+      // AI failed — refund the credit that was debited at step 7
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (serviceSupabase as any).rpc('refund_credit', { p_user_id: user.id })
+
       const safeErrMsg = aiErr instanceof Error
         ? aiErr.message.slice(0, 200)
         : 'Ошибка генерации.'
+
       await supabase
         .from('generations')
         .update({ status: 'failed', error_message: safeErrMsg } as never)
         .eq('id', generationId)
 
       console.error('AI generation error:', aiErr)
-      return err(
-        aiErr instanceof Error
-          ? aiErr.message
-          : 'Ошибка генерации. Попробуйте снова или выберите другой шаблон.',
-        500
-      )
+      // HIGH-NEW-2: return only the already-safe message from gemini.ts (no raw API details)
+      return err(safeErrMsg, 500)
     }
 
-    // ── 7. Upload Gemini result to our Storage ────────────────────────────────
-    // Use service-role client to bypass RLS — server-side operation, safe.
-    const serviceSupabase = createServiceClient()
+    // ── 10. Upload AI result ──────────────────────────────────────────────────
     const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'
     const outputPath = `${user.id}/${generationId}-result.${ext}`
-    let resultPublicUrl = ''
 
     const { error: resultUploadErr } = await serviceSupabase.storage
       .from(OUTPUT_BUCKET)
-      .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: true })
+      .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: false })
 
     if (resultUploadErr) {
       console.error('Result upload error:', resultUploadErr)
@@ -301,45 +325,25 @@ export async function POST(request: Request) {
     }
 
     const { data: pub } = serviceSupabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
-    resultPublicUrl = pub.publicUrl
+    const resultPublicUrl = pub.publicUrl
 
-    // ── 8. Mark generation as completed ──────────────────────────────────────
+    // ── 11. Mark generation completed ────────────────────────────────────────
     await supabase
       .from('generations')
       .update({ status: 'completed', output_image_url: resultPublicUrl } as never)
       .eq('id', generationId)
 
-    // ── 9. Atomic credit decrement ────────────────────────────────────────────
-    // Uses a DB function that does UPDATE ... WHERE credits_remaining > 0 RETURNING
-    // Returns -1 if credits ran out between our pre-check and now (concurrent request)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: creditsAfter, error: rpcErr } = await (supabase as any)
-      .rpc('decrement_credits', { p_user_id: user.id })
-
-    if (rpcErr) {
-      // Non-fatal: generation succeeded, just log the accounting issue
-      console.error('Credit decrement RPC error:', rpcErr)
-    }
-
-    if (creditsAfter === -1) {
-      // Edge case: another request used the last credit concurrently
-      console.warn(`User ${user.id}: concurrent request used last credit`)
-    }
-
-    // ── 10. Return success ────────────────────────────────────────────────────
     return NextResponse.json({
       success:          true,
       generationId,
       outputUrl:        resultPublicUrl,
-      creditsRemaining: creditsAfter ?? Math.max(0, profile.credits_remaining - 1),
+      creditsRemaining: creditsAfter,
     })
   } catch (fatal) {
     console.error('Generate route fatal error:', fatal)
     return err('Внутренняя ошибка сервера. Попробуйте позже.', 500)
   }
 }
-
-// ── Helper ────────────────────────────────────────────────────────────────────
 
 function err(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })

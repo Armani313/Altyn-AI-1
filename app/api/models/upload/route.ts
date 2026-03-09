@@ -19,6 +19,8 @@ import {
   SAFE_IMAGE_EXTENSIONS,
   MAX_CUSTOM_MODELS,
 } from '@/lib/constants'
+import { assertSafeImageBytes } from '@/lib/utils/security'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 30
 export const runtime     = 'nodejs'
@@ -32,6 +34,12 @@ export async function POST(request: Request) {
     // ── Auth ──────────────────────────────────────────────────────────────────
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return err('Необходима авторизация.', 401)
+
+    // HIGH-NEW-4: rate limit — 10 model uploads per 5 minutes per user
+    const rl = checkRateLimit('models-upload', user.id, 10, 5 * 60_000)
+    if (!rl.ok) {
+      return err(`Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.`, 429)
+    }
 
     // ── Parse form ────────────────────────────────────────────────────────────
     let formData: FormData
@@ -73,6 +81,13 @@ export async function POST(request: Request) {
 
     const serviceSupabase = createServiceClient()
     const fileBytes = await imageFile.arrayBuffer()
+
+    // MED-NEW-1: verify actual file content via magic bytes
+    try {
+      assertSafeImageBytes(new Uint8Array(fileBytes))
+    } catch (e) {
+      return err(e instanceof Error ? e.message : 'Недопустимый формат файла.', 400)
+    }
 
     const { error: uploadErr } = await serviceSupabase.storage
       .from(OUTPUT_BUCKET)

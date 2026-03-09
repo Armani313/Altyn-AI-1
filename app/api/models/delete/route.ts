@@ -21,6 +21,11 @@ export async function DELETE(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return err('Необходима авторизация.', 401)
 
+    // LOW-NEW-6: validate Content-Type before parsing JSON
+    if (!request.headers.get('content-type')?.includes('application/json')) {
+      return err('Ожидается Content-Type: application/json.', 415)
+    }
+
     // ── Parse body ────────────────────────────────────────────────────────────
     let index: number
     try {

@@ -21,6 +21,7 @@ import {
   ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
   MODEL_PHOTO_MAP, VALID_MODEL_IDS,
 } from '@/lib/constants'
+import { assertSafeImageBytes } from '@/lib/utils/security'
 
 export const maxDuration = 60
 export const runtime = 'nodejs'
@@ -107,6 +108,13 @@ export async function POST(request: Request) {
     const inputPath = `demo/${Date.now()}-source.${safeExt}`
     const fileBytes = await imageFile.arrayBuffer()
 
+    // MED-NEW-1: verify actual file content via magic bytes
+    try {
+      assertSafeImageBytes(new Uint8Array(fileBytes))
+    } catch (e) {
+      return err(e instanceof Error ? e.message : 'Недопустимый формат файла.', 400)
+    }
+
     const { error: uploadErr } = await supabase.storage
       .from(INPUT_BUCKET)
       .upload(inputPath, fileBytes, { contentType: imageFile.type, upsert: false })
@@ -147,21 +155,21 @@ export async function POST(request: Request) {
       aiMimeType    = result.mimeType
     } catch (aiErr) {
       console.error('Demo AI generation error:', aiErr)
-      return err(
-        aiErr instanceof Error
-          ? aiErr.message
-          : 'Ошибка генерации. Попробуйте снова или выберите другой тип украшения.',
-        500
-      )
+      // HIGH-NEW-2: truncate error to 200 chars — never leak raw API internals
+      const safeMsg = aiErr instanceof Error
+        ? aiErr.message.slice(0, 200)
+        : 'Ошибка генерации. Попробуйте снова или выберите другой тип украшения.'
+      return err(safeMsg, 500)
     }
 
     // ── Upload Gemini result to our Storage ───────────────────────────────────
+    // MED-NEW-2: use crypto.randomUUID() to avoid timestamp collision; upsert:false
     const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'
-    const outputPath = `demo/${Date.now()}-result.${ext}`
+    const outputPath = `demo/${crypto.randomUUID()}-result.${ext}`
 
     const { error: resUploadErr } = await supabase.storage
       .from(OUTPUT_BUCKET)
-      .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: true })
+      .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: false })
 
     if (resUploadErr) {
       console.error('Demo result upload error:', resUploadErr)

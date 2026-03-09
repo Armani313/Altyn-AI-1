@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2, ChevronDown, Wand2 } from 'lucide-react'
+import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2, ChevronDown, Wand2, ScanLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
-import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex } from '@/lib/constants'
+import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex, isMacroShotId } from '@/lib/constants'
 
 type AspectRatio = '1:1' | '9:16'
 
@@ -64,9 +64,10 @@ function ResultCard({
   onExpand?:       () => void
 }) {
   const [isDownloading, setIsDownloading] = useState(false)
-  const isCustom     = isCustomModelId(result.modelId)
+  const isMacro      = isMacroShotId(result.modelId)
+  const isCustom     = !isMacro && isCustomModelId(result.modelId)
   const customIndex  = isCustom ? getCustomModelIndex(result.modelId) : -1
-  const model        = isCustom ? null : MODEL_PHOTO_MAP[result.modelId]
+  const model        = isCustom || isMacro ? null : MODEL_PHOTO_MAP[result.modelId]
 
   const handleDownload = async () => {
     if (!result.resultUrl || isDownloading) return
@@ -144,7 +145,12 @@ function ResultCard({
       )}
 
       {/* Model name badge — top-left */}
-      {(model || isCustom) && (
+      {isMacro ? (
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
+          <ScanLine className="w-3 h-3 text-white flex-shrink-0" />
+          <span className="text-[10px] text-white font-medium">Макро</span>
+        </div>
+      ) : (model || isCustom) && (
         <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 max-w-[80%]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

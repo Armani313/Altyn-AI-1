@@ -356,6 +356,32 @@ const BAGS_STANDALONE_PROMPT =
   'CRITICAL: The bag in the output must be IDENTICAL to the reference — preserve ' +
   'exact shape, color, material, hardware, and every design detail.'
 
+// ── Macro / close-up product photography ─────────────────────────────────────
+
+const MACRO_PROMPT =
+  'You are a professional macro and luxury product photographer.\n\n' +
+
+  'Examine this product photo carefully. Identify the exact item — its type, ' +
+  'materials, colors, textures, and every fine detail.\n\n' +
+
+  'Generate a stunning macro close-up product photograph:\n' +
+  '  • Extreme close-up that reveals the finest craftsmanship details: texture, ' +
+  'surface finish, stones, stitching, hardware, or material quality\n' +
+  '  • Tack-sharp focus on the most visually compelling element\n' +
+  '  • Soft, directional studio lighting (one main light + fill) that enhances ' +
+  'form, depth, and material texture — minimal harsh shadows\n' +
+  '  • Clean, neutral background: pure white, off-white, or soft cream gradient\n' +
+  '  • Natural surface reflection or subtle shadow beneath the object for depth\n' +
+  '  • Composition: product centered or rule-of-thirds, slight angle if it reveals ' +
+  'more detail, never flat-lay unless it is a flat textile\n\n' +
+
+  'Style: 8k resolution, macro lens look (shallow depth of field), luxury product ' +
+  'catalogue photography, magazine-quality editorial.\n\n' +
+
+  'CRITICAL: The product in the output must be IDENTICAL to the reference — ' +
+  'preserve every color, material, proportion, and design detail. Do NOT add ' +
+  'any props, flowers, or decorative elements unless they were in the original photo.'
+
 // ── Prompt lookup maps ────────────────────────────────────────────────────────
 
 const COMPOSITE_PROMPTS: Record<ProductType, string> = {
@@ -391,6 +417,8 @@ export interface GenerationParams {
   productType?:      ProductType
   /** Optional sanitized user style hint (already passed through moderation) */
   userPrompt?:       string
+  /** When true, generates a macro/close-up product shot instead of lifestyle */
+  isMacroShot?:      boolean
 }
 
 export interface GenerationResult {
@@ -439,7 +467,13 @@ export async function generateJewelryPhoto(
 
   const promptSuffix = params.userPrompt ? buildUserPromptSuffix(params.userPrompt) : ''
 
-  if (params.modelImageBuffer && params.modelMimeType) {
+  if (params.isMacroShot) {
+    // Macro mode: standalone close-up product shot, never uses a model image
+    parts = [
+      { inlineData: { mimeType: productMimeType, data: productBase64 } },
+      { text: MACRO_PROMPT + promptSuffix },
+    ]
+  } else if (params.modelImageBuffer && params.modelMimeType) {
     const modelBase64 = params.modelImageBuffer.toString('base64')
     parts = [
       { inlineData: { mimeType: params.modelMimeType, data: modelBase64 } },

@@ -37,6 +37,7 @@ import {
   ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
   MODEL_PHOTO_MAP, VALID_MODEL_IDS, VALID_PRODUCT_TYPES,
   isCustomModelId, getCustomModelIndex,
+  isMacroShotId, MACRO_SHOT_ID,
   type ProductType,
 } from '@/lib/constants'
 import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
@@ -126,10 +127,13 @@ export async function POST(request: Request) {
       ? rawRatio as '1:1' | '9:16'
       : '1:1'
 
-    // Validate model_id: allow static allowlist OR user-custom-N pattern
-    const isCustomModel = rawModelId !== null && isCustomModelId(rawModelId)
+    // Validate model_id: allow static allowlist, user-custom-N pattern, or macro-shot
+    const isMacroShot   = rawModelId !== null && isMacroShotId(rawModelId)
+    const isCustomModel = !isMacroShot && rawModelId !== null && isCustomModelId(rawModelId)
     const modelId = isCustomModel
       ? null
+      : isMacroShot
+      ? MACRO_SHOT_ID
       : (rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null)
 
     // Validate product_type against allowlist
@@ -213,7 +217,10 @@ export async function POST(request: Request) {
     let modelImageBuffer: Buffer | undefined
     let modelMimeType:    string | undefined
 
-    if (isCustomModel) {
+    // Macro-shot mode uses no model image — skip model loading entirely
+    if (isMacroShot) {
+      // no-op: isMacroShot flag is passed to generateJewelryPhoto below
+    } else if (isCustomModel) {
       // Load custom model from user's profile array
       const { data: profileCustom } = await supabase
         .from('profiles')
@@ -254,6 +261,7 @@ export async function POST(request: Request) {
         modelMimeType,
         productType,
         userPrompt:       userPrompt || undefined,
+        isMacroShot:      isMacroShot || undefined,
       })
       aiImageBuffer = result.imageBuffer
       aiMimeType    = result.mimeType

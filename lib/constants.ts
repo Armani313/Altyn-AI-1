@@ -81,3 +81,12 @@ export const MODEL_PHOTO_MAP: Record<string, ModelPhoto> = Object.fromEntries(
 
 /** Set of valid model IDs — use for allowlist validation in API routes. */
 export const VALID_MODEL_IDS = new Set(MODEL_PHOTOS.map((m) => m.id))
+
+// ── Macro shot mode ───────────────────────────────────────────────────────────
+/** Special model ID that triggers close-up product photography (no human model). */
+export const MACRO_SHOT_ID = 'macro-shot' as const
+
+/** Returns true if the model ID is the macro-shot special mode. */
+export function isMacroShotId(id: string): boolean {
+  return id === MACRO_SHOT_ID
+}

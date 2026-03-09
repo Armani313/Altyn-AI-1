@@ -5,7 +5,7 @@ import { Sparkles, Lock, Check, Upload, Loader2, User, X, ScanLine } from 'lucid
 import {
   MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelCategory, type ProductType,
   MAX_CUSTOM_MODELS, makeCustomModelId, isCustomModelId,
-  MACRO_SHOT_ID, isMacroShotId,
+  MACRO_SHOT_ID,
 } from '@/lib/constants'
 
 type TabCategory = 'all' | ModelCategory

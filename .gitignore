@@ -35,6 +35,8 @@ yarn-error.log*
 
 # ── OS & editor ──────────────────────────────────────────────────────────────
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
 *.pem
 .vercel

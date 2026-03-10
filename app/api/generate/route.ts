@@ -32,7 +32,8 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { generateJewelryPhoto } from '@/lib/ai/gemini'
+import { aiQueue } from '@/lib/queue'
+import type { GenerationParams } from '@/lib/ai/gemini'
 import {
   ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
   MODEL_PHOTO_MAP, VALID_MODEL_IDS, VALID_PRODUCT_TYPES,
@@ -40,6 +41,7 @@ import {
   isMacroShotId, MACRO_SHOT_ID,
   type ProductType,
 } from '@/lib/constants'
+import { CARD_TEMPLATE_MAP } from '@/lib/card-templates'
 import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
 import { assertSafeStorageUrl, assertSafeImageBytes } from '@/lib/utils/security'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -103,12 +105,24 @@ export async function POST(request: Request) {
 
     const imageFile = formData.get('image') as File | null
 
-    const rawTemplateId  = (formData.get('template_id') as string | null) || null
-    const rawCategory    = (formData.get('template_category') as string) || ''
-    const rawRatio       = (formData.get('aspect_ratio') as string) || ''
-    const rawModelId     = (formData.get('model_id') as string | null) || null
-    const rawProductType = (formData.get('product_type') as string) || ''
-    const rawUserPrompt  = (formData.get('user_prompt') as string | null) || ''
+    const rawTemplateId   = (formData.get('template_id') as string | null) || null
+    const rawCategory     = (formData.get('template_category') as string) || ''
+    const rawRatio        = (formData.get('aspect_ratio') as string) || ''
+    const rawModelId      = (formData.get('model_id') as string | null) || null
+    const rawProductType  = (formData.get('product_type') as string) || ''
+    const rawUserPrompt   = (formData.get('user_prompt') as string | null) || ''
+    const rawGenerateMode = (formData.get('generate_mode') as string | null) || ''
+    const rawProductName  = ((formData.get('product_name') as string | null) || '').slice(0, 100)
+    const rawBrandName    = ((formData.get('brand_name')   as string | null) || '').slice(0, 60)
+    const rawProductDesc  = ((formData.get('product_description') as string | null) || '').slice(0, 500)
+
+    const isCardFree = rawGenerateMode === 'card-free'
+
+    // Card template ID — validated against known keys (e.g. 'tpl-01')
+    const CARD_TPL_REGEX = /^tpl-\d+$/
+    const cardTemplateId = rawTemplateId !== null && CARD_TPL_REGEX.test(rawTemplateId)
+      ? rawTemplateId
+      : null
 
     const userPrompt = sanitizePrompt(rawUserPrompt)
     if (userPrompt) {
@@ -278,38 +292,75 @@ export async function POST(request: Request) {
       modelMimeType    = modelPhoto.filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
     }
 
-    // ── 9. Call Gemini ────────────────────────────────────────────────────────
+    // ── 8b. Load card template image ─────────────────────────────────────────
+    let cardTemplateBuffer: Buffer | undefined
+    let cardTemplateMime:   string | undefined
+
+    if (cardTemplateId && !isCardFree) {
+      const tpl = CARD_TEMPLATE_MAP[cardTemplateId]
+      if (tpl) {
+        try {
+          // imageUrl is URL-encoded (e.g. '/exCardTemplate/1%20(1).webp') — decode for fs
+          const tplRelPath = decodeURIComponent(tpl.imageUrl)
+          const tplAbsPath = path.join(process.cwd(), 'public', tplRelPath)
+          cardTemplateBuffer = await fs.readFile(tplAbsPath)
+          const ext = tplRelPath.split('.').pop()?.toLowerCase() ?? 'webp'
+          cardTemplateMime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                           : ext === 'png'                   ? 'image/png'
+                           :                                   'image/webp'
+        } catch {
+          console.warn(`Card template image not found: ${cardTemplateId}`)
+        }
+      }
+    }
+
+    // ── 9. Enqueue AI job and wait for result ────────────────────────────────
+    const aiParams: GenerationParams = {
+      imageUrl:           signedData.signedUrl,
+      modelImageBuffer,
+      modelMimeType,
+      productType,
+      userPrompt:         userPrompt || undefined,
+      isMacroShot:        isMacroShot || undefined,
+      isCardFree:         isCardFree  || undefined,
+      cardTemplateBuffer,
+      cardTemplateMime,
+      cardProductName:    (isCardFree || cardTemplateId) ? rawProductName : undefined,
+      cardBrandName:      (isCardFree || cardTemplateId) ? rawBrandName   : undefined,
+      cardProductDesc:    (isCardFree || cardTemplateId) ? rawProductDesc : undefined,
+    }
+
+    const queuedJob = aiQueue.enqueue({
+      userId:     user.id,
+      providerId: 'gemini',
+      type:       'image',
+      params:     aiParams,
+    })
+
+    const completedJob = await aiQueue.waitForJob(queuedJob.id, 55_000)
+
     let aiImageBuffer: Buffer
     let aiMimeType:    string
-    try {
-      const result = await generateJewelryPhoto({
-        imageUrl:         signedData.signedUrl,
-        modelImageBuffer,
-        modelMimeType,
-        productType,
-        userPrompt:       userPrompt || undefined,
-        isMacroShot:      isMacroShot || undefined,
-      })
-      aiImageBuffer = result.imageBuffer
-      aiMimeType    = result.mimeType
-    } catch (aiErr) {
-      // AI failed — refund the credit that was debited at step 7
+
+    if (completedJob.status !== 'completed' || !completedJob.result?.imageBuffer) {
+      // Job failed or timed out — refund credit
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (serviceSupabase as any).rpc('refund_credit', { p_user_id: user.id })
 
-      const safeErrMsg = aiErr instanceof Error
-        ? aiErr.message.slice(0, 200)
-        : 'Ошибка генерации.'
+      const safeErrMsg = (completedJob.error ?? 'Ошибка генерации. Попробуйте снова.').slice(0, 200)
 
       await supabase
         .from('generations')
         .update({ status: 'failed', error_message: safeErrMsg } as never)
         .eq('id', generationId)
 
-      console.error('AI generation error:', aiErr)
-      // HIGH-NEW-2: return only the already-safe message from gemini.ts (no raw API details)
-      return err(safeErrMsg, 500)
+      console.error('[Generate] AI job failed:', safeErrMsg)
+      const httpStatus = completedJob.status === 'queued' ? 504 : 500
+      return err(safeErrMsg, httpStatus)
     }
+
+    aiImageBuffer = completedJob.result.imageBuffer
+    aiMimeType    = completedJob.result.mimeType ?? 'image/jpeg'
 
     // ── 10. Upload AI result ──────────────────────────────────────────────────
     const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'

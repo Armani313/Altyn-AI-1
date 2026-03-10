@@ -8,7 +8,7 @@ import { CardProductForm }    from '@/components/cards/card-product-form'
 import { CardTemplatePicker } from '@/components/cards/card-template-picker'
 import { CardResultViewer, type CardResult } from '@/components/cards/card-result-viewer'
 import { createClient }       from '@/lib/supabase/client'
-import { MAX_CARD_TEMPLATES, CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
+import { MAX_CARD_TEMPLATES, CUSTOM_CARD_TEMPLATE_ID, AI_FREE_CARD_ID } from '@/lib/card-templates'
 
 type AspectRatio = '1:1' | '4:5' | '9:16'
 type MobileStep  = 1 | 2 | 3
@@ -86,56 +86,62 @@ export default function CardsPage() {
     async (templateIds: string[]) => {
       if (!uploadedFile || templateIds.length === 0) return
 
-      await Promise.allSettled(
-        templateIds.map(async (templateId) => {
-          try {
-            const fd = new FormData()
-            fd.append('image',        uploadedFile)
-            fd.append('template_id',  templateId)
-            fd.append('aspect_ratio', aspectRatio)
-            if (productName.trim())        fd.append('product_name',        productName.trim())
-            if (brandName.trim())          fd.append('brand_name',          brandName.trim())
-            if (productDescription.trim()) fd.append('product_description', productDescription.trim())
-            if (templateId === CUSTOM_CARD_TEMPLATE_ID && customTemplateFile) {
-              fd.append('custom_template', customTemplateFile)
-            }
+      // Sequential requests to avoid hitting Gemini rate limits
+      for (let i = 0; i < templateIds.length; i++) {
+        const templateId = templateIds[i]
+        // Small delay between requests (skip before first)
+        if (i > 0) await new Promise((r) => setTimeout(r, 3000))
 
-            const res  = await fetch('/api/generate', { method: 'POST', body: fd })
-            const data = await res.json()
-
-            if (!res.ok) {
-              setResults((prev) =>
-                prev.map((r) =>
-                  r.templateId === templateId
-                    ? { ...r, status: 'error', error: data.error ?? 'Ошибка генерации. Попробуйте снова.' }
-                    : r
-                )
-              )
-              return
-            }
-
-            setResults((prev) =>
-              prev.map((r) =>
-                r.templateId === templateId
-                  ? { ...r, status: 'done', resultUrl: data.outputUrl }
-                  : r
-              )
-            )
-
-            if (typeof data.creditsRemaining === 'number') {
-              setCreditsRemaining(data.creditsRemaining)
-            }
-          } catch {
-            setResults((prev) =>
-              prev.map((r) =>
-                r.templateId === templateId
-                  ? { ...r, status: 'error', error: 'Ошибка соединения. Проверьте интернет.' }
-                  : r
-              )
-            )
+        try {
+          const fd = new FormData()
+          fd.append('image',        uploadedFile)
+          fd.append('template_id',  templateId)
+          fd.append('aspect_ratio', aspectRatio)
+          if (productName.trim())        fd.append('product_name',        productName.trim())
+          if (brandName.trim())          fd.append('brand_name',          brandName.trim())
+          if (productDescription.trim()) fd.append('product_description', productDescription.trim())
+          if (templateId === AI_FREE_CARD_ID) {
+            fd.append('generate_mode', 'card-free')
           }
-        })
-      )
+          if (templateId === CUSTOM_CARD_TEMPLATE_ID && customTemplateFile) {
+            fd.append('custom_template', customTemplateFile)
+          }
+
+          const res  = await fetch('/api/generate', { method: 'POST', body: fd })
+          const data = await res.json()
+
+          if (!res.ok) {
+            setResults((prev) =>
+              prev.map((r) =>
+                r.templateId === templateId
+                  ? { ...r, status: 'error', error: data.error ?? 'Ошибка генерации. Попробуйте снова.' }
+                  : r
+              )
+            )
+            continue
+          }
+
+          setResults((prev) =>
+            prev.map((r) =>
+              r.templateId === templateId
+                ? { ...r, status: 'done', resultUrl: data.outputUrl }
+                : r
+            )
+          )
+
+          if (typeof data.creditsRemaining === 'number') {
+            setCreditsRemaining(data.creditsRemaining)
+          }
+        } catch {
+          setResults((prev) =>
+            prev.map((r) =>
+              r.templateId === templateId
+                ? { ...r, status: 'error', error: 'Ошибка соединения. Проверьте интернет.' }
+                : r
+            )
+          )
+        }
+      }
     },
     [uploadedFile, aspectRatio, productName, brandName, productDescription, customTemplateFile]
   )

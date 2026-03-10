@@ -54,3 +54,4 @@ export const CARD_TEMPLATE_CATEGORIES: { id: CardCategory; label: string }[] = [
 
 export const MAX_CARD_TEMPLATES = 3
 export const CUSTOM_CARD_TEMPLATE_ID = 'custom-card-template'
+export const AI_FREE_CARD_ID = 'ai-free-card'

@@ -1,11 +1,12 @@
 'use client'
 
 import { useRef } from 'react'
-import { Sparkles, Lock, Check, Upload, X } from 'lucide-react'
+import { Sparkles, Lock, Check, Upload, X, Wand2 } from 'lucide-react'
 import {
   CARD_TEMPLATES,
   MAX_CARD_TEMPLATES,
   CUSTOM_CARD_TEMPLATE_ID,
+  AI_FREE_CARD_ID,
 } from '@/lib/card-templates'
 
 interface CardTemplatePickerProps {
@@ -175,6 +176,63 @@ export function CardTemplatePicker({
             </p>
           </div>
         </button>
+
+        {/* ── AI Free card ────────────────────────────────────────────────── */}
+        {(() => {
+          const isSelected = selectedIds.includes(AI_FREE_CARD_ID)
+          const isDisabled = disabled || (atMax && !isSelected)
+          const selIdx     = selectedIds.indexOf(AI_FREE_CARD_ID)
+          return (
+            <button
+              onClick={() => !isDisabled && toggle(AI_FREE_CARD_ID)}
+              disabled={isDisabled}
+              className={`
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200
+                ${isSelected
+                  ? 'border-primary shadow-glow scale-[0.97]'
+                  : isDisabled
+                  ? 'border-cream-200 opacity-50 cursor-not-allowed'
+                  : 'border-transparent hover:border-rose-gold-200 hover:shadow-soft'
+                }
+              `}
+            >
+              <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-violet-100 via-rose-gold-50 to-amber-50">
+                {/* Animated shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-400/10 via-rose-gold-300/20 to-amber-300/10" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3">
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform duration-300 ${isSelected ? 'gradient-rose-gold scale-110' : 'bg-white/80 group-hover:scale-110'}`}>
+                    <Wand2 className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-violet-500 group-hover:text-rose-gold-600'} transition-colors`} />
+                  </div>
+                  <p className="text-[10px] font-bold text-center leading-snug text-violet-700 group-hover:text-rose-gold-700 transition-colors">
+                    ИИ создаёт<br />без шаблона
+                  </p>
+                </div>
+              </div>
+
+              {isSelected && (
+                <div className="absolute inset-0 bg-primary/10 flex items-start justify-end p-2">
+                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-soft">
+                    <span className="text-white text-[10px] font-bold">{selIdx + 1}</span>
+                  </div>
+                </div>
+              )}
+
+              {isSelected && (
+                <div className="absolute bottom-7 left-1.5">
+                  <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                </div>
+              )}
+
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent px-1.5 py-2">
+                <p className="text-[9px] font-medium text-white text-center leading-tight">
+                  Свободная генерация
+                </p>
+              </div>
+            </button>
+          )
+        })()}
 
         {/* ── Preset template cards ───────────────────────────────────────── */}
         {filtered.map((template) => {

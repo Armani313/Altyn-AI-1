@@ -382,6 +382,132 @@ const MACRO_PROMPT =
   'preserve every color, material, proportion, and design detail. Do NOT add ' +
   'any props, flowers, or decorative elements unless they were in the original photo.'
 
+// ── Free card generation ──────────────────────────────────────────────────────
+
+export function buildCardFreePrompt(
+  productName?: string,
+  brandName?: string,
+  productDescription?: string,
+): string {
+  const name  = productName?.trim()        || ''
+  const brand = brandName?.trim()          || ''
+  const desc  = productDescription?.trim() || ''
+
+  const hasText = !!(name || brand || desc)
+
+  // Bullet lines for the info panel
+  const infoBullets: string[] = []
+  if (brand) infoBullets.push(`Brand / Бренд: ${brand}`)
+  if (name)  infoBullets.push(`Name / Название: ${name}`)
+  if (desc) {
+    // Split description into short selling points (up to 3)
+    const points = desc.split(/[.,;]/).map(s => s.trim()).filter(Boolean).slice(0, 3)
+    points.forEach(p => infoBullets.push(`• ${p}`))
+  }
+
+  const infoBlock = infoBullets.length > 0
+    ? infoBullets.map(b => `      "${b}"`).join('\n')
+    : ''
+
+  return (
+    'You are a world-class e-commerce product card designer. Your goal is to create a single image that is a complete, sales-ready product card.\n\n' +
+
+    'STEP 1 — ANALYZE THE PRODUCT:\n' +
+    '  • Identify the exact product type (ring, necklace, earring, bracelet, watch, bag, clothing, etc.)\n' +
+    '  • Memorize every detail: shape, color, material, stone, texture, finish\n\n' +
+
+    'STEP 2 — COMPOSE THE CARD LAYOUT (two-zone design):\n' +
+    '  ZONE A — PRODUCT PHOTO (upper ~65% of the canvas):\n' +
+    '    • Place the product centered on a clean, elegant background\n' +
+    '    • Background: soft cream white (#FAF8F5) or a gentle gradient that flatters the product\n' +
+    '    • Professional soft-box studio lighting: main light from upper-left, subtle fill light\n' +
+    '    • Product must be sharp, detailed, luxurious — this is the hero\n' +
+    '    • Add a subtle drop shadow beneath the product for depth\n' +
+    '    • Slight 3/4 angle if it reveals more of the product\'s design\n\n' +
+    (hasText
+      ? '  ZONE B — INFORMATION PANEL (lower ~35% of the canvas):\n' +
+        '    • Solid or subtle gradient bar in a color that complements the product (dark charcoal, deep navy, warm taupe, or elegant ivory)\n' +
+        '    • White or contrasting text, clean sans-serif font, well-spaced\n' +
+        '    • Display ALL of the following lines clearly, one per line:\n' +
+        infoBlock + '\n' +
+        '    • Text must be fully legible, properly sized (not too small), no overlapping\n' +
+        '    • A thin decorative divider line between Zone A and Zone B\n\n'
+      : '  ZONE B — BRANDING STRIP (lower ~20% of the canvas):\n' +
+        '    • Soft neutral footer bar\n' +
+        '    • Clean minimal design, no text needed\n\n'
+    ) +
+    'STEP 3 — FINAL POLISH:\n' +
+    '  • The two zones must form one cohesive, professional card image\n' +
+    '  • Overall aesthetic: premium retail catalog, luxury brand quality\n' +
+    '  • Fill the ENTIRE canvas edge-to-edge — no white borders\n\n' +
+
+    'CRITICAL RULES:\n' +
+    '  • Product must be IDENTICAL to the reference photo — same colors, material, shape, every detail\n' +
+    '  • ALL text in Zone B must appear in the final image — this is mandatory\n' +
+    '  • Do NOT add flowers, props, or decorations not in the original photo\n' +
+    '  • Resolution: 4K sharp, no blur, no artifacts'
+  )
+}
+
+// ── Template-based card generation ───────────────────────────────────────────
+
+export function buildCardTemplatePrompt(
+  productName?: string,
+  brandName?: string,
+  productDescription?: string,
+): string {
+  const name  = productName?.trim()  || ''
+  const brand = brandName?.trim()    || ''
+  const desc  = productDescription?.trim() || ''
+
+  const textBlock = [
+    brand ? `  • Brand: "${brand}"` : '',
+    name  ? `  • Product name: "${name}"` : '',
+    desc  ? `  • Key selling points: ${desc}` : '',
+  ].filter(Boolean).join('\n')
+
+  return (
+    'You are an expert e-commerce product card designer for premium marketplaces (Kaspi, Wildberries, Ozon).\n\n' +
+
+    'You are given TWO images:\n' +
+    '• Image 1: A CARD TEMPLATE — this is your visual blueprint. It defines the layout, background style, color palette, composition, and overall mood.\n' +
+    '• Image 2: A PRODUCT PHOTO — this is the item you must feature on the card.\n\n' +
+
+    'STEP 1 — READ THE TEMPLATE:\n' +
+    '  • Identify the exact background (solid color, gradient, texture, pattern — note colors precisely)\n' +
+    '  • Note the product placement zone (center, lower-third, left-offset, etc.)\n' +
+    '  • Note any decorative elements: shadows, geometric shapes, lines, frames\n' +
+    '  • Note text zones: where brand/product name/price/badges are positioned\n' +
+    '  • Capture the overall mood: minimalist, luxury, energetic, soft, bold, etc.\n\n' +
+
+    'STEP 2 — ANALYZE THE PRODUCT:\n' +
+    '  • Identify the exact product type (ring, necklace, earrings, bracelet, watch, bag, etc.)\n' +
+    '  • Memorize every detail: shape, color, material, finish, stone, texture\n' +
+    '  • Note the best angle to showcase this specific product\n\n' +
+
+    'STEP 3 — CREATE THE PRODUCT CARD:\n' +
+    '  • Recreate the template\'s background, color scheme, and layout EXACTLY\n' +
+    '  • Place the product in the same compositional zone as the template\n' +
+    '  • Apply professional studio lighting that matches the template\'s light mood\n' +
+    '  • Give the product a beautiful, sharp close-up with correct shadows and reflections\n' +
+    '  • Reproduce any decorative elements from the template (shapes, lines, gradients)\n' +
+    (textBlock
+      ? '  • Integrate the following product information as clean, elegant text in the template\'s text zones:\n' +
+        textBlock + '\n' +
+        '  • Use typography that matches the template\'s visual style\n'
+      : ''
+    ) +
+    '  • Result: a polished, publication-ready product card that looks like the template but features THIS product\n\n' +
+
+    'CRITICAL RULES:\n' +
+    '  • The product must be PIXEL-PERFECT identical to Image 2 — preserve every color, material, shape, proportion\n' +
+    '  • The background and layout must closely follow Image 1\n' +
+    '  • Output must fill the entire canvas — no white borders or empty areas\n' +
+    '  • Resolution: sharp, 4K quality, zero blur or artifacts\n' +
+    '  • Do NOT add props or decorative objects not present in the template'
+  )
+}
+
 // ── Prompt lookup maps ────────────────────────────────────────────────────────
 
 const COMPOSITE_PROMPTS: Record<ProductType, string> = {
@@ -419,6 +545,18 @@ export interface GenerationParams {
   userPrompt?:       string
   /** When true, generates a macro/close-up product shot instead of lifestyle */
   isMacroShot?:      boolean
+  /** When true, generates a full product card without a template */
+  isCardFree?:          boolean
+  /** Card template image buffer — enables template-based card generation */
+  cardTemplateBuffer?:  Buffer
+  /** MIME type of cardTemplateBuffer */
+  cardTemplateMime?:    string
+  /** Product name for card modes */
+  cardProductName?:     string
+  /** Brand name for card modes */
+  cardBrandName?:       string
+  /** Product description for card modes */
+  cardProductDesc?:     string
 }
 
 export interface GenerationResult {
@@ -470,7 +608,31 @@ export async function generateJewelryPhoto(
 
   const promptSuffix = params.userPrompt ? buildUserPromptSuffix(params.userPrompt) : ''
 
-  if (params.isMacroShot) {
+  if (params.cardTemplateBuffer && params.cardTemplateMime) {
+    // Template card mode: use the selected card template as layout reference
+    const templateBase64 = params.cardTemplateBuffer.toString('base64')
+    const cardPrompt = buildCardTemplatePrompt(
+      params.cardProductName,
+      params.cardBrandName,
+      params.cardProductDesc,
+    )
+    parts = [
+      { inlineData: { mimeType: params.cardTemplateMime, data: templateBase64 } },
+      { inlineData: { mimeType: productMimeType,         data: productBase64 } },
+      { text: cardPrompt + promptSuffix },
+    ]
+  } else if (params.isCardFree) {
+    // Card-free mode: AI creates a full product card from scratch
+    const cardPrompt = buildCardFreePrompt(
+      params.cardProductName,
+      params.cardBrandName,
+      params.cardProductDesc,
+    )
+    parts = [
+      { inlineData: { mimeType: productMimeType, data: productBase64 } },
+      { text: cardPrompt + promptSuffix },
+    ]
+  } else if (params.isMacroShot) {
     // Macro mode: standalone close-up product shot, never uses a model image
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },
@@ -518,6 +680,12 @@ export async function generateJewelryPhoto(
   if (!res.ok) {
     // HIGH-NEW-2: log full error server-side, throw only a sanitized message
     console.error('Gemini API error:', data.error)
+    if (res.status === 429) {
+      throw new Error('Превышен лимит запросов к AI. Подождите 1–2 минуты и попробуйте снова.')
+    }
+    if (res.status === 503 || res.status === 500) {
+      throw new Error('AI сервис временно недоступен. Попробуйте через несколько секунд.')
+    }
     throw new Error('Ошибка при генерации изображения. Попробуйте снова.')
   }
 

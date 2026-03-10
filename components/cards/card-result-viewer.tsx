@@ -145,10 +145,7 @@ function CardResultCard({
         </div>
       ) : template && (
         <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
-          <div
-            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            style={{ background: template.dotColor }}
-          />
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-rose-gold-400" />
           <span className="text-[10px] text-white font-medium truncate max-w-[90px]">
             {template.name}
           </span>

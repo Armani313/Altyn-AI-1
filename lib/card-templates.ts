@@ -4,103 +4,40 @@ export interface CardTemplate {
   id: string
   name: string
   category: Exclude<CardCategory, 'all'>
-  /** CSS `background` value used for preview */
-  bgStyle: string
-  /** Accent color dot in preview & result badge */
-  dotColor: string
+  /** URL to template image in /public */
+  imageUrl: string
   label?: string
   premium?: boolean
 }
 
 export const CARD_TEMPLATES: CardTemplate[] = [
-  {
-    id: 'white-studio',
-    name: 'Белый студийный',
-    category: 'marketplace',
-    bgStyle: 'linear-gradient(160deg, #ffffff 0%, #f0ede8 100%)',
-    dotColor: '#C4834F',
-    label: 'Популярный',
-  },
-  {
-    id: 'warm-sand',
-    name: 'Тёплый песок',
-    category: 'marketplace',
-    bgStyle: 'linear-gradient(160deg, #f5ede0 0%, #e8d0b0 100%)',
-    dotColor: '#b8834a',
-  },
-  {
-    id: 'minimal-grey',
-    name: 'Нейтральный серый',
-    category: 'minimal',
-    bgStyle: 'linear-gradient(160deg, #f5f5f5 0%, #e0ddd8 100%)',
-    dotColor: '#9b8b7a',
-  },
-  {
-    id: 'sage-green',
-    name: 'Зелёный шалфей',
-    category: 'minimal',
-    bgStyle: 'linear-gradient(160deg, #e8ede0 0%, #c8d5b8 100%)',
-    dotColor: '#6a8f5a',
-    label: 'Новый',
-  },
-  {
-    id: 'soft-pink',
-    name: 'Пастельный розовый',
-    category: 'lifestyle',
-    bgStyle: 'linear-gradient(160deg, #fdf0f0 0%, #f5dada 100%)',
-    dotColor: '#e88e8e',
-  },
-  {
-    id: 'cool-blue',
-    name: 'Голубой',
-    category: 'minimal',
-    bgStyle: 'linear-gradient(160deg, #e8f4ff 0%, #c0dff5 100%)',
-    dotColor: '#5a9fd4',
-  },
-  {
-    id: 'forest-green',
-    name: 'Природа',
-    category: 'lifestyle',
-    bgStyle: 'linear-gradient(160deg, #2d4a2d 0%, #4a7c4a 100%)',
-    dotColor: '#8bc98b',
-  },
-  {
-    id: 'marble-white',
-    name: 'Мрамор',
-    category: 'minimal',
-    bgStyle: 'linear-gradient(160deg, #f8f8f8 0%, #e8e4df 100%)',
-    dotColor: '#9b8b7a',
-  },
-  {
-    id: 'dark-luxury',
-    name: 'Тёмный люкс',
-    category: 'luxury',
-    bgStyle: 'linear-gradient(160deg, #1c1a18 0%, #2d2520 100%)',
-    dotColor: '#C4834F',
-  },
-  {
-    id: 'gold-luxury',
-    name: 'Золотой',
-    category: 'luxury',
-    bgStyle: 'linear-gradient(160deg, #4a3020 0%, #8b6540 50%, #c4934f 100%)',
-    dotColor: '#f5d08a',
-    premium: true,
-  },
-  {
-    id: 'deep-night',
-    name: 'Ночной синий',
-    category: 'lifestyle',
-    bgStyle: 'linear-gradient(160deg, #0d1117 0%, #1e2a3a 100%)',
-    dotColor: '#4a8fd4',
-    premium: true,
-  },
-  {
-    id: 'lavender',
-    name: 'Лавандовый',
-    category: 'lifestyle',
-    bgStyle: 'linear-gradient(160deg, #f0eeff 0%, #d8d0f5 100%)',
-    dotColor: '#8a70d4',
-  },
+  { id: 'tpl-01', name: 'Шаблон 1',  category: 'marketplace', imageUrl: '/exCardTemplate/1.webp' },
+  { id: 'tpl-02', name: 'Шаблон 2',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(1).webp' },
+  { id: 'tpl-03', name: 'Шаблон 3',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(2).webp' },
+  { id: 'tpl-04', name: 'Шаблон 4',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(4).webp' },
+  { id: 'tpl-05', name: 'Шаблон 5',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(5).webp' },
+  { id: 'tpl-06', name: 'Шаблон 6',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(6).webp' },
+  { id: 'tpl-07', name: 'Шаблон 7',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(7).webp' },
+  { id: 'tpl-08', name: 'Шаблон 8',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(8).webp' },
+  { id: 'tpl-09', name: 'Шаблон 9',  category: 'marketplace', imageUrl: '/exCardTemplate/1%20(9).webp' },
+  { id: 'tpl-10', name: 'Шаблон 10', category: 'marketplace', imageUrl: '/exCardTemplate/1%20(10).webp' },
+  { id: 'tpl-11', name: 'Шаблон 11', category: 'marketplace', imageUrl: '/exCardTemplate/1%20(11).webp' },
+  { id: 'tpl-12', name: 'Шаблон 12', category: 'marketplace', imageUrl: '/exCardTemplate/1%20(12).webp' },
+  { id: 'tpl-13', name: 'Шаблон 13', category: 'lifestyle',   imageUrl: '/exCardTemplate/3.webp' },
+  { id: 'tpl-14', name: 'Шаблон 14', category: 'lifestyle',   imageUrl: '/exCardTemplate/3%20(1).webp' },
+  { id: 'tpl-15', name: 'Шаблон 15', category: 'minimal',     imageUrl: '/exCardTemplate/16966461.jpeg' },
+  { id: 'tpl-16', name: 'Шаблон 16', category: 'minimal',     imageUrl: '/exCardTemplate/42262946.jpg' },
+  { id: 'tpl-17', name: 'Шаблон 17', category: 'minimal',     imageUrl: '/exCardTemplate/65762494.jpg' },
+  { id: 'tpl-18', name: 'Шаблон 18', category: 'minimal',     imageUrl: '/exCardTemplate/67520454.jpeg' },
+  { id: 'tpl-19', name: 'Шаблон 19', category: 'minimal',     imageUrl: '/exCardTemplate/69281824.jpg' },
+  { id: 'tpl-20', name: 'Шаблон 20', category: 'luxury',      imageUrl: '/exCardTemplate/82630358.jpeg' },
+  { id: 'tpl-21', name: 'Шаблон 21', category: 'luxury',      imageUrl: '/exCardTemplate/86404261117982.jpg' },
+  { id: 'tpl-22', name: 'Шаблон 22', category: 'luxury',      imageUrl: '/exCardTemplate/86492964225054.jpeg' },
+  { id: 'tpl-23', name: 'Шаблон 23', category: 'luxury',      imageUrl: '/exCardTemplate/86668728434718.jpg' },
+  { id: 'tpl-24', name: 'Шаблон 24', category: 'luxury',      imageUrl: '/exCardTemplate/95278492.jpeg' },
+  { id: 'tpl-25', name: 'Шаблон 25', category: 'luxury',      imageUrl: '/exCardTemplate/99432248.jpeg' },
+  { id: 'tpl-26', name: 'Шаблон 26', category: 'lifestyle',   imageUrl: '/exCardTemplate/107072579.jpg' },
+  { id: 'tpl-27', name: 'Шаблон 27', category: 'lifestyle',   imageUrl: '/exCardTemplate/115446052.jpg' },
 ]
 
 export const CARD_TEMPLATE_MAP = Object.fromEntries(

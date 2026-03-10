@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { Sparkles, Lock, Check, Upload, X } from 'lucide-react'
 import {
   CARD_TEMPLATES,
-  CARD_TEMPLATE_CATEGORIES,
   MAX_CARD_TEMPLATES,
   CUSTOM_CARD_TEMPLATE_ID,
-  type CardCategory,
 } from '@/lib/card-templates'
 
 interface CardTemplatePickerProps {
@@ -27,13 +25,10 @@ export function CardTemplatePicker({
   customTemplateUrl,
   onCustomTemplateChange,
 }: CardTemplatePickerProps) {
-  const [activeTab, setActiveTab] = useState<CardCategory>('all')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const atMax    = selectedIds.length >= maxSelect
-  const filtered = activeTab === 'all'
-    ? CARD_TEMPLATES
-    : CARD_TEMPLATES.filter((t) => t.category === activeTab)
+  const filtered = CARD_TEMPLATES
 
   const toggle = (id: string) => {
     if (disabled) return
@@ -106,22 +101,6 @@ export function CardTemplatePicker({
         )}
       </div>
 
-      {/* Category tabs */}
-      <div className="flex gap-1 p-1 bg-cream-100 rounded-xl mb-4 overflow-x-auto scrollbar-hide">
-        {CARD_TEMPLATE_CATEGORIES.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'bg-white text-foreground shadow-soft'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {/* Template grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5">
@@ -218,26 +197,14 @@ export function CardTemplatePicker({
                 }
               `}
             >
-              {/* CSS gradient preview */}
-              <div
-                className="aspect-square relative overflow-hidden"
-                style={{ background: template.bgStyle }}
-              >
-                {/* Product placeholder silhouette */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div
-                    className="w-14 h-14 rounded-xl opacity-25"
-                    style={{ background: template.dotColor, filter: 'blur(6px)' }}
-                  />
-                  <div
-                    className="absolute w-10 h-10 rounded-lg border-2 opacity-40"
-                    style={{ borderColor: template.dotColor }}
-                  />
-                </div>
-                {/* Bottom color strip */}
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-5"
-                  style={{ background: `linear-gradient(to top, ${template.dotColor}44, transparent)` }}
+              {/* Template image preview */}
+              <div className="aspect-square relative overflow-hidden bg-cream-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={template.imageUrl}
+                  alt={template.name}
+                  className="w-full h-full object-cover"
+                  draggable={false}
                 />
               </div>
 

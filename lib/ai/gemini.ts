@@ -673,7 +673,7 @@ export async function generateJewelryPhoto(
   try {
     data = JSON.parse(rawText) as GeminiResponse
   } catch {
-    console.error(`Gemini non-JSON response (${res.status}):`, rawText.slice(0, 300))
+    console.error(`Gemini non-JSON response (${res.status})`)
     throw new Error(`Ошибка генерации (${res.status}). Попробуйте снова.`)
   }
 

@@ -86,7 +86,7 @@ export function CardTemplatePicker({
         <button
           onClick={handleAIPick}
           disabled={disabled}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
           <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
           Пусть ИИ выберет
@@ -321,7 +321,7 @@ export function CardTemplatePicker({
           <button
             onClick={() => onSelect([])}
             disabled={disabled}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1 px-2 -mr-1 touch-manipulation"
           >
             Сбросить
           </button>

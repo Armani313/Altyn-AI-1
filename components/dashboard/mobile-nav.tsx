@@ -46,7 +46,7 @@ export function MobileNav({ profile }: MobileNavProps) {
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="left" className="w-[260px] p-0 bg-white border-r border-cream-200 flex flex-col">
+      <SheetContent side="left" className="w-[260px] p-0 bg-white border-r border-cream-200 flex flex-col max-h-screen overflow-hidden">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-cream-200">
           <Link

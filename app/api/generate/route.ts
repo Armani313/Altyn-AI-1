@@ -303,6 +303,12 @@ export async function POST(request: Request) {
           // imageUrl is URL-encoded (e.g. '/exCardTemplate/1%20(1).webp') — decode for fs
           const tplRelPath = decodeURIComponent(tpl.imageUrl)
           const tplAbsPath = path.join(process.cwd(), 'public', tplRelPath)
+          // MED-2: path bounds check — ensure resolved path stays inside public/exCardTemplate/
+          const allowedDir = path.join(process.cwd(), 'public', 'exCardTemplate')
+          if (!tplAbsPath.startsWith(allowedDir + path.sep) && !tplAbsPath.startsWith(allowedDir + '/')) {
+            console.warn(`Card template path outside allowed dir: ${cardTemplateId}`)
+            throw new Error('invalid path')
+          }
           cardTemplateBuffer = await fs.readFile(tplAbsPath)
           const ext = tplRelPath.split('.').pop()?.toLowerCase() ?? 'webp'
           cardTemplateMime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
@@ -339,9 +345,6 @@ export async function POST(request: Request) {
 
     const completedJob = await aiQueue.waitForJob(queuedJob.id, 55_000)
 
-    let aiImageBuffer: Buffer
-    let aiMimeType:    string
-
     if (completedJob.status !== 'completed' || !completedJob.result?.imageBuffer) {
       // Job failed or timed out — refund credit
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -359,8 +362,8 @@ export async function POST(request: Request) {
       return err(safeErrMsg, httpStatus)
     }
 
-    aiImageBuffer = completedJob.result.imageBuffer
-    aiMimeType    = completedJob.result.mimeType ?? 'image/jpeg'
+    const aiImageBuffer = completedJob.result.imageBuffer
+    const aiMimeType    = completedJob.result.mimeType ?? 'image/jpeg'
 
     // ── 10. Upload AI result ──────────────────────────────────────────────────
     const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'

@@ -106,7 +106,7 @@ export function LoginForm() {
               type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
               autoComplete="current-password"
-              className={`h-11 pr-10 bg-white border-cream-300 focus:border-primary focus:ring-primary/20 ${
+              className={`h-11 pr-11 bg-white border-cream-300 focus:border-primary focus:ring-primary/20 ${
                 errors.password ? 'border-destructive' : ''
               }`}
               {...register('password')}
@@ -114,7 +114,7 @@ export function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors w-9 h-9 flex items-center justify-center rounded-lg touch-manipulation"
             >
               {showPassword ? (
                 <EyeOff className="w-4 h-4" />

@@ -193,7 +193,7 @@ export default function CardsPage() {
       />
 
       {/* ── Mobile step tabs ───────────────────────────────────────── */}
-      <div className="lg:hidden sticky top-[57px] z-20 bg-white border-b border-cream-200 flex mt-3">
+      <div className="lg:hidden sticky top-[60px] z-20 bg-white border-b border-cream-200 flex mt-3">
         {MOBILE_STEPS.map((step) => {
           const done   = step.id === 1 ? step1Done : step.id === 2 ? step2Done : false
           const active = mobileStep === step.id

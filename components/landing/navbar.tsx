@@ -91,7 +91,7 @@ export function Navbar() {
               <span className="sr-only">Открыть меню</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="bg-[#FAF9F6] border-l border-cream-200 w-72">
+          <SheetContent side="right" className="bg-[#FAF9F6] border-l border-cream-200 w-[min(288px,90vw)]">
             <SheetHeader className="text-left mb-8">
               <SheetTitle className="font-serif text-lg font-semibold text-foreground">
                 Меню

@@ -47,6 +47,8 @@ export interface QueueJob {
 export interface ProviderConfig {
   /** Max requests per minute (token bucket) */
   rpm:            number
+  /** Max requests per day — hard cap, jobs fail immediately when exhausted */
+  rpd?:           number
   /** Max simultaneously in-flight requests to this provider */
   maxConcurrent:  number
   /** Backoff delays in ms between retries — e.g. [3000, 10000, 30000] */

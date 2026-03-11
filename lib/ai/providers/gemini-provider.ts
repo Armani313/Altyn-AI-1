@@ -1,11 +1,11 @@
 /**
- * Gemini AI Provider
+ * Gemini AI Provider — Nano Banana 2 (gemini-3.1-flash-image-preview)
  *
  * Wraps lib/ai/gemini.ts and implements the AIProvider interface.
  * To swap or add providers, create a new file here and register it in lib/queue/index.ts.
  *
- * Rate limits (free tier): ~10 RPM, using 6 to stay safe.
- * Production: increase rpm in config when on a paid plan.
+ * Model limits: 100 RPM · 200K TPM · 1K RPD
+ * Using 80 RPM (80%) to stay safely under the cap.
  */
 
 import type { AIProvider, ProviderConfig, JobResult, JobType } from '@/lib/queue/types'
@@ -16,9 +16,10 @@ export class GeminiProvider implements AIProvider<GenerationParams> {
   readonly types: JobType[] = ['image']
 
   readonly config: ProviderConfig = {
-    rpm:           6,                         // conservative — free tier ~10 RPM
-    maxConcurrent: 1,                         // Gemini struggles with parallel requests
-    retryDelays:   [5_000, 15_000, 40_000],  // backoff: 5s → 15s → 40s
+    rpm:           80,                        // 80% of 100 RPM hard limit
+    rpd:           1_000,                     // hard daily cap — fail immediately when hit
+    maxConcurrent: 4,                         // Flash model handles more parallel requests
+    retryDelays:   [3_000, 10_000, 30_000],  // faster backoff for flash model
   }
 
   async execute(params: GenerationParams): Promise<JobResult> {

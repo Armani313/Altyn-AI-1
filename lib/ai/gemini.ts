@@ -1,7 +1,8 @@
 /**
  * Google Gemini AI Provider
  *
- * Model: gemini-2.5-flash-image
+ * Model: gemini-3.1-flash-image-preview (Nano Banana 2)
+ * Limits: 100 RPM · 200K TPM · 1K RPD
  *
  * Two modes:
  *   1. Model-based  — two images sent (model photo + product photo).
@@ -9,13 +10,13 @@
  *
  * Set in .env.local:
  *   GEMINI_API_KEY   — your Google AI Studio API key
- *   GEMINI_MODEL     — optional override (default: gemini-2.5-flash-image)
+ *   GEMINI_MODEL     — optional override (default: gemini-3.1-flash-image-preview)
  */
 
 import type { ProductType } from '@/lib/constants'
 import { buildUserPromptSuffix } from '@/lib/ai/moderation'
 
-const DEFAULT_MODEL   = 'gemini-2.5-flash-image'
+const DEFAULT_MODEL   = 'gemini-3.1-flash-image-preview'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 // ── Jewelry ───────────────────────────────────────────────────────────────────
@@ -395,57 +396,80 @@ export function buildCardFreePrompt(
 
   const hasText = !!(name || brand || desc)
 
-  // Bullet lines for the info panel
-  const infoBullets: string[] = []
-  if (brand) infoBullets.push(`Brand / Бренд: ${brand}`)
-  if (name)  infoBullets.push(`Name / Название: ${name}`)
-  if (desc) {
-    // Split description into short selling points (up to 3)
-    const points = desc.split(/[.,;]/).map(s => s.trim()).filter(Boolean).slice(0, 3)
-    points.forEach(p => infoBullets.push(`• ${p}`))
-  }
+  // Build the raw info block for Phase 3
+  const rawInfoLines: string[] = []
+  if (brand) rawInfoLines.push(`Brand: "${brand}"`)
+  if (name)  rawInfoLines.push(`Product name: "${name}"`)
+  if (desc)  rawInfoLines.push(`Description: "${desc}"`)
 
-  const infoBlock = infoBullets.length > 0
-    ? infoBullets.map(b => `      "${b}"`).join('\n')
-    : ''
+  const rawInfoBlock = rawInfoLines.map(l => `    ${l}`).join('\n')
 
   return (
-    'You are a world-class e-commerce product card designer. Your goal is to create a single image that is a complete, sales-ready product card.\n\n' +
+    'You are a world-class creative director, 3D product visualizer, and e-commerce conversion expert.\n' +
+    'Think through every phase SILENTLY — output ONLY the final product card image.\n\n' +
 
-    'STEP 1 — ANALYZE THE PRODUCT:\n' +
-    '  • Identify the exact product type (ring, necklace, earring, bracelet, watch, bag, clothing, etc.)\n' +
-    '  • Memorize every detail: shape, color, material, stone, texture, finish\n\n' +
+    // ── PHASE 1 ───────────────────────────────────────────────────────────────
+    '── PHASE 1 — UNIVERSAL PRODUCT ANALYSIS\n' +
+    'Study every pixel of the reference photo:\n' +
+    '  • Category: Identify the exact niche (e.g., Electronics, Fashion, Beauty, Food/Beverage, Industrial, Home Goods, Jewelry).\n' +
+    '  • Materials & Textures: Identify key physical traits (matte plastic, glossy glass, organic wood/straw, soft silicone, liquid, metallic, woven fabric).\n' +
+    '  • Brand Vibe: Determine the core aesthetic (Eco-friendly/Organic, High-Tech/Futuristic, Luxury/Premium, Playful/Vibrant, Everyday/Utility).\n' +
+    '  • Color Story: Extract the main product color and 1-2 complementary accent colors for the background/UI elements.\n\n' +
 
-    'STEP 2 — COMPOSE THE CARD LAYOUT (two-zone design):\n' +
-    '  ZONE A — PRODUCT PHOTO (upper ~65% of the canvas):\n' +
-    '    • Place the product centered on a clean, elegant background\n' +
-    '    • Background: soft cream white (#FAF8F5) or a gentle gradient that flatters the product\n' +
-    '    • Professional soft-box studio lighting: main light from upper-left, subtle fill light\n' +
-    '    • Product must be sharp, detailed, luxurious — this is the hero\n' +
-    '    • Add a subtle drop shadow beneath the product for depth\n' +
-    '    • Slight 3/4 angle if it reveals more of the product\'s design\n\n' +
+    // ── PHASE 2 ───────────────────────────────────────────────────────────────
+    '── PHASE 2 — DYNAMIC STAGING & COMPOSITION\n' +
+    'Based on Phase 1, silently choose ONE high-converting staging direction:\n\n' +
+
+    '  A. HERO LEVITATION (Dynamic & Modern)\n' +
+    '     Layout: Product exploding or floating dynamically in mid-air. Anti-gravity effect.\n' +
+    '     Vibe: High energy, modern, eye-catching.\n' +
+    '     Elements: Flying droplets, particles, or separated product layers. Soft glowing background gradient.\n' +
+    '     → Best for: Sneakers, tech gadgets, beverages, modern cosmetics, sports gear.\n\n' +
+
+    '  B. PREMIUM PEDESTAL (Luxury & Authority)\n' +
+    '     Layout: Product resting majestically on a geometric podium (stone, acrylic, or velvet).\n' +
+    '     Vibe: Expensive, authoritative, trustworthy.\n' +
+    '     Elements: Dramatic studio spotlights (chiaroscuro), sharp caustic reflections, elegant negative space.\n' +
+    '     → Best for: Perfume, watches, jewelry, high-end electronics, premium packaging.\n\n' +
+
+    '  C. MACRO INFOGRAPHIC (Detailed & Informative)\n' +
+    '     Layout: Product offset to one side, extreme close-up showing texture.\n' +
+    '     Vibe: Technical, transparent, high-quality.\n' +
+    '     Elements: Clean UI lines, 2-3 glowing circular magnifying "callouts" pointing to specific material details, sharp grid lines.\n' +
+    '     → Best for: Apparel, building materials, tools, skincare, tech accessories.\n\n' +
+
+    '  D. ENVIRONMENTAL LIFESTYLE (Warm & Relatable)\n' +
+    '     Layout: Product placed in its natural high-end habitat (e.g., a marble kitchen counter, a cozy wooden cafe table, a sleek office desk).\n' +
+    '     Vibe: Inviting, practical, aesthetic.\n' +
+    '     Elements: Heavy depth of field (blurred background/bokeh), dappled sunlight or natural window light, subtle lifestyle props.\n' +
+    '     → Best for: Home goods, coffee/food, bags, daily essentials, organic products.\n\n' +
+
+    // ── PHASE 3 ───────────────────────────────────────────────────────────────
+    '── PHASE 3 — MARKETING & TYPOGRAPHY REVIEW\n' +
     (hasText
-      ? '  ZONE B — INFORMATION PANEL (lower ~35% of the canvas):\n' +
-        '    • Solid or subtle gradient bar in a color that complements the product (dark charcoal, deep navy, warm taupe, or elegant ivory)\n' +
-        '    • White or contrasting text, clean sans-serif font, well-spaced\n' +
-        '    • Display ALL of the following lines clearly, one per line:\n' +
-        infoBlock + '\n' +
-        '    • Text must be fully legible, properly sized (not too small), no overlapping\n' +
-        '    • A thin decorative divider line between Zone A and Zone B\n\n'
-      : '  ZONE B — BRANDING STRIP (lower ~20% of the canvas):\n' +
-        '    • Soft neutral footer bar\n' +
-        '    • Clean minimal design, no text needed\n\n'
+      ? 'Product information provided by the seller:\n' +
+        rawInfoBlock + '\n\n' +
+        '  • Distill into 1 punchy Headline and max 3 short, high-impact bullet points.\n' +
+        '  • Fix any spelling errors or typos silently.\n' +
+        '  • If name contradicts the photo, use the visually accurate term.\n' +
+        '  • Typography: bold modern sans-serif for tech/modern goods, elegant serif for luxury/organic.\n' +
+        '  • Include a visual "Trust Badge" (minimal vector icon: "100% Quality", "Eco", or "Premium").\n\n'
+      : 'No text provided.\n' +
+        '  • Focus heavily on visual callouts and macro details.\n' +
+        '  • Keep the layout clean and ready for text overlay — no placeholder text.\n\n'
     ) +
-    'STEP 3 — FINAL POLISH:\n' +
-    '  • The two zones must form one cohesive, professional card image\n' +
-    '  • Overall aesthetic: premium retail catalog, luxury brand quality\n' +
-    '  • Fill the ENTIRE canvas edge-to-edge — no white borders\n\n' +
 
-    'CRITICAL RULES:\n' +
-    '  • Product must be IDENTICAL to the reference photo — same colors, material, shape, every detail\n' +
-    '  • ALL text in Zone B must appear in the final image — this is mandatory\n' +
-    '  • Do NOT add flowers, props, or decorations not in the original photo\n' +
-    '  • Resolution: 4K sharp, no blur, no artifacts'
+    // ── PHASE 4 ───────────────────────────────────────────────────────────────
+    '── PHASE 4 — FINAL RENDER EXECUTION\n' +
+    'Render the product card using the chosen staging:\n' +
+    '  • Lighting is everything: Use rim lighting to separate the product from the background.\n' +
+    '    Add soft, realistic global illumination.\n' +
+    '  • The product MUST remain identical to the reference photo — do not alter its core design,\n' +
+    '    shape, or primary material.\n' +
+    '  • The composition must look like a top-tier Amazon A+ / Shopify hero image. Edge-to-edge design.\n' +
+    '  • 8K resolution, Unreal Engine 5 render quality, octane render, photorealistic, hyper-detailed.\n\n' +
+
+    'OUTPUT FORMAT: Generate the product card IMAGE directly — output ONLY the image, no text.'
   )
 }
 
@@ -653,9 +677,14 @@ export async function generateJewelryPhoto(
   }
 
   // ── 3. Call Gemini ─────────────────────────────────────────────────────────
+  // Card modes: IMAGE-only modality prevents the model from dumping text analysis
+  // instead of generating the image (long prompt edge case).
+  const isCardMode = !!(params.isCardFree || params.cardTemplateBuffer)
   const body = JSON.stringify({
     contents: [{ parts }],
-    generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+    generationConfig: {
+      responseModalities: isCardMode ? ['IMAGE'] : ['IMAGE', 'TEXT'],
+    },
   })
 
   const res = await fetch(
@@ -681,6 +710,11 @@ export async function generateJewelryPhoto(
     // HIGH-NEW-2: log full error server-side, throw only a sanitized message
     console.error('Gemini API error:', data.error)
     if (res.status === 429) {
+      // Check for daily quota exhaustion vs per-minute rate limit
+      const errMsg = (data.error?.message ?? '').toLowerCase()
+      if (errMsg.includes('quota') || errMsg.includes('daily')) {
+        throw new Error('Дневной лимит AI исчерпан. Попробуйте завтра.')
+      }
       throw new Error('Превышен лимит запросов к AI. Подождите 1–2 минуты и попробуйте снова.')
     }
     if (res.status === 503 || res.status === 500) {

@@ -113,8 +113,28 @@ class QueueManager {
       // Retry delay not yet elapsed
       if (job._retryAfter && Date.now() < job._retryAfter) continue
 
-      // Rate limit
+      // Daily cap (RPD) — fail immediately, no retry
+      if (provider.config.rpd !== undefined &&
+          rateLimiter.dailyRemaining(job.providerId, provider.config.rpd) <= 0) {
+        this.queue.splice(i, 1)
+        i--
+        const hoursLeft = Math.ceil(msUntilUtcMidnight() / 3_600_000)
+        const errMsg = `Дневной лимит генераций исчерпан. Попробуйте через ~${hoursLeft} ч.`
+        job.status      = 'failed'
+        job.error       = errMsg
+        job.completedAt = Date.now()
+        jobStore.update(job.id, { status: 'failed', error: errMsg, completedAt: job.completedAt })
+        console.warn(`[Queue] Job ${job.id} rejected: daily RPD limit reached`)
+        continue
+      }
+
+      // Rate limit (RPM)
       if (!rateLimiter.consume(job.providerId, provider.config.rpm)) continue
+
+      // Consume daily slot
+      if (provider.config.rpd !== undefined) {
+        rateLimiter.consumeDay(job.providerId, provider.config.rpd)
+      }
 
       // Dispatch
       this.queue.splice(i, 1)
@@ -174,6 +194,13 @@ class QueueManager {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+function msUntilUtcMidnight(): number {
+  const now  = Date.now()
+  const next = new Date()
+  next.setUTCHours(24, 0, 0, 0)
+  return Math.max(0, next.getTime() - now)
 }
 
 // ── Singleton (survives hot reload in dev) ────────────────────────────────────

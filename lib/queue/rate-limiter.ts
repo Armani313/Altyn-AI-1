@@ -1,23 +1,26 @@
 /**
- * Token bucket rate limiter — one bucket per provider.
- * Bucket capacity = rpm. Refills at rpm/60 tokens per second.
+ * Rate limiter for AI providers.
+ *
+ * RPM — token bucket: capacity = rpm, refills at rpm/60 tokens per second.
+ * RPD — daily counter: resets at UTC midnight, fails immediately when exhausted.
  */
 export class RateLimiter {
-  private buckets = new Map<string, { tokens: number; lastRefill: number }>()
+  private buckets      = new Map<string, { tokens: number; lastRefill: number }>()
+  private dailyBuckets = new Map<string, { count: number; dayStart: number }>()
+
+  // ── RPM ──────────────────────────────────────────────────────────────────────
 
   consume(providerId: string, rpm: number): boolean {
     const now = Date.now()
     let bucket = this.buckets.get(providerId)
 
     if (!bucket) {
-      // New provider: start with full bucket
       bucket = { tokens: rpm, lastRefill: now }
       this.buckets.set(providerId, bucket)
     }
 
-    // Refill tokens based on elapsed time
-    const elapsed   = (now - bucket.lastRefill) / 1000
-    bucket.tokens   = Math.min(rpm, bucket.tokens + elapsed * (rpm / 60))
+    const elapsed     = (now - bucket.lastRefill) / 1000
+    bucket.tokens     = Math.min(rpm, bucket.tokens + elapsed * (rpm / 60))
     bucket.lastRefill = now
 
     if (bucket.tokens >= 1) {
@@ -27,11 +30,44 @@ export class RateLimiter {
     return false
   }
 
-  /** Peek: ms until a token is available for this provider */
+  /** ms until a token is available (for logging / debug) */
   msUntilAvailable(providerId: string, rpm: number): number {
     const bucket = this.buckets.get(providerId)
     if (!bucket || bucket.tokens >= 1) return 0
     const deficit = 1 - bucket.tokens
     return Math.ceil(deficit * (60_000 / rpm))
   }
+
+  // ── RPD ──────────────────────────────────────────────────────────────────────
+
+  /** How many requests remain today for this provider. */
+  dailyRemaining(providerId: string, rpd: number): number {
+    const counter = this.dailyBuckets.get(providerId)
+    if (!counter || counter.dayStart !== utcDayStart()) return rpd
+    return Math.max(0, rpd - counter.count)
+  }
+
+  /**
+   * Consume one daily request slot.
+   * Returns false (and does NOT decrement) when the daily cap is already reached.
+   */
+  consumeDay(providerId: string, rpd: number): boolean {
+    const today = utcDayStart()
+    let counter = this.dailyBuckets.get(providerId)
+
+    if (!counter || counter.dayStart !== today) {
+      counter = { count: 0, dayStart: today }
+      this.dailyBuckets.set(providerId, counter)
+    }
+
+    if (counter.count >= rpd) return false
+    counter.count++
+    return true
+  }
+}
+
+/** Timestamp of today's 00:00:00 UTC in ms. */
+function utcDayStart(): number {
+  const now = new Date()
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
 }

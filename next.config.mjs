@@ -56,7 +56,7 @@ const nextConfig = {
               // blob: needed for ONNX Runtime — it injects its worker via a blob: script URL
           isDev
                 ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:"
-                : "script-src 'self' 'unsafe-inline' blob:",
+                : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
               "style-src 'self' 'unsafe-inline'",
               // Supabase storage for generated images (Gemini returns bytes, no external CDN needed)
               "img-src 'self' data: blob: https://*.supabase.co",

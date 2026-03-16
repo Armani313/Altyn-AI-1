@@ -11,6 +11,7 @@
 import type { QueueJob, AIProvider, JobResult, EnqueueOptions, ProviderId } from './types'
 import { jobStore } from './job-store'
 import { RateLimiter } from './rate-limiter'
+import { sleep } from '@/lib/utils'
 
 const TICK_INTERVAL_MS = 300  // how often the worker loop checks the queue
 
@@ -190,10 +191,6 @@ class QueueManager {
       }
     }
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms))
 }
 
 function msUntilUtcMidnight(): number {

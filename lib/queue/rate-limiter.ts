@@ -42,8 +42,7 @@ export class RateLimiter {
 
   /** How many requests remain today for this provider. */
   dailyRemaining(providerId: string, rpd: number): number {
-    const counter = this.dailyBuckets.get(providerId)
-    if (!counter || counter.dayStart !== utcDayStart()) return rpd
+    const counter = this.getDailyCounter(providerId)
     return Math.max(0, rpd - counter.count)
   }
 
@@ -52,17 +51,21 @@ export class RateLimiter {
    * Returns false (and does NOT decrement) when the daily cap is already reached.
    */
   consumeDay(providerId: string, rpd: number): boolean {
+    const counter = this.getDailyCounter(providerId)
+    if (counter.count >= rpd) return false
+    counter.count++
+    return true
+  }
+
+  /** Get (or reset) the daily counter for today, shared by dailyRemaining and consumeDay. */
+  private getDailyCounter(providerId: string): { count: number; dayStart: number } {
     const today = utcDayStart()
     let counter = this.dailyBuckets.get(providerId)
-
     if (!counter || counter.dayStart !== today) {
       counter = { count: 0, dayStart: today }
       this.dailyBuckets.set(providerId, counter)
     }
-
-    if (counter.count >= rpd) return false
-    counter.count++
-    return true
+    return counter
   }
 }
 

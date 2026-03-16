@@ -2,6 +2,28 @@ const isDev = process.env.NODE_ENV === 'development'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // ── Webpack: prevent Node.js-only packages from being bundled ────────────
+  // @imgly/background-removal depends on onnxruntime-web (browser) not
+  // onnxruntime-node. Without these aliases webpack throws "Can't resolve" errors.
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'sharp$':            false,
+      'onnxruntime-node$': false,
+    }
+
+    // @imgly/background-removal bundles ONNX Runtime as ESM (.mjs) files that
+    // use `import.meta`. Without this rule webpack/Terser treats them as
+    // CommonJS and throws "'import.meta' cannot be used outside of module code".
+    config.module.rules.push({
+      test: /\.mjs$/,
+      include: /node_modules/,
+      type: 'javascript/auto',
+    })
+
+    return config
+  },
+
   // ── Docker: generate a self-contained server in .next/standalone ─────────
   // The Dockerfile's runner stage copies only this folder + .next/static.
   output: 'standalone',
@@ -31,17 +53,23 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               // 'unsafe-eval' is needed by webpack HMR / React Refresh in dev only
-              isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-                : "script-src 'self' 'unsafe-inline'",
+              // blob: needed for ONNX Runtime — it injects its worker via a blob: script URL
+          isDev
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:"
+                : "script-src 'self' 'unsafe-inline' blob:",
               "style-src 'self' 'unsafe-inline'",
               // Supabase storage for generated images (Gemini returns bytes, no external CDN needed)
               "img-src 'self' data: blob: https://*.supabase.co",
               // Google Fonts (if ever added)
               "font-src 'self' https://fonts.gstatic.com",
-              // Supabase API + realtime
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              // Supabase API + realtime; HuggingFace for RMBG-1.4 model download (bg-editor)
+              // Supabase + @imgly/background-removal model/WASM CDN
+              // blob: needed — ONNX Runtime workers fetch WASM via blob URLs internally
+              "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com",
               // Replaces X-Frame-Options — more expressive
+              // Allow blob: workers — ONNX Runtime creates thread workers via blob URLs
+              // when running in a Web Worker context (even in single-thread mode as fallback)
+              "worker-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -66,6 +94,17 @@ const nextConfig = {
         source: '/_next/static/(.*)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        // COOP + COEP for /remove-bg — unlocks SharedArrayBuffer in the browser,
+        // enabling multi-threaded WASM inference (significantly faster on CPU).
+        // Applied only to this route so other pages are not affected by COEP
+        // cross-origin restrictions on embedded resources.
+        source: '/remove-bg',
+        headers: [
+          { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
+          { key: 'Cross-Origin-Embedder-Policy',  value: 'credentialless' },
         ],
       },
     ]

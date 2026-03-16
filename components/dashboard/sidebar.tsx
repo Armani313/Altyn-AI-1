@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Wand2, LayoutGrid, Images, Settings, LogOut, Zap } from 'lucide-react'
+import { Wand2, LayoutGrid, Scissors, Images, Settings, LogOut, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/supabase/actions'
 import type { Profile } from '@/types/database.types'
@@ -13,8 +13,9 @@ interface SidebarProps {
 }
 
 const CREATE_ITEMS = [
-  { href: '/dashboard', icon: Wand2,       label: 'Лайфстайл фото'   },
-  { href: '/cards',     icon: LayoutGrid,  label: 'Карточки товаров' },
+  { href: '/dashboard',  icon: Wand2,      label: 'Лайфстайл фото'   },
+  { href: '/cards',      icon: LayoutGrid, label: 'Карточки товаров' },
+  { href: '/remove-bg',  icon: Scissors,   label: 'Редактор фона'    },
 ]
 
 export function Sidebar({ profile }: SidebarProps) {

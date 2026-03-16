@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, Wand2, LayoutGrid, Images, Settings, LogOut, Zap } from 'lucide-react'
+import { Menu, Wand2, LayoutGrid, Scissors, Images, Settings, LogOut, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { logout } from '@/lib/supabase/actions'
@@ -15,8 +15,9 @@ interface MobileNavProps {
 }
 
 const CREATE_ITEMS = [
-  { href: '/dashboard', icon: Wand2,      label: 'Лайфстайл фото'   },
-  { href: '/cards',     icon: LayoutGrid, label: 'Карточки товаров' },
+  { href: '/dashboard',  icon: Wand2,      label: 'Лайфстайл фото'   },
+  { href: '/cards',      icon: LayoutGrid, label: 'Карточки товаров' },
+  { href: '/remove-bg',  icon: Scissors,   label: 'Редактор фона'    },
 ]
 
 export function MobileNav({ profile }: MobileNavProps) {

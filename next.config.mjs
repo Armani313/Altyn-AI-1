@@ -21,6 +21,14 @@ const nextConfig = {
       type: 'javascript/auto',
     })
 
+    // Suppress "Critical dependency: require function is used in a way in which
+    // dependencies cannot be statically extracted" warnings from onnxruntime-web.
+    // These are harmless — ORT uses try/require for optional backends internally.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      { module: /onnxruntime-web/ },
+    ]
+
     return config
   },
 

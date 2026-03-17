@@ -52,6 +52,7 @@ const SOLID_PRESETS = [
 export function BgRemovalEditor() {
   const [uploadedFile,  setUploadedFile]  = useState<File | null>(null)
   const [previewUrl,    setPreviewUrl]    = useState<string | null>(null)
+  const [previewEl,     setPreviewEl]     = useState<HTMLImageElement | null>(null)
   const [resultEl,      setResultEl]      = useState<HTMLImageElement | null>(null)
 
   const [status,        setStatus]        = useState<EditorStatus>('idle')
@@ -87,32 +88,53 @@ export function BgRemovalEditor() {
     if (bgUrlRef.current)   URL.revokeObjectURL(bgUrlRef.current)
   }, [])
 
-  // Eager model warm-up — triggers the 168 MB model download in the background
-  // so it is cached in IndexedDB before the user clicks "Удалить фон".
+  // Eager model warm-up — triggers model download so it is cached in
+  // IndexedDB before the user clicks "Удалить фон".
+  // Strategy: mark "ready" as soon as all model chunks finish downloading
+  // (progress key starts with "fetch:"). The dummy inference may fail on a
+  // small image, but that doesn't mean the model isn't loaded.
   useEffect(() => {
     if (modelWarmupDone.current) return
     modelWarmupDone.current = true
 
     const warmup = async () => {
+      let downloadComplete = false
       try {
         const { removeBackground } = await import('@imgly/background-removal')
-        // 1×1 transparent PNG — smallest possible valid image
+
+        // 64×64 solid white canvas — small but valid for the ONNX model
         const canvas = document.createElement('canvas')
-        canvas.width = 1; canvas.height = 1
+        canvas.width = 64; canvas.height = 64
+        const ctx = canvas.getContext('2d')
+        if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 64, 64) }
         const blob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
+
         await removeBackground(blob, {
-          proxyToWorker: true,
           model: 'isnet',
           output: { format: 'image/png' },
-          progress: (_key: string, current: number, total: number) => {
-            if (total > 0) setModelProgress(Math.round((current / total) * 100))
+          progress: (key: string, current: number, total: number) => {
+            // Track only download progress (key starts with "fetch:")
+            if (key.startsWith('fetch:') && total > 0) {
+              setModelProgress(Math.round((current / total) * 100))
+              if (current >= total && !downloadComplete) {
+                downloadComplete = true
+                setModelStatus('ready')
+              }
+            }
           },
         })
+        // Inference succeeded too — model is definitely ready
         setModelStatus('ready')
-      } catch {
-        setModelStatus('error')
+      } catch (e) {
+        console.error('[BgRemoval warmup]', e)
+        // If downloads finished before the inference error, model IS cached
+        if (downloadComplete) {
+          setModelStatus('ready')
+        } else {
+          setModelStatus('error')
+        }
       }
     }
 
@@ -152,17 +174,15 @@ export function BgRemovalEditor() {
         }
     }
 
-    // product
-    const src = resultEl ?? (previewUrl ? (() => {
-      const i = new Image(); i.src = previewUrl; return i
-    })() : null)
+    // product — use loaded HTMLImageElement so naturalWidth/Height are ready
+    const src = resultEl ?? previewEl
     if (src) {
       const w = src.naturalWidth  || src.width  || 1
       const h = src.naturalHeight || src.height || 1
       const f = Math.min(canvasW / w, canvasH / h) * productScale
       ctx.drawImage(src, (canvasW - w * f) / 2, (canvasH - h * f) / 2, w * f, h * f)
     }
-  }, [bgType, bgColor, bgGradient, bgImageEl, resultEl, previewUrl, productScale, canvasW, canvasH])
+  }, [bgType, bgColor, bgGradient, bgImageEl, resultEl, previewEl, productScale, canvasW, canvasH])
 
   useEffect(() => { renderCanvas() }, [renderCanvas])
 
@@ -173,7 +193,11 @@ export function BgRemovalEditor() {
     if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
     const url = URL.createObjectURL(file)
     blobUrlRef.current = url
-    setUploadedFile(file); setPreviewUrl(url)
+    // Load into an HTMLImageElement so renderCanvas can draw it immediately
+    const img = new Image()
+    img.onload = () => setPreviewEl(img)
+    img.src = url
+    setUploadedFile(file); setPreviewUrl(url); setPreviewEl(null)
     setResultEl(null); setErrorMsg('')
     setStatus('idle'); setProgress(0)
   }, [])

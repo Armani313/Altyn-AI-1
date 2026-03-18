@@ -109,14 +109,31 @@ const nextConfig = {
         ],
       },
       {
-        // COOP + COEP for /remove-bg — unlocks SharedArrayBuffer in the browser,
-        // enabling multi-threaded WASM inference (significantly faster on CPU).
-        // Applied only to this route so other pages are not affected by COEP
-        // cross-origin restrictions on embedded resources.
+        // COOP + COEP + CSP override for /remove-bg:
+        // 1. COOP/COEP unlocks SharedArrayBuffer → multi-threaded WASM inference.
+        // 2. CSP adds 'unsafe-eval' — onnxruntime-web CJS build uses new Function()
+        //    internally for dynamic code generation (WebGL/WASM glue). The global
+        //    CSP only allows 'wasm-unsafe-eval' which is not enough for JS eval.
+        //    Scoped to /remove-bg only to minimise attack surface on other pages.
         source: '/remove-bg',
         headers: [
           { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
           { key: 'Cross-Origin-Embedder-Policy',  value: 'credentialless' },
+          {
+            key:   'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://*.supabase.co",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com",
+              "worker-src 'self' blob:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
         ],
       },
     ]

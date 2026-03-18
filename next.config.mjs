@@ -18,7 +18,7 @@ const nextConfig = {
     config.module.rules.push({
       test: /\.mjs$/,
       include: /node_modules[\\/]onnxruntime-web/,
-      type: 'javascript/auto',
+      type: 'javascript/esm',
     })
 
     // Suppress "Critical dependency: require function is used in a way in which

@@ -40,6 +40,51 @@ export default function CardsPage() {
   const [cardTemplates,       setCardTemplates]       = useState<CardTemplate[]>([])
   const [templateMap,         setTemplateMap]         = useState<Record<string, CardTemplate>>({})
 
+  // ── Restore serializable state from sessionStorage on mount ───────────────
+  useEffect(() => {
+    try {
+      const storedResults = sessionStorage.getItem('cards:results')
+      if (storedResults) {
+        const parsed = JSON.parse(storedResults) as CardResult[]
+        // Navigation interrupted any in-flight generations — mark them as errors
+        setResults(parsed.map((r) =>
+          r.status === 'generating'
+            ? { ...r, status: 'error', error: 'Генерация была прервана. Попробуйте снова.' }
+            : r
+        ))
+      }
+    } catch { /* ignore */ }
+
+    try {
+      const storedForm = sessionStorage.getItem('cards:form')
+      if (storedForm) {
+        const f = JSON.parse(storedForm) as {
+          productName?: string; brandName?: string; productDescription?: string
+          selectedTemplates?: string[]; aspectRatio?: AspectRatio
+        }
+        if (f.productName)        setProductName(f.productName)
+        if (f.brandName)          setBrandName(f.brandName)
+        if (f.productDescription) setProductDescription(f.productDescription)
+        if (f.selectedTemplates)  setSelectedTemplates(f.selectedTemplates)
+        if (f.aspectRatio)        setAspectRatio(f.aspectRatio)
+      }
+    } catch { /* ignore */ }
+  }, [])
+
+  // ── Persist results to sessionStorage on change ───────────────────────────
+  useEffect(() => {
+    try { sessionStorage.setItem('cards:results', JSON.stringify(results)) } catch { /* ignore */ }
+  }, [results])
+
+  // ── Persist form state to sessionStorage on change ────────────────────────
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('cards:form', JSON.stringify({
+        productName, brandName, productDescription, selectedTemplates, aspectRatio,
+      }))
+    } catch { /* ignore */ }
+  }, [productName, brandName, productDescription, selectedTemplates, aspectRatio])
+
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {

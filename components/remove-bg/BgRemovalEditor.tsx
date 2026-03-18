@@ -16,6 +16,11 @@ type GradientPreset = { label: string; from: string; to: string }
 /** Longest side of the output canvas in pixels */
 const CANVAS_BASE = 720
 
+/** Explicit CDN path for @imgly model data — bypasses import.meta.url resolution
+ *  which breaks in Next.js webpack bundles (import.meta.url → undefined).
+ *  Version must match the installed @imgly/background-removal package version.  */
+const IMGLY_PUBLIC_PATH = 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/'
+
 const ASPECT_RATIOS = [
   { label: '1:1',  w: 1,  h: 1  },
   { label: '3:4',  w: 3,  h: 4  },
@@ -112,6 +117,7 @@ export function BgRemovalEditor() {
         })
 
         await removeBackground(blob, {
+          publicPath: IMGLY_PUBLIC_PATH,
           model: 'isnet',
           output: { format: 'image/png' },
           progress: (key: string, current: number, total: number) => {
@@ -222,6 +228,7 @@ export function BgRemovalEditor() {
       const { removeBackground } = await import('@imgly/background-removal')
 
       const resultBlob = await removeBackground(uploadedFile, {
+        publicPath: IMGLY_PUBLIC_PATH,
         proxyToWorker: true,
         // 'isnet'        = fp32 full-precision — best quality mask
         // 'isnet_fp16'   = default — faster but weaker edges

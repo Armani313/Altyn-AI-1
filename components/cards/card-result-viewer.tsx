@@ -8,15 +8,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import { type CardTemplate, CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
+import type { CardResult } from '@/lib/cards-generation-store'
+
+export type { CardResult }
 
 type AspectRatio = '1:1' | '4:5' | '9:16'
-
-export interface CardResult {
-  templateId: string
-  status:     'generating' | 'done' | 'error'
-  resultUrl:  string | null
-  error:      string | null
-}
 
 interface CardResultViewerProps {
   results:             CardResult[]

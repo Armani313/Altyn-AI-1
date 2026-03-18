@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
 import { Header }             from '@/components/dashboard/header'
 import { UploadZone }         from '@/components/generate/upload-zone'
@@ -12,8 +12,8 @@ import {
   type CardTemplate,
   MAX_CARD_TEMPLATES,
   CUSTOM_CARD_TEMPLATE_ID,
-  AI_FREE_CARD_ID,
 } from '@/lib/card-templates'
+import { getCardsStore } from '@/lib/cards-generation-store'
 
 type AspectRatio = '1:1' | '4:5' | '9:16'
 type MobileStep  = 1 | 2 | 3
@@ -40,41 +40,44 @@ export default function CardsPage() {
   const [cardTemplates,       setCardTemplates]       = useState<CardTemplate[]>([])
   const [templateMap,         setTemplateMap]         = useState<Record<string, CardTemplate>>({})
 
-  // ── Restore serializable state from sessionStorage on mount ───────────────
-  useEffect(() => {
-    try {
-      const storedResults = sessionStorage.getItem('cards:results')
-      if (storedResults) {
-        const parsed = JSON.parse(storedResults) as CardResult[]
-        // Navigation interrupted any in-flight generations — mark them as errors
-        setResults(parsed.map((r) =>
-          r.status === 'generating'
-            ? { ...r, status: 'error', error: 'Генерация была прервана. Попробуйте снова.' }
-            : r
-        ))
-      }
-    } catch { /* ignore */ }
+  // Keep a stable ref to setCreditsRemaining so the store listener can call it
+  // even when the component is re-rendering
+  const setCreditsRef = useRef(setCreditsRemaining)
+  useEffect(() => { setCreditsRef.current = setCreditsRemaining }, [])
 
-    try {
-      const storedForm = sessionStorage.getItem('cards:form')
-      if (storedForm) {
-        const f = JSON.parse(storedForm) as {
-          productName?: string; brandName?: string; productDescription?: string
-          selectedTemplates?: string[]; aspectRatio?: AspectRatio
-        }
-        if (f.productName)        setProductName(f.productName)
-        if (f.brandName)          setBrandName(f.brandName)
-        if (f.productDescription) setProductDescription(f.productDescription)
-        if (f.selectedTemplates)  setSelectedTemplates(f.selectedTemplates)
-        if (f.aspectRatio)        setAspectRatio(f.aspectRatio)
-      }
-    } catch { /* ignore */ }
+  // ── Connect to the generation store ───────────────────────────────────────
+  // The store lives outside React — generation continues across navigations.
+  useEffect(() => {
+    const store = getCardsStore()
+
+    // Sync initial state (store may already have results from a previous visit)
+    setResults(store.results)
+
+    // Subscribe: receive updates while mounted
+    const unsubscribe = store.subscribe((newResults, newCredits) => {
+      setResults(newResults)
+      if (typeof newCredits === 'number') setCreditsRef.current(newCredits)
+    })
+
+    return unsubscribe
   }, [])
 
-  // ── Persist results to sessionStorage on change ───────────────────────────
+  // ── Restore form state from sessionStorage on mount ───────────────────────
   useEffect(() => {
-    try { sessionStorage.setItem('cards:results', JSON.stringify(results)) } catch { /* ignore */ }
-  }, [results])
+    try {
+      const stored = sessionStorage.getItem('cards:form')
+      if (!stored) return
+      const f = JSON.parse(stored) as {
+        productName?: string; brandName?: string; productDescription?: string
+        selectedTemplates?: string[]; aspectRatio?: AspectRatio
+      }
+      if (f.productName)        setProductName(f.productName)
+      if (f.brandName)          setBrandName(f.brandName)
+      if (f.productDescription) setProductDescription(f.productDescription)
+      if (f.selectedTemplates)  setSelectedTemplates(f.selectedTemplates)
+      if (f.aspectRatio)        setAspectRatio(f.aspectRatio)
+    } catch { /* ignore */ }
+  }, [])
 
   // ── Persist form state to sessionStorage on change ────────────────────────
   useEffect(() => {
@@ -85,6 +88,7 @@ export default function CardsPage() {
     } catch { /* ignore */ }
   }, [productName, brandName, productDescription, selectedTemplates, aspectRatio])
 
+  // ── Fetch profile credits ─────────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -104,6 +108,7 @@ export default function CardsPage() {
     })
   }, [])
 
+  // ── Fetch card templates from DB ──────────────────────────────────────────
   useEffect(() => {
     fetch('/api/card-templates')
       .then((r) => r.json())
@@ -113,15 +118,15 @@ export default function CardsPage() {
           setTemplateMap(Object.fromEntries(data.map((t) => [t.id, t])))
         }
       })
-      .catch(() => { /* templates stay empty — UI shows nothing */ })
+      .catch(() => { /* templates stay empty */ })
   }, [])
 
+  // ── Upload handlers ───────────────────────────────────────────────────────
   const handleUpload = useCallback(
     (file: File, url: string) => {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       setUploadedFile(file)
       setPreviewUrl(url)
-      setResults([])
       setMobileStep(2)
     },
     [previewUrl]
@@ -131,8 +136,8 @@ export default function CardsPage() {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setUploadedFile(null)
     setPreviewUrl(null)
-    setResults([])
     setSelectedTemplates([])
+    getCardsStore().clearAll()
   }, [previewUrl])
 
   const handleTemplateSelect = (ids: string[]) => {
@@ -146,102 +151,30 @@ export default function CardsPage() {
     setCustomTemplateUrl(url)
   }
 
-  const runGeneration = useCallback(
-    async (templateIds: string[]) => {
-      if (!uploadedFile || templateIds.length === 0) return
-
-      // Sequential requests to avoid hitting Gemini rate limits
-      for (let i = 0; i < templateIds.length; i++) {
-        const templateId = templateIds[i]
-        // Small delay between requests (skip before first)
-        if (i > 0) await new Promise((r) => setTimeout(r, 3000))
-
-        try {
-          const fd = new FormData()
-          fd.append('image',        uploadedFile)
-          fd.append('template_id',  templateId)
-          fd.append('aspect_ratio', aspectRatio)
-          if (productName.trim())        fd.append('product_name',        productName.trim())
-          if (brandName.trim())          fd.append('brand_name',          brandName.trim())
-          if (productDescription.trim()) fd.append('product_description', productDescription.trim())
-          if (templateId === AI_FREE_CARD_ID) {
-            fd.append('generate_mode', 'card-free')
-          }
-          if (templateId === CUSTOM_CARD_TEMPLATE_ID && customTemplateFile) {
-            fd.append('custom_template', customTemplateFile)
-          }
-
-          const res  = await fetch('/api/generate', { method: 'POST', body: fd })
-          const data = await res.json()
-
-          if (!res.ok) {
-            setResults((prev) =>
-              prev.map((r) =>
-                r.templateId === templateId
-                  ? { ...r, status: 'error', error: data.error ?? 'Ошибка генерации. Попробуйте снова.' }
-                  : r
-              )
-            )
-            continue
-          }
-
-          setResults((prev) =>
-            prev.map((r) =>
-              r.templateId === templateId
-                ? { ...r, status: 'done', resultUrl: data.outputUrl }
-                : r
-            )
-          )
-
-          if (typeof data.creditsRemaining === 'number') {
-            setCreditsRemaining(data.creditsRemaining)
-          }
-        } catch {
-          setResults((prev) =>
-            prev.map((r) =>
-              r.templateId === templateId
-                ? { ...r, status: 'error', error: 'Ошибка соединения. Проверьте интернет.' }
-                : r
-            )
-          )
-        }
-      }
-    },
-    [uploadedFile, aspectRatio, productName, brandName, productDescription, customTemplateFile]
-  )
-
-  const handleGenerate = async () => {
+  // ── Generate ──────────────────────────────────────────────────────────────
+  const handleGenerate = () => {
     if (!uploadedFile || selectedTemplates.length === 0) return
-
-    setResults(
-      selectedTemplates.map((id) => ({
-        templateId: id,
-        status:     'generating',
-        resultUrl:  null,
-        error:      null,
-      }))
-    )
     setMobileStep(3)
-
-    await runGeneration(selectedTemplates)
+    getCardsStore().startGeneration({
+      templateIds:        selectedTemplates,
+      file:               uploadedFile!,
+      customFile:         customTemplateFile,
+      aspectRatio,
+      productName,
+      brandName,
+      productDescription,
+    })
   }
 
-  const handleRetryFailed = async () => {
-    const failedIds = results
-      .filter((r) => r.status === 'error')
-      .map((r) => r.templateId)
-
-    if (failedIds.length === 0) return
-
-    setResults((prev) =>
-      prev.map((r) =>
-        failedIds.includes(r.templateId)
-          ? { ...r, status: 'generating', error: null }
-          : r
-      )
-    )
-
-    await runGeneration(failedIds)
+  const handleRetryFailed = () => {
+    getCardsStore().retryFailed({
+      file:               uploadedFile,
+      customFile:         customTemplateFile,
+      aspectRatio,
+      productName,
+      brandName,
+      productDescription,
+    })
   }
 
   const isAnyGenerating = results.some((r) => r.status === 'generating')

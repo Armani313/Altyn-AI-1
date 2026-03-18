@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
-import { CARD_TEMPLATE_MAP, CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
+import { type CardTemplate, CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
 
 type AspectRatio = '1:1' | '4:5' | '9:16'
 
@@ -20,6 +20,7 @@ export interface CardResult {
 
 interface CardResultViewerProps {
   results:             CardResult[]
+  templateMap:         Record<string, CardTemplate>
   aspectRatio:         AspectRatio
   onAspectRatioChange: (ratio: AspectRatio) => void
   onGenerate:          () => void
@@ -54,15 +55,17 @@ async function downloadImage(url: string, name: string) {
 function CardResultCard({
   result,
   aspectCls,
+  templateMap,
   onExpand,
 }: {
-  result:     CardResult
-  aspectCls:  string
-  onExpand?:  () => void
+  result:      CardResult
+  aspectCls:   string
+  templateMap: Record<string, CardTemplate>
+  onExpand?:   () => void
 }) {
   const [isDownloading, setIsDownloading] = useState(false)
   const isCustom  = result.templateId === CUSTOM_CARD_TEMPLATE_ID
-  const template  = isCustom ? null : CARD_TEMPLATE_MAP[result.templateId]
+  const template  = isCustom ? null : templateMap[result.templateId]
 
   const handleDownload = async () => {
     if (!result.resultUrl || isDownloading) return
@@ -157,6 +160,7 @@ function CardResultCard({
 
 export function CardResultViewer({
   results,
+  templateMap,
   aspectRatio,
   onAspectRatioChange,
   onGenerate,
@@ -286,6 +290,7 @@ export function CardResultViewer({
               key={result.templateId}
               result={result}
               aspectCls={currentRatio.cls}
+              templateMap={templateMap}
               onExpand={
                 result.status === 'done' && result.resultUrl
                   ? () => setLightboxIndex(doneIndexOf(result))

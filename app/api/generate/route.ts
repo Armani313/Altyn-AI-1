@@ -41,7 +41,6 @@ import {
   isMacroShotId, MACRO_SHOT_ID,
   type ProductType,
 } from '@/lib/constants'
-import { CARD_TEMPLATE_MAP } from '@/lib/card-templates'
 import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
 import { assertSafeStorageUrl, assertSafeImageBytes } from '@/lib/utils/security'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -297,11 +296,18 @@ export async function POST(request: Request) {
     let cardTemplateMime:   string | undefined
 
     if (cardTemplateId && !isCardFree) {
-      const tpl = CARD_TEMPLATE_MAP[cardTemplateId]
+      const { data: tplRow } = await serviceSupabase
+        .from('card_templates')
+        .select('image_url')
+        .eq('id', cardTemplateId)
+        .eq('is_active', true)
+        .single()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tpl = (tplRow as any) as { image_url: string } | null
       if (tpl) {
         try {
-          // imageUrl is URL-encoded (e.g. '/exCardTemplate/1%20(1).webp') — decode for fs
-          const tplRelPath = decodeURIComponent(tpl.imageUrl)
+          // image_url is URL-encoded (e.g. '/exCardTemplate/1%20(1).webp') — decode for fs
+          const tplRelPath = decodeURIComponent(tpl.image_url)
           const tplAbsPath = path.join(process.cwd(), 'public', tplRelPath)
           // MED-2: path bounds check — ensure resolved path stays inside public/exCardTemplate/
           const allowedDir = path.join(process.cwd(), 'public', 'exCardTemplate')

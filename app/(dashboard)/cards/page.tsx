@@ -8,7 +8,12 @@ import { CardProductForm }    from '@/components/cards/card-product-form'
 import { CardTemplatePicker } from '@/components/cards/card-template-picker'
 import { CardResultViewer, type CardResult } from '@/components/cards/card-result-viewer'
 import { createClient }       from '@/lib/supabase/client'
-import { MAX_CARD_TEMPLATES, CUSTOM_CARD_TEMPLATE_ID, AI_FREE_CARD_ID } from '@/lib/card-templates'
+import {
+  type CardTemplate,
+  MAX_CARD_TEMPLATES,
+  CUSTOM_CARD_TEMPLATE_ID,
+  AI_FREE_CARD_ID,
+} from '@/lib/card-templates'
 
 type AspectRatio = '1:1' | '4:5' | '9:16'
 type MobileStep  = 1 | 2 | 3
@@ -32,6 +37,8 @@ export default function CardsPage() {
   const [results,             setResults]             = useState<CardResult[]>([])
   const [creditsRemaining,    setCreditsRemaining]    = useState<number | null>(null)
   const [mobileStep,          setMobileStep]          = useState<MobileStep>(1)
+  const [cardTemplates,       setCardTemplates]       = useState<CardTemplate[]>([])
+  const [templateMap,         setTemplateMap]         = useState<Record<string, CardTemplate>>({})
 
   useEffect(() => {
     const supabase = createClient()
@@ -50,6 +57,18 @@ export default function CardsPage() {
           }
         })
     })
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/card-templates')
+      .then((r) => r.json())
+      .then((data: CardTemplate[]) => {
+        if (Array.isArray(data)) {
+          setCardTemplates(data)
+          setTemplateMap(Object.fromEntries(data.map((t) => [t.id, t])))
+        }
+      })
+      .catch(() => { /* templates stay empty — UI shows nothing */ })
   }, [])
 
   const handleUpload = useCallback(
@@ -264,6 +283,7 @@ export default function CardsPage() {
             />
             <div className="flex-1 bg-white rounded-2xl border border-cream-200 p-3 sm:p-4 shadow-soft">
               <CardTemplatePicker
+                templates={cardTemplates}
                 selectedIds={selectedTemplates}
                 onSelect={handleTemplateSelect}
                 maxSelect={MAX_CARD_TEMPLATES}
@@ -279,6 +299,7 @@ export default function CardsPage() {
             <SectionLabel step="03" title="Получите карточку" />
             <CardResultViewer
               results={results}
+              templateMap={templateMap}
               aspectRatio={aspectRatio}
               onAspectRatioChange={setAspectRatio}
               onGenerate={handleGenerate}

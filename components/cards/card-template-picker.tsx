@@ -3,13 +3,14 @@
 import { useRef } from 'react'
 import { Sparkles, Lock, Check, Upload, X, Wand2 } from 'lucide-react'
 import {
-  CARD_TEMPLATES,
+  type CardTemplate,
   MAX_CARD_TEMPLATES,
   CUSTOM_CARD_TEMPLATE_ID,
   AI_FREE_CARD_ID,
 } from '@/lib/card-templates'
 
 interface CardTemplatePickerProps {
+  templates:               CardTemplate[]
   selectedIds:             string[]
   onSelect:                (ids: string[]) => void
   maxSelect?:              number
@@ -19,6 +20,7 @@ interface CardTemplatePickerProps {
 }
 
 export function CardTemplatePicker({
+  templates,
   selectedIds,
   onSelect,
   maxSelect = MAX_CARD_TEMPLATES,
@@ -29,7 +31,7 @@ export function CardTemplatePicker({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const atMax    = selectedIds.length >= maxSelect
-  const filtered = CARD_TEMPLATES
+  const filtered = templates
 
   const toggle = (id: string) => {
     if (disabled) return
@@ -42,7 +44,7 @@ export function CardTemplatePicker({
 
   const handleAIPick = () => {
     if (disabled) return
-    const pool     = CARD_TEMPLATES.filter((t) => !t.premium)
+    const pool     = templates.filter((t) => !t.premium)
     const shuffled = [...pool].sort(() => Math.random() - 0.5)
     const picks    = shuffled.slice(0, Math.min(2, maxSelect)).map((t) => t.id)
     onSelect(picks)

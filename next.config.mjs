@@ -12,12 +12,12 @@ const nextConfig = {
       'onnxruntime-node$': false,
     }
 
-    // @imgly/background-removal bundles ONNX Runtime as ESM (.mjs) files that
-    // use `import.meta`. Without this rule webpack/Terser treats them as
-    // CommonJS and throws "'import.meta' cannot be used outside of module code".
+    // onnxruntime-web ships ESM bundles (.mjs) that use `import.meta`.
+    // Scoped only to onnxruntime-web — a broader rule breaks Zod schemas
+    // inside @imgly/background-removal (publicPath.replace → not a function).
     config.module.rules.push({
       test: /\.mjs$/,
-      include: /node_modules/,
+      include: /node_modules[\\/]onnxruntime-web/,
       type: 'javascript/auto',
     })
 

@@ -1,3 +1,5 @@
+import path from 'path'
+
 const isDev = process.env.NODE_ENV === 'development'
 
 /** @type {import('next').NextConfig} */
@@ -10,16 +12,18 @@ const nextConfig = {
       ...config.resolve.alias,
       'sharp$':            false,
       'onnxruntime-node$': false,
+      // Force CJS builds of onnxruntime-web instead of the ESM bundles.
+      // Root cause: ort.bundle.min.mjs / ort.webgpu.bundle.min.mjs capture
+      // `import.meta.url` into a variable at module-init time:
+      //   ws = (Kn = import.meta.url, async function(e={}) { ... })
+      // Webpack cannot statically replace a variable-capture pattern, so `Kn`
+      // stays undefined → `new URL("ort.bundle.min.mjs", Kn)` throws
+      // "e.replace is not a function" at runtime.
+      // The CJS builds (ort.min.js / ort.webgpu.min.js) have 0 import.meta.url
+      // usages and are fully browser-compatible.
+      'onnxruntime-web$':        path.resolve('./node_modules/onnxruntime-web/dist/ort.min.js'),
+      'onnxruntime-web/webgpu$': path.resolve('./node_modules/onnxruntime-web/dist/ort.webgpu.min.js'),
     }
-
-    // onnxruntime-web ships ESM bundles (.mjs) that use `import.meta`.
-    // Scoped only to onnxruntime-web — a broader rule breaks Zod schemas
-    // inside @imgly/background-removal (publicPath.replace → not a function).
-    config.module.rules.push({
-      test: /\.mjs$/,
-      include: /node_modules[\\/]onnxruntime-web/,
-      type: 'javascript/esm',
-    })
 
     // Suppress "Critical dependency: require function is used in a way in which
     // dependencies cannot be statically extracted" warnings from onnxruntime-web.

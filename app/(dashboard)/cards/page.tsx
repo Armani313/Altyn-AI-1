@@ -11,7 +11,6 @@ import { createClient }       from '@/lib/supabase/client'
 import {
   type CardTemplate,
   MAX_CARD_TEMPLATES,
-  CUSTOM_CARD_TEMPLATE_ID,
 } from '@/lib/card-templates'
 import { getCardsStore } from '@/lib/cards-generation-store'
 

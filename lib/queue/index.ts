@@ -22,6 +22,11 @@ import { GeminiProvider } from '@/lib/ai/providers/gemini-provider'
 // Image generation
 queueManager.registerProvider(new GeminiProvider())
 
+// ── Startup init (fire-and-forget) ────────────────────────────────────────────
+// Seeds RPD counter from DB and recovers stuck generations after a restart.
+// Runs async so it doesn't block module import; completes in <100ms typically.
+queueManager.init()
+
 // Future providers (uncomment when ready):
 // import { KlingProvider }     from '@/lib/ai/providers/kling-provider'
 // import { RunwayProvider }    from '@/lib/ai/providers/runway-provider'

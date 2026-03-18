@@ -12,6 +12,7 @@ import type { QueueJob, AIProvider, JobResult, EnqueueOptions, ProviderId } from
 import { jobStore } from './job-store'
 import { RateLimiter } from './rate-limiter'
 import { sleep } from '@/lib/utils'
+import { createServiceClient } from '@/lib/supabase/service'
 
 const TICK_INTERVAL_MS = 300  // how often the worker loop checks the queue
 
@@ -39,6 +40,59 @@ class QueueManager {
   registerProvider(provider: AIProvider): void {
     this.providers.set(provider.id, provider)
     this.inFlight.set(provider.id, 0)
+  }
+
+  /**
+   * Called once on singleton creation.
+   * 1. Seeds RPD counter from today's generation count in Supabase — prevents
+   *    over-quota after a restart (in-memory counter was at 0).
+   * 2. Marks stuck "processing" generations (older than 5 min) as failed —
+   *    prevents records stuck in limbo after a mid-request deploy.
+   *    Credits are refunded via refund_credit RPC for each stuck generation.
+   *    Tiny double-refund risk (window between generation insert and credit
+   *    decrement, ~ms) is accepted as preferable to silently eating user credits.
+   */
+  async init(): Promise<void> {
+    try {
+      const supabase  = createServiceClient()
+      const todayUtc  = new Date()
+      todayUtc.setUTCHours(0, 0, 0, 0)
+
+      // 1. Seed RPD counter
+      const { count: todayCount } = await supabase
+        .from('generations')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', todayUtc.toISOString())
+
+      rateLimiter.seedDailyCount('gemini', todayCount ?? 0)
+      console.log(`[Queue] init: seeded Gemini RPD = ${todayCount ?? 0} generations today`)
+
+      // 2. Recover stuck processing generations + refund credits
+      // Credit is decremented (step 7 in route.ts) before the AI call, so any
+      // generation that's still "processing" after a restart had its credit taken.
+      // We refund it here. The tiny window between DB insert and credit decrement
+      // makes double-refund practically impossible.
+      const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      const { data: stuck } = await supabase
+        .from('generations')
+        .update({ status: 'failed', error_message: 'Задание прервано при перезапуске сервера' } as never)
+        .eq('status', 'processing')
+        .lt('created_at', stuckCutoff)
+        .select('id, user_id')
+
+      if (stuck?.length) {
+        console.log(`[Queue] init: recovering ${stuck.length} stuck generation(s), refunding credits`)
+        await Promise.allSettled(
+          stuck.map((g) =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase as any).rpc('refund_credit', { p_user_id: (g as { id: string; user_id: string }).user_id })
+          )
+        )
+      }
+    } catch (err) {
+      // Non-fatal — queue still works, RPD just starts from 0
+      console.error('[Queue] init() failed:', err)
+    }
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────

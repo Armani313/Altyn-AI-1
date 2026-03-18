@@ -57,6 +57,19 @@ export class RateLimiter {
     return true
   }
 
+  /**
+   * Seed the daily counter with a known count (e.g. from DB on startup).
+   * Only applied if the stored day matches today — stale seeds are ignored.
+   */
+  seedDailyCount(providerId: string, count: number): void {
+    const today = utcDayStart()
+    const existing = this.dailyBuckets.get(providerId)
+    // Only seed if today's counter doesn't exist yet or is still zero
+    if (!existing || existing.dayStart !== today || existing.count === 0) {
+      this.dailyBuckets.set(providerId, { count, dayStart: today })
+    }
+  }
+
   /** Get (or reset) the daily counter for today, shared by dailyRemaining and consumeDay. */
   private getDailyCounter(providerId: string): { count: number; dayStart: number } {
     const today = utcDayStart()

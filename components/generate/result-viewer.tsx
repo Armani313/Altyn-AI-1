@@ -22,12 +22,13 @@ interface ResultViewerProps {
   onGenerate:          () => void
   onRetryFailed:       () => void
   canGenerate:         boolean
-  selectedCount:       number
   creditsRemaining:    number | null
   /** URLs of the user's custom models — used for thumbnails in result cards */
   customModelUrls?:    string[]
   userPrompt:          string
   onUserPromptChange:  (v: string) => void
+  /** Number of selected templates (1 credit each); 0 means standalone (1 credit) */
+  selectedCount?:      number
 }
 
 const RATIOS: { id: AspectRatio; label: string; cls: string }[] = [
@@ -175,11 +176,11 @@ export function ResultViewer({
   onGenerate,
   onRetryFailed,
   canGenerate,
-  selectedCount,
   creditsRemaining,
   customModelUrls,
   userPrompt,
   onUserPromptChange,
+  selectedCount = 0,
 }: ResultViewerProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [promptOpen,    setPromptOpen]    = useState(false)
@@ -187,7 +188,8 @@ export function ResultViewer({
   const isAnyGenerating  = results.some((r) => r.status === 'generating')
   const hasResults       = results.length > 0
   const failedCount      = results.filter((r) => r.status === 'error').length
-  const enoughCredits    = creditsRemaining == null || creditsRemaining >= selectedCount
+  const requiredCredits  = Math.max(1, selectedCount)
+  const enoughCredits    = creditsRemaining == null || creditsRemaining >= requiredCredits
   const currentRatio     = RATIOS.find((r) => r.id === aspectRatio)!
 
   // Build lightbox list from done results
@@ -202,11 +204,10 @@ export function ResultViewer({
 
   const genLabel = () => {
     if (isAnyGenerating) {
-      const n = results.filter((r) => r.status === 'generating').length
       return (
         <span className="flex items-center gap-2.5">
           <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-          Генерируем {n} {n === 1 ? 'фото' : 'фото'}…
+          Генерируем фото…
         </span>
       )
     }
@@ -222,17 +223,15 @@ export function ResultViewer({
       return (
         <span className="flex items-center gap-2.5">
           <Sparkles className="w-5 h-5" />
-          Выберите модели
+          Выберите модель
         </span>
       )
     }
     return (
       <span className="flex items-center gap-2.5">
         <Sparkles className="w-5 h-5" />
-        {selectedCount === 1 ? 'Сгенерировать фото' : `Сгенерировать ${selectedCount} фото`}
-        <span className="ml-0.5 text-white/70 text-sm font-normal">
-          ({selectedCount} кр.)
-        </span>
+        Сгенерировать {selectedCount * 4} фото
+        <span className="ml-0.5 text-white/70 text-sm font-normal">({requiredCredits} кр.)</span>
       </span>
     )
   }
@@ -262,11 +261,11 @@ export function ResultViewer({
         {/* Credits badge */}
         {creditsRemaining != null && (
           <div className={`flex items-center gap-1.5 text-xs rounded-lg px-2.5 py-1.5 ${
-            !enoughCredits && selectedCount > 0
+            !enoughCredits
               ? 'bg-red-50 text-red-600 border border-red-200'
               : 'text-muted-foreground'
           }`}>
-            <Zap className={`w-3.5 h-3.5 ${!enoughCredits && selectedCount > 0 ? 'text-red-500' : 'text-rose-gold-500'}`} />
+            <Zap className={`w-3.5 h-3.5 ${!enoughCredits ? 'text-red-500' : 'text-rose-gold-500'}`} />
             <span>
               <strong className="text-foreground">{creditsRemaining}</strong> кредитов
             </span>
@@ -317,9 +316,9 @@ export function ResultViewer({
       {/* Generate button */}
       <Button
         onClick={onGenerate}
-        disabled={!canGenerate || isAnyGenerating || selectedCount === 0 || !enoughCredits}
+        disabled={!canGenerate || isAnyGenerating || !enoughCredits}
         className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
-          canGenerate && !isAnyGenerating && selectedCount > 0 && enoughCredits
+          canGenerate && !isAnyGenerating && enoughCredits
             ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow'
             : 'bg-muted text-muted-foreground cursor-not-allowed'
         }`}
@@ -357,7 +356,6 @@ export function ResultViewer({
           ))}
         </div>
       ) : (
-        /* Empty placeholder */
         <div className={`relative w-full ${currentRatio.cls} rounded-2xl overflow-hidden border border-cream-200 bg-white shadow-card`}>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6">
             <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-rose-gold-50/50 via-transparent to-cream-200/30" />
@@ -366,12 +364,8 @@ export function ResultViewer({
                 <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
               </div>
               <div>
-                <p className="font-medium text-foreground/70 text-sm mb-0.5">
-                  Здесь появятся результаты
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Загрузите фото и выберите модели
-                </p>
+                <p className="font-medium text-foreground/70 text-sm mb-0.5">Здесь появятся результаты</p>
+                <p className="text-xs text-muted-foreground">Загрузите фото и нажмите «Сгенерировать»</p>
               </div>
             </div>
           </div>
@@ -379,9 +373,14 @@ export function ResultViewer({
       )}
 
       {/* Hint */}
+      {!isAnyGenerating && !canGenerate && selectedCount === 0 && (
+        <p className="text-center text-xs text-muted-foreground">
+          ← Выберите модель для генерации
+        </p>
+      )}
       {!isAnyGenerating && !canGenerate && selectedCount > 0 && (
         <p className="text-center text-xs text-muted-foreground">
-          ↑ Загрузите фото украшения для начала
+          ↑ Загрузите фото товара для начала
         </p>
       )}
 

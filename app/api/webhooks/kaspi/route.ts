@@ -115,6 +115,13 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+    // MED-4: log overpayment as an anomaly (don't reject — user paid more, still activate)
+    if (Amount > planConfig.priceKZT) {
+      console.warn(
+        `Kaspi webhook: overpayment detected — Amount ${Amount} KZT > ` +
+        `expected ${planConfig.priceKZT} KZT for plan "${sub.plan}" (OrderId=${OrderId})`
+      )
+    }
     await handleApproved(supabase, sub, Amount)
   } else if (Status === 'DECLINED' || Status === 'REVERSED') {
     await handleDeclined(supabase, sub)

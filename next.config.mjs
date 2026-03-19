@@ -7,23 +7,35 @@ const nextConfig = {
   // ── Webpack: prevent Node.js-only packages from being bundled ────────────
   // @imgly/background-removal depends on onnxruntime-web (browser) not
   // onnxruntime-node. Without these aliases webpack throws "Can't resolve" errors.
-  webpack: (config) => {
+  webpack: (config, { webpack }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       'sharp$':            false,
       'onnxruntime-node$': false,
       // Force CJS builds of onnxruntime-web instead of the ESM bundles.
-      // Root cause: ort.bundle.min.mjs / ort.webgpu.bundle.min.mjs capture
-      // `import.meta.url` into a variable at module-init time:
-      //   ws = (Kn = import.meta.url, async function(e={}) { ... })
-      // Webpack cannot statically replace a variable-capture pattern, so `Kn`
-      // stays undefined → `new URL("ort.bundle.min.mjs", Kn)` throws
-      // "e.replace is not a function" at runtime.
-      // The CJS builds (ort.min.js / ort.webgpu.min.js) have 0 import.meta.url
-      // usages and are fully browser-compatible.
+      // Root cause: ort.bundle.min.mjs / ort.webgpu.bundle.min.mjs have 4 uses of
+      // `import.meta.url` which webpack compiles to `new __webpack_require__.U(…)`.
+      // __webpack_require__.U is NOT a URL constructor → TypeError at runtime.
+      // The CJS builds (ort.min.js / ort.webgpu.min.js) have 0 import.meta.url usages.
+      // These aliases handle the module-name lookup (resolve.alias).
       'onnxruntime-web$':        path.resolve('./node_modules/onnxruntime-web/dist/ort.min.js'),
       'onnxruntime-web/webgpu$': path.resolve('./node_modules/onnxruntime-web/dist/ort.webgpu.min.js'),
     }
+
+    // Belt-and-suspenders: NormalModuleReplacementPlugin catches any remaining
+    // references to the ESM bundle files (e.g. when onnxruntime-web@1.21.0's
+    // package.json `"import"` condition bypasses resolve.alias for dynamic imports
+    // inside lazy chunks such as @imgly/background-removal).
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(
+        /onnxruntime-web[/\\]dist[/\\]ort\.bundle\.min\.mjs$/,
+        path.resolve('./node_modules/onnxruntime-web/dist/ort.min.js'),
+      ),
+      new webpack.NormalModuleReplacementPlugin(
+        /onnxruntime-web[/\\]dist[/\\]ort\.webgpu\.bundle\.min\.mjs$/,
+        path.resolve('./node_modules/onnxruntime-web/dist/ort.webgpu.min.js'),
+      ),
+    )
 
     // Suppress "Critical dependency: require function is used in a way in which
     // dependencies cannot be statically extracted" warnings from onnxruntime-web.

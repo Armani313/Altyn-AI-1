@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
   Download, Sparkles, ImageIcon, RefreshCw, Loader2,
-  AlertCircle, Zap, Maximize2, LayoutGrid,
+  AlertCircle, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
@@ -48,115 +48,142 @@ async function downloadImage(url: string, name: string) {
   }
 }
 
-function CardResultCard({
-  result,
-  aspectCls,
-  templateMap,
-  onExpand,
-}: {
-  result:      CardResult
-  aspectCls:   string
-  templateMap: Record<string, CardTemplate>
-  onExpand?:   () => void
-}) {
-  const [isDownloading, setIsDownloading] = useState(false)
-  const isCustom  = result.templateId === CUSTOM_CARD_TEMPLATE_ID
-  const template  = isCustom ? null : templateMap[result.templateId]
+// ── Display item: one card in the grid ──────────────────────────────────────
 
-  const handleDownload = async () => {
-    if (!result.resultUrl || isDownloading) return
-    setIsDownloading(true)
-    await downloadImage(result.resultUrl, `nurai-card-${result.templateId}-${Date.now()}`)
-    setIsDownloading(false)
-  }
+type DisplayItem =
+  | { type: 'done';       key: string; imageUrl: string; thumbUrl?: string; templateId: string; panelId?: number }
+  | { type: 'generating'; key: string; templateId: string }
+  | { type: 'error';      key: string; templateId: string; error: string | null }
 
+/** Expands CardResult[] into individual display cards (4 per non-custom template). */
+function expandResults(results: CardResult[]): DisplayItem[] {
+  return results.flatMap((r): DisplayItem[] => {
+    const isSingle = r.templateId === CUSTOM_CARD_TEMPLATE_ID
+    const slots    = isSingle ? 1 : 4
+
+    if (r.status === 'done' && r.panels?.length) {
+      return r.panels.map((p) => ({
+        type:       'done',
+        key:        `${r.templateId}-p${p.id}`,
+        imageUrl:   p.url,
+        thumbUrl:   p.thumbUrl,
+        templateId: r.templateId,
+        panelId:    p.id,
+      }))
+    }
+
+    if (r.status === 'done' && r.resultUrl) {
+      return [{ type: 'done', key: r.templateId, imageUrl: r.resultUrl, templateId: r.templateId }]
+    }
+
+    if (r.status === 'error') {
+      return Array.from({ length: slots }, (_, i) => ({
+        type:       'error',
+        key:        `${r.templateId}-err-${i}`,
+        templateId: r.templateId,
+        error:      i === 0 ? r.error : null, // show error text only on first card
+      }))
+    }
+
+    // generating
+    return Array.from({ length: slots }, (_, i) => ({
+      type:       'generating',
+      key:        `${r.templateId}-gen-${i}`,
+      templateId: r.templateId,
+    }))
+  })
+}
+
+// ── Single card components ───────────────────────────────────────────────────
+
+function GeneratingCard({ aspectCls }: { aspectCls: string }) {
   return (
     <div className={`relative w-full ${aspectCls} rounded-2xl overflow-hidden border border-cream-200 bg-white shadow-card`}>
-
-      {/* Generating */}
-      {result.status === 'generating' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-cream-50 to-rose-gold-50">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full border-2 border-rose-gold-300 animate-ping absolute inset-0 opacity-50" />
-            <div className="w-12 h-12 rounded-full bg-rose-gold-100 flex items-center justify-center relative">
-              <Sparkles className="w-5 h-5 text-rose-gold-500 animate-pulse" />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground font-medium px-4 text-center">
-            ИИ создаёт карточку…
-          </p>
-          <div className="w-3/5 space-y-1.5">
-            {[100, 75, 50].map((w) => (
-              <div key={w} className="h-1 rounded-full shimmer" style={{ width: `${w}%` }} />
-            ))}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-cream-50 to-rose-gold-50">
+        <div className="relative">
+          <div className="w-10 h-10 rounded-full border-2 border-rose-gold-300 animate-ping absolute inset-0 opacity-50" />
+          <div className="w-10 h-10 rounded-full bg-rose-gold-100 flex items-center justify-center relative">
+            <Sparkles className="w-4 h-4 text-rose-gold-500 animate-pulse" />
           </div>
         </div>
-      )}
-
-      {/* Done */}
-      {result.status === 'done' && result.resultUrl && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={result.resultUrl}
-            alt="Карточка товара"
-            className="w-full h-full object-cover"
-          />
-          <button
-            onClick={handleDownload}
-            disabled={isDownloading}
-            className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-xs font-semibold px-3 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70 touch-manipulation"
-          >
-            {isDownloading
-              ? <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin flex-shrink-0" />
-              : <Download className="w-3.5 h-3.5 text-rose-gold-500 flex-shrink-0" />
-            }
-            {isDownloading ? 'Загрузка…' : 'Скачать'}
-          </button>
-
-          {onExpand && (
-            <button
-              onClick={onExpand}
-              className="absolute bottom-2 left-2 w-9 h-9 flex items-center justify-center bg-white/90 hover:bg-white backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 touch-manipulation"
-              aria-label="Открыть полноэкранно"
-            >
-              <Maximize2 className="w-3.5 h-3.5 text-foreground/70" />
-            </button>
-          )}
-        </>
-      )}
-
-      {/* Error */}
-      {result.status === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 bg-red-50">
-          <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
-          <p className="text-xs text-red-600 text-center leading-snug">
-            {result.error ?? 'Ошибка генерации'}
-          </p>
+        <div className="w-3/5 space-y-1.5">
+          {[100, 75, 50].map((w) => (
+            <div key={w} className="h-1 rounded-full shimmer" style={{ width: `${w}%` }} />
+          ))}
         </div>
-      )}
-
-      {/* Template badge */}
-      {isCustom ? (
-        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
-          <LayoutGrid className="w-3 h-3 text-white flex-shrink-0" />
-          <span className="text-[10px] text-white font-medium">Мой шаблон</span>
-        </div>
-      ) : template && (
-        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-rose-gold-400" />
-          <span className="text-[10px] text-white font-medium truncate max-w-[90px]">
-            {template.name}
-          </span>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
 
+function ErrorCard({ aspectCls, error }: { aspectCls: string; error: string | null }) {
+  return (
+    <div className={`relative w-full ${aspectCls} rounded-2xl overflow-hidden border border-red-200 bg-red-50 shadow-card`}>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
+        <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+        {error && (
+          <p className="text-xs text-red-600 text-center leading-snug">{error}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DoneCard({
+  aspectCls,
+  imageUrl,
+  thumbUrl,
+  onExpand,
+}: {
+  aspectCls: string
+  imageUrl:  string
+  thumbUrl?: string
+  onExpand:  () => void
+}) {
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    if (isDownloading) return
+    setIsDownloading(true)
+    await downloadImage(imageUrl, `nurai-card-${Date.now()}`)
+    setIsDownloading(false)
+  }
+
+  return (
+    <div
+      className={`relative w-full ${aspectCls} rounded-2xl overflow-hidden border border-cream-200 bg-white shadow-card cursor-pointer group`}
+      onClick={onExpand}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={thumbUrl ?? imageUrl}
+        alt="Карточка товара"
+        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+      />
+
+      {/* Overlay on hover */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+
+      {/* Download button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); handleDownload() }}
+        disabled={isDownloading}
+        className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-xs font-semibold px-2.5 py-1.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70 touch-manipulation"
+      >
+        {isDownloading
+          ? <Loader2 className="w-3 h-3 text-rose-gold-500 animate-spin flex-shrink-0" />
+          : <Download className="w-3 h-3 text-rose-gold-500 flex-shrink-0" />
+        }
+        {isDownloading ? 'Загрузка…' : 'Скачать'}
+      </button>
+    </div>
+  )
+}
+
+// ── Main viewer ──────────────────────────────────────────────────────────────
+
 export function CardResultViewer({
   results,
-  templateMap,
   aspectRatio,
   onAspectRatioChange,
   onGenerate,
@@ -173,21 +200,18 @@ export function CardResultViewer({
   const enoughCredits   = creditsRemaining == null || creditsRemaining >= selectedCount
   const currentRatio    = RATIOS.find((r) => r.id === aspectRatio)!
 
-  const lightboxImages: LightboxImage[] = results
-    .filter((r) => r.status === 'done' && r.resultUrl)
-    .map((r) => ({ url: r.resultUrl! }))
-
-  function doneIndexOf(result: CardResult): number {
-    return lightboxImages.findIndex((img) => img.url === result.resultUrl)
-  }
+  const displayItems  = expandResults(results)
+  const doneItems     = displayItems.filter((d): d is Extract<DisplayItem, { type: 'done' }> => d.type === 'done')
+  const lightboxImages: LightboxImage[] = doneItems.map((d) => ({ url: d.imageUrl }))
 
   const genLabel = () => {
     if (isAnyGenerating) {
       const n = results.filter((r) => r.status === 'generating').length
+      const total = n * 4
       return (
         <span className="flex items-center gap-2.5">
           <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-          Создаём {n} {n === 1 ? 'карточку' : 'карточки'}…
+          Создаём {total} карточки…
         </span>
       )
     }
@@ -207,10 +231,11 @@ export function CardResultViewer({
         </span>
       )
     }
+    const total = selectedCount * 4
     return (
       <span className="flex items-center gap-2.5">
         <Sparkles className="w-5 h-5" />
-        {selectedCount === 1 ? 'Создать карточку' : `Создать ${selectedCount} карточки`}
+        Создать {total} карточки
         <span className="ml-0.5 text-white/70 text-sm font-normal">
           ({selectedCount} кр.)
         </span>
@@ -278,22 +303,28 @@ export function CardResultViewer({
         </Button>
       )}
 
-      {/* Results grid */}
+      {/* Results grid — 2 columns, each item is a standalone card */}
       {hasResults ? (
-        <div className={`grid gap-3 ${results.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-          {results.map((result) => (
-            <CardResultCard
-              key={result.templateId}
-              result={result}
-              aspectCls={currentRatio.cls}
-              templateMap={templateMap}
-              onExpand={
-                result.status === 'done' && result.resultUrl
-                  ? () => setLightboxIndex(doneIndexOf(result))
-                  : undefined
-              }
-            />
-          ))}
+        <div className="grid grid-cols-2 gap-2.5">
+          {displayItems.map((item) => {
+            if (item.type === 'generating') {
+              return <GeneratingCard key={item.key} aspectCls={currentRatio.cls} />
+            }
+            if (item.type === 'error') {
+              return <ErrorCard key={item.key} aspectCls={currentRatio.cls} error={item.error} />
+            }
+            // done
+            const lbIdx = doneItems.findIndex((d) => d.key === item.key)
+            return (
+              <DoneCard
+                key={item.key}
+                aspectCls={currentRatio.cls}
+                imageUrl={item.imageUrl}
+                thumbUrl={item.thumbUrl}
+                onExpand={() => setLightboxIndex(lbIdx)}
+              />
+            )
+          })}
         </div>
       ) : (
         /* Empty placeholder */

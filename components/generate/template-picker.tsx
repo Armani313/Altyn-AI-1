@@ -5,7 +5,7 @@ import { Sparkles, Lock, Check, Upload, Loader2, User, X, ScanLine } from 'lucid
 import {
   MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelCategory, type ProductType,
   MAX_CUSTOM_MODELS, makeCustomModelId, isCustomModelId,
-  MACRO_SHOT_ID,
+  MACRO_SHOT_ID, AI_FREE_LIFESTYLE_ID,
 } from '@/lib/constants'
 
 type TabCategory = 'all' | ModelCategory
@@ -253,7 +253,63 @@ export function TemplatePicker({
       {/* Model grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5">
 
-        {/* ── Macro shot card (always first) ───────────────────────────── */}
+        {/* ── AI Free Lifestyle card (always first) ────────────────────── */}
+        {(() => {
+          const isSelected = selectedIds.includes(AI_FREE_LIFESTYLE_ID)
+          const isDisabled = disabled || (atMax && !isSelected)
+          return (
+            <button
+              onClick={() => toggle(AI_FREE_LIFESTYLE_ID)}
+              disabled={isDisabled}
+              className={`
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200
+                ${isSelected
+                  ? 'border-primary shadow-glow scale-[0.97]'
+                  : isDisabled
+                  ? 'border-cream-200 opacity-50 cursor-not-allowed'
+                  : 'border-transparent hover:border-rose-gold-200 hover:shadow-soft'
+                }
+              `}
+            >
+              <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-rose-gold-400 via-rose-gold-500 to-rose-900 flex flex-col items-center justify-center gap-3 px-3">
+                {/* Decorative sparkle rings */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                  <div className="w-32 h-32 rounded-full border-2 border-white animate-ping" style={{ animationDuration: '3s' }} />
+                  <div className="absolute w-20 h-20 rounded-full border border-white" />
+                </div>
+                <div className="relative z-10 flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-white text-center leading-snug">
+                    ИИ создаёт
+                  </p>
+                  <p className="text-[9px] text-white/80 text-center leading-snug">
+                    Свободная генерация
+                  </p>
+                </div>
+              </div>
+
+              {isSelected && (
+                <div className="absolute inset-0 bg-primary/15 flex items-start justify-end p-2">
+                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-soft">
+                    <span className="text-white text-[10px] font-bold">
+                      {selectedIds.indexOf(AI_FREE_LIFESTYLE_ID) + 1}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-1.5 py-2">
+                <p className="text-[9px] font-medium text-white text-center leading-tight truncate">
+                  ИИ без шаблона
+                </p>
+              </div>
+            </button>
+          )
+        })()}
+
+        {/* ── Macro shot card ────────────────────────────────────────────── */}
         {(() => {
           const isSelected = selectedIds.includes(MACRO_SHOT_ID)
           const isDisabled = disabled || (atMax && !isSelected)

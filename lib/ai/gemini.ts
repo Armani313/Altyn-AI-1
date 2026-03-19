@@ -15,6 +15,7 @@
 
 import type { ProductType } from '@/lib/constants'
 import { buildUserPromptSuffix } from '@/lib/ai/moderation'
+import { buildContactSheetPrompt } from '@/lib/ai/contact-sheet'
 
 const DEFAULT_MODEL   = 'gemini-3.1-flash-image-preview'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -569,8 +570,14 @@ export interface GenerationParams {
   userPrompt?:       string
   /** When true, generates a macro/close-up product shot instead of lifestyle */
   isMacroShot?:      boolean
+  /** When true, generates a 2×2 contact sheet with 4 angle variations */
+  isContactSheet?:      boolean
+  /** Aspect ratio for contact sheet output (e.g. '1:1', '9:16', '3:4') */
+  contactSheetRatio?:   string
   /** When true, generates a full product card without a template */
   isCardFree?:          boolean
+  /** When true, AI autonomously picks model, poses, and scenes (lifestyle free mode) */
+  isFreeLifestyle?:     boolean
   /** Card template image buffer — enables template-based card generation */
   cardTemplateBuffer?:  Buffer
   /** MIME type of cardTemplateBuffer */
@@ -632,7 +639,65 @@ export async function generateJewelryPhoto(
 
   const promptSuffix = params.userPrompt ? buildUserPromptSuffix(params.userPrompt) : ''
 
-  if (params.cardTemplateBuffer && params.cardTemplateMime) {
+  if (params.isContactSheet) {
+    // Contact sheet: 2×2 grid — sub-mode depends on inputs
+    const {
+      buildCompositeContactSheetPrompt,
+      buildCardTemplateContactSheetPrompt,
+      buildCardFreeContactSheetPrompt,
+      buildFreeLifestyleContactSheetPrompt,
+    } = await import('@/lib/ai/contact-sheet')
+
+    const hasModel   = !!(params.modelImageBuffer && params.modelMimeType)
+    const hasCardTpl = !!(params.cardTemplateBuffer && params.cardTemplateMime)
+
+    if (hasCardTpl) {
+      // Card template contact sheet: product FIRST so Gemini focuses on it, template SECOND as layout ref
+      const templateBase64 = params.cardTemplateBuffer!.toString('base64')
+      const csPrompt = buildCardTemplateContactSheetPrompt(
+        params.cardProductName,
+        params.cardBrandName,
+        params.cardProductDesc,
+      )
+      parts = [
+        { inlineData: { mimeType: productMimeType,          data: productBase64 } },
+        { inlineData: { mimeType: params.cardTemplateMime!, data: templateBase64 } },
+        { text: csPrompt },
+      ]
+    } else if (params.isCardFree) {
+      // Free card contact sheet: 4 different card layout styles (no template)
+      const csPrompt = buildCardFreeContactSheetPrompt(
+        params.cardProductName,
+        params.cardBrandName,
+        params.cardProductDesc,
+      )
+      parts = [
+        { inlineData: { mimeType: productMimeType, data: productBase64 } },
+        { text: csPrompt },
+      ]
+    } else if (params.isFreeLifestyle) {
+      // AI free lifestyle: Gemini autonomously picks model, poses, scenes
+      const csPrompt = buildFreeLifestyleContactSheetPrompt(productType, params.userPrompt)
+      parts = [
+        { inlineData: { mimeType: productMimeType, data: productBase64 } },
+        { text: csPrompt },
+      ]
+    } else if (hasModel) {
+      const modelBase64 = params.modelImageBuffer!.toString('base64')
+      const csPrompt = buildCompositeContactSheetPrompt(productType, params.userPrompt)
+      parts = [
+        { inlineData: { mimeType: params.modelMimeType!, data: modelBase64 } },
+        { inlineData: { mimeType: productMimeType,       data: productBase64 } },
+        { text: csPrompt },
+      ]
+    } else {
+      const csPrompt = buildContactSheetPrompt(productType, params.userPrompt)
+      parts = [
+        { inlineData: { mimeType: productMimeType, data: productBase64 } },
+        { text: csPrompt },
+      ]
+    }
+  } else if (params.cardTemplateBuffer && params.cardTemplateMime) {
     // Template card mode: use the selected card template as layout reference
     const templateBase64 = params.cardTemplateBuffer.toString('base64')
     const cardPrompt = buildCardTemplatePrompt(
@@ -677,13 +742,15 @@ export async function generateJewelryPhoto(
   }
 
   // ── 3. Call Gemini ─────────────────────────────────────────────────────────
-  // Card modes: IMAGE-only modality prevents the model from dumping text analysis
-  // instead of generating the image (long prompt edge case).
-  const isCardMode = !!(params.isCardFree || params.cardTemplateBuffer)
+  // Card / contact-sheet modes: IMAGE-only modality prevents the model from
+  // dumping text analysis instead of generating the image (long prompt edge case).
+  const isCardMode = !!(params.isCardFree || params.cardTemplateBuffer || params.isContactSheet)
+
   const body = JSON.stringify({
     contents: [{ parts }],
     generationConfig: {
       responseModalities: isCardMode ? ['IMAGE'] : ['IMAGE', 'TEXT'],
+      ...(params.contactSheetRatio ? { aspectRatio: params.contactSheetRatio } : {}),
     },
   })
 
@@ -707,8 +774,9 @@ export async function generateJewelryPhoto(
   }
 
   if (!res.ok) {
-    // HIGH-NEW-2: log full error server-side, throw only a sanitized message
-    console.error('Gemini API error:', data.error)
+    // MEDIUM-1: log only code + truncated message — never log full error object to avoid
+    // leaking quota details or API internals into centralized log aggregators
+    console.error('Gemini API error:', res.status, data.error?.code, (data.error?.message ?? '').slice(0, 100))
     if (res.status === 429) {
       // Check for daily quota exhaustion vs per-minute rate limit
       const errMsg = (data.error?.message ?? '').toLowerCase()
@@ -735,8 +803,15 @@ export async function generateJewelryPhoto(
     )
   }
 
+  // MEDIUM-5: guard against unexpectedly large AI outputs (e.g. API bug returning huge buffer)
+  const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64')
+  const MAX_AI_OUTPUT_BYTES = 50 * 1024 * 1024 // 50 MB
+  if (imageBuffer.length > MAX_AI_OUTPUT_BYTES) {
+    throw new Error('AI вернул изображение слишком большого размера. Попробуйте снова.')
+  }
+
   return {
-    imageBuffer:  Buffer.from(imagePart.inlineData.data, 'base64'),
+    imageBuffer,
     mimeType:     imagePart.inlineData.mimeType,
     predictionId: `gemini-${Date.now()}`,
   }

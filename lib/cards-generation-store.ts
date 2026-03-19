@@ -12,6 +12,7 @@ export interface CardResult {
   templateId: string
   status:     'generating' | 'done' | 'error'
   resultUrl:  string | null
+  panels:     Array<{ id: number; url: string; thumbUrl?: string }> | null
   error:      string | null
 }
 
@@ -96,6 +97,7 @@ class CardsGenerationStore {
       templateId: id,
       status:     'generating' as const,
       resultUrl:  null,
+      panels:     null,
       error:      null,
     }))
     this._persist()
@@ -129,7 +131,7 @@ class CardsGenerationStore {
     this._running    = true
 
     this._results = this._results.map((r) =>
-      failedIds.includes(r.templateId) ? { ...r, status: 'generating' as const, error: null } : r
+      failedIds.includes(r.templateId) ? { ...r, status: 'generating' as const, panels: null, error: null } : r
     )
     this._persist()
     this._notify()
@@ -157,23 +159,45 @@ class CardsGenerationStore {
         if (params.productName)        fd.append('product_name',        params.productName)
         if (params.brandName)          fd.append('brand_name',          params.brandName)
         if (params.productDescription) fd.append('product_description', params.productDescription)
-        if (templateId === AI_FREE_CARD_ID) fd.append('generate_mode', 'card-free')
+
+        const isCustom = templateId === CUSTOM_CARD_TEMPLATE_ID
+        if (templateId === AI_FREE_CARD_ID) {
+          // Free card — 4 different layout styles via contact-sheet split
+          fd.append('generate_mode', 'card-free-contact-sheet')
+        } else if (!isCustom) {
+          // Regular card template — 4 variations using the template layout
+          fd.append('generate_mode', 'contact-sheet')
+        }
+        console.log(`[CardsStore] templateId="${templateId}" generate_mode=${fd.get('generate_mode') ?? 'none'}`)
         if (templateId === CUSTOM_CARD_TEMPLATE_ID && this._customFile) {
           fd.append('custom_template', this._customFile)
         }
 
         const res  = await fetch('/api/generate', { method: 'POST', body: fd })
-        const data = await res.json() as { error?: string; outputUrl?: string; creditsRemaining?: number }
+        const data = await res.json() as {
+          error?: string
+          outputUrl?: string
+          creditsRemaining?: number
+          isContactSheet?: boolean
+          panels?: Array<{ id: number; url: string; thumbUrl?: string }>
+        }
 
+        console.log(`[CardsStore] response ok=${res.ok} isContactSheet=${data.isContactSheet} panels=${data.panels?.length ?? 0} outputUrl=${!!data.outputUrl}`)
         if (!res.ok) {
           this._setResult(templateId, {
             status: 'error',
             error:  data.error ?? 'Ошибка генерации. Попробуйте снова.',
           })
+        } else if (data.isContactSheet && data.panels?.length) {
+          this._setResult(
+            templateId,
+            { status: 'done', panels: data.panels, resultUrl: data.panels[0]?.url ?? null },
+            typeof data.creditsRemaining === 'number' ? data.creditsRemaining : undefined
+          )
         } else {
           this._setResult(
             templateId,
-            { status: 'done', resultUrl: data.outputUrl ?? null },
+            { status: 'done', resultUrl: data.outputUrl ?? null, panels: null },
             typeof data.creditsRemaining === 'number' ? data.creditsRemaining : undefined
           )
         }

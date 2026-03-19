@@ -153,17 +153,21 @@ export function verifyKaspiSignature(
     .update(rawBody)
     .digest() // Buffer, not hex string
 
-  // MED-7: use Node's native constant-time comparison (operates on Buffers)
+  // HIGH-4: always perform a constant-time comparison regardless of input validity.
+  // Buffer.from(str, 'hex') does NOT throw — it returns an empty or truncated
+  // buffer for invalid hex. A length mismatch is safe to handle in constant time.
   let received: Buffer
   try {
     received = Buffer.from(receivedSignature, 'hex')
   } catch {
-    return false
+    received = Buffer.alloc(0)
   }
 
-  // Lengths must match before calling cryptoTimingSafeEqual
-  // (both are HMAC-SHA256 = 32 bytes = 64 hex chars, so they should always match)
-  if (expected.length !== received.length) return false
+  // If lengths differ, compare expected against itself (always false, constant time)
+  if (expected.length !== received.length) {
+    cryptoTimingSafeEqual(expected, expected)   // dummy constant-time op
+    return false
+  }
 
   return cryptoTimingSafeEqual(expected, received)
 }
@@ -185,7 +189,8 @@ export interface KaspiWebhookPayload {
 // ── Month helpers ─────────────────────────────────────────────────────────────
 
 export function subscriptionExpiresAt(): string {
+  // LOW-6: use explicit UTC methods to avoid DST / server-timezone surprises
   const date = new Date()
-  date.setMonth(date.getMonth() + 1)
+  date.setUTCMonth(date.getUTCMonth() + 1)
   return date.toISOString()
 }

@@ -6,8 +6,10 @@ import { Header }         from '@/components/dashboard/header'
 import { UploadZone }     from '@/components/generate/upload-zone'
 import { TemplatePicker } from '@/components/generate/template-picker'
 import { ResultViewer, type GenerationResult } from '@/components/generate/result-viewer'
+import type { PanelVariant } from '@/components/generate/contact-sheet-viewer'
 import { createClient }   from '@/lib/supabase/client'
 import type { ProductType } from '@/lib/constants'
+import { isAiFreeLifestyleId } from '@/lib/constants'
 
 type AspectRatio = '1:1' | '9:16'
 type MobileStep  = 1 | 2 | 3
@@ -97,94 +99,194 @@ export default function DashboardPage() {
     }
   }
 
-  // Core generation logic — runs for the given model IDs in parallel
-  const runGeneration = useCallback(
-    async (modelIds: string[]) => {
-      if (!uploadedFile || modelIds.length === 0) return
+  const handleGenerate = useCallback(async () => {
+    if (!uploadedFile) return
 
-      await Promise.allSettled(
-        modelIds.map(async (modelId) => {
-          try {
-            const fd = new FormData()
-            fd.append('image', uploadedFile)
-            fd.append('model_id', modelId)
-            fd.append('aspect_ratio', aspectRatio)
-            fd.append('product_type', productType)
-            if (userPrompt.trim()) fd.append('user_prompt', userPrompt.trim())
+    // One contact-sheet job per selected template; fallback to standalone if none selected
+    const templates = selectedTemplates.length > 0 ? selectedTemplates : ['standalone']
 
-            const res  = await fetch('/api/generate', { method: 'POST', body: fd })
-            const data = await res.json()
-
-            if (!res.ok) {
-              setGenerationResults((prev) =>
-                prev.map((r) =>
-                  r.modelId === modelId
-                    ? { ...r, status: 'error', error: data.error ?? 'Ошибка генерации. Попробуйте снова.' }
-                    : r
-                )
-              )
-              return
-            }
-
-            setGenerationResults((prev) =>
-              prev.map((r) =>
-                r.modelId === modelId
-                  ? { ...r, status: 'done', resultUrl: data.outputUrl }
-                  : r
-              )
-            )
-
-            if (typeof data.creditsRemaining === 'number') {
-              setCreditsRemaining(data.creditsRemaining)
-            }
-          } catch {
-            setGenerationResults((prev) =>
-              prev.map((r) =>
-                r.modelId === modelId
-                  ? { ...r, status: 'error', error: 'Ошибка соединения. Проверьте интернет.' }
-                  : r
-              )
-            )
-          }
-        })
+    // Pre-check: enough credits for all templates
+    if (creditsRemaining !== null && creditsRemaining < templates.length) {
+      setGenerationResults(
+        templates.flatMap((_, gi) =>
+          [1, 2, 3, 4].map((panelId) => ({
+            modelId:   `g${gi}_p${panelId}`,
+            status:    'error' as const,
+            resultUrl: null,
+            error:     `Недостаточно кредитов. Нужно ${templates.length}, доступно ${creditsRemaining}.`,
+          }))
+        )
       )
-    },
-    [uploadedFile, aspectRatio, productType, userPrompt]
-  )
+      setMobileStep(3)
+      return
+    }
 
-  const handleGenerate = async () => {
-    if (!uploadedFile || selectedTemplates.length === 0) return
-
+    // Pre-fill N×4 loading placeholders
     setGenerationResults(
-      selectedTemplates.map((id) => ({
-        modelId:   id,
-        status:    'generating',
-        resultUrl: null,
-        error:     null,
-      }))
+      templates.flatMap((_, gi) =>
+        [1, 2, 3, 4].map((panelId) => ({
+          modelId:   `g${gi}_p${panelId}`,
+          status:    'generating' as const,
+          resultUrl: null,
+          error:     null,
+        }))
+      )
     )
     setMobileStep(3)
 
-    await runGeneration(selectedTemplates)
-  }
+    await Promise.allSettled(
+      templates.map(async (modelId, gi) => {
+        const prefix = `g${gi}`
+        try {
+          const fd = new FormData()
+          fd.append('image',               uploadedFile)
+          fd.append('generate_mode',       'contact-sheet')
+          fd.append('product_type',        productType)
+          fd.append('contact_sheet_ratio', aspectRatio)
+          if (modelId !== 'standalone') fd.append('model_id', modelId)
+          if (userPrompt.trim())         fd.append('user_prompt', userPrompt.trim())
 
-  const handleRetryFailed = async () => {
-    const failedIds = generationResults
-      .filter((r) => r.status === 'error')
-      .map((r) => r.modelId)
+          const res  = await fetch('/api/generate', { method: 'POST', body: fd })
+          const data = await res.json() as {
+            success?: boolean
+            panels?: PanelVariant[]
+            creditsRemaining?: number
+            error?: string
+          }
 
-    if (failedIds.length === 0) return
+          if (!res.ok || !data.success || !data.panels) {
+            const errMsg = data.error ?? 'Ошибка генерации. Попробуйте снова.'
+            setGenerationResults((prev) =>
+              prev.map((r) => r.modelId.startsWith(prefix)
+                ? { ...r, status: 'error', error: errMsg }
+                : r
+              )
+            )
+            return
+          }
 
+          setGenerationResults((prev) =>
+            prev.map((r) => {
+              if (!r.modelId.startsWith(prefix)) return r
+              const panelId = parseInt(r.modelId.split('_p')[1], 10)
+              const panel   = data.panels!.find((p) => p.id === panelId)
+              return panel ? { ...r, status: 'done', resultUrl: panel.url } : r
+            })
+          )
+          if (typeof data.creditsRemaining === 'number') {
+            setCreditsRemaining(data.creditsRemaining)
+          }
+        } catch {
+          setGenerationResults((prev) =>
+            prev.map((r) => r.modelId.startsWith(prefix)
+              ? { ...r, status: 'error', error: 'Ошибка соединения. Проверьте интернет.' }
+              : r
+            )
+          )
+        }
+      })
+    )
+  }, [uploadedFile, selectedTemplates, productType, aspectRatio, userPrompt, creditsRemaining])
+
+  const handleRetryFailed = useCallback(async () => {
+    if (!uploadedFile) return
+
+    // Collect only the group prefixes (g0, g1…) that have errors
+    const failedPrefixes = Array.from(
+      new Set(
+        generationResults
+          .filter((r) => r.status === 'error')
+          .map((r) => r.modelId.split('_p')[0])   // e.g. 'g0'
+      )
+    )
+    if (failedPrefixes.length === 0) return
+
+    // Map prefix → original template ID
+    const templates = selectedTemplates.length > 0 ? selectedTemplates : ['standalone']
+    const retryTemplates = failedPrefixes
+      .map((prefix) => {
+        const gi = parseInt(prefix.slice(1), 10)
+        return templates[gi] ?? null
+      })
+      .filter(Boolean) as string[]
+
+    if (retryTemplates.length === 0) return
+
+    // Check credits for retry
+    if (creditsRemaining !== null && creditsRemaining < retryTemplates.length) {
+      setGenerationResults((prev) =>
+        prev.map((r) =>
+          failedPrefixes.some((p) => r.modelId.startsWith(p))
+            ? { ...r, error: `Недостаточно кредитов. Нужно ${retryTemplates.length}, доступно ${creditsRemaining}.` }
+            : r
+        )
+      )
+      return
+    }
+
+    // Mark only failed cards as generating
     setGenerationResults((prev) =>
       prev.map((r) =>
-        failedIds.includes(r.modelId)
+        failedPrefixes.some((p) => r.modelId.startsWith(p))
           ? { ...r, status: 'generating', error: null }
           : r
       )
     )
 
-    await runGeneration(failedIds)
-  }
+    await Promise.allSettled(
+      retryTemplates.map(async (modelId, i) => {
+        const prefix = failedPrefixes[i]
+        try {
+          const fd = new FormData()
+          fd.append('image',               uploadedFile)
+          fd.append('product_type',        productType)
+          fd.append('contact_sheet_ratio', aspectRatio)
+          if (isAiFreeLifestyleId(modelId)) {
+            fd.append('generate_mode', 'lifestyle-free')
+          } else {
+            fd.append('generate_mode', 'contact-sheet')
+            if (modelId !== 'standalone') fd.append('model_id', modelId)
+          }
+          if (userPrompt.trim()) fd.append('user_prompt', userPrompt.trim())
+
+          const res  = await fetch('/api/generate', { method: 'POST', body: fd })
+          const data = await res.json() as {
+            success?: boolean
+            panels?: PanelVariant[]
+            creditsRemaining?: number
+            error?: string
+          }
+
+          if (!res.ok || !data.success || !data.panels) {
+            const errMsg = data.error ?? 'Ошибка генерации. Попробуйте снова.'
+            setGenerationResults((prev) =>
+              prev.map((r) => r.modelId.startsWith(prefix) ? { ...r, status: 'error', error: errMsg } : r)
+            )
+            return
+          }
+
+          setGenerationResults((prev) =>
+            prev.map((r) => {
+              if (!r.modelId.startsWith(prefix)) return r
+              const panelId = parseInt(r.modelId.split('_p')[1], 10)
+              const panel   = data.panels!.find((p) => p.id === panelId)
+              return panel ? { ...r, status: 'done', resultUrl: panel.url } : r
+            })
+          )
+          if (typeof data.creditsRemaining === 'number') {
+            setCreditsRemaining(data.creditsRemaining)
+          }
+        } catch {
+          setGenerationResults((prev) =>
+            prev.map((r) => r.modelId.startsWith(prefix)
+              ? { ...r, status: 'error', error: 'Ошибка соединения. Проверьте интернет.' }
+              : r
+            )
+          )
+        }
+      })
+    )
+  }, [uploadedFile, generationResults, selectedTemplates, productType, aspectRatio, userPrompt, creditsRemaining])
 
   const isAnyGenerating = generationResults.some((r) => r.status === 'generating')
   const step1Done = !!previewUrl
@@ -339,12 +441,12 @@ export default function DashboardPage() {
               onAspectRatioChange={setAspectRatio}
               onGenerate={handleGenerate}
               onRetryFailed={handleRetryFailed}
-              canGenerate={!!uploadedFile && !isAnyGenerating}
-              selectedCount={selectedTemplates.length}
+              canGenerate={!!uploadedFile && !isAnyGenerating && selectedTemplates.length > 0}
               creditsRemaining={creditsRemaining}
               customModelUrls={customModelUrls}
               userPrompt={userPrompt}
               onUserPromptChange={setUserPrompt}
+              selectedCount={selectedTemplates.length}
             />
           </div>
 

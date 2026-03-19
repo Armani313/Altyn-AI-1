@@ -82,12 +82,21 @@ class QueueManager {
 
       if (stuck?.length) {
         console.log(`[Queue] init: recovering ${stuck.length} stuck generation(s), refunding credits`)
-        await Promise.allSettled(
+        // LOGIC-3: check each refund result individually so silent failures are logged
+        const refundResults = await Promise.allSettled(
           stuck.map((g) =>
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (supabase as any).rpc('refund_credit', { p_user_id: (g as { id: string; user_id: string }).user_id })
           )
         )
+        refundResults.forEach((r, i) => {
+          const g = (stuck as { id: string; user_id: string }[])[i]
+          if (r.status === 'rejected') {
+            console.error(`[Queue] refund failed for user ${g.user_id} gen ${g.id}:`, r.reason)
+          } else if ((r.value as { error?: unknown })?.error) {
+            console.error(`[Queue] refund RPC error for user ${g.user_id} gen ${g.id}:`, (r.value as { error?: unknown }).error)
+          }
+        })
       }
     } catch (err) {
       // Non-fatal — queue still works, RPD just starts from 0
@@ -249,8 +258,11 @@ class QueueManager {
 
 function msUntilUtcMidnight(): number {
   const now  = Date.now()
-  const next = new Date()
-  next.setUTCHours(24, 0, 0, 0)
+  // CRITICAL-3: setUTCHours(24) works "by accident" via JS rollover.
+  // Use explicit next-day calculation instead.
+  const next = new Date(now)
+  next.setUTCDate(next.getUTCDate() + 1)
+  next.setUTCHours(0, 0, 0, 0)
   return Math.max(0, next.getTime() - now)
 }
 

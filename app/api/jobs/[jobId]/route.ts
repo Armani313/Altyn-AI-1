@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { aiQueue } from '@/lib/queue'
+import { UUID_REGEX } from '@/lib/constants'
 
 export const maxDuration = 5
 export const runtime     = 'nodejs'
@@ -29,7 +30,6 @@ export async function GET(
 
   // ── Validate jobId ──────────────────────────────────────────────────────────
   const jobId = params.jobId
-  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!UUID_REGEX.test(jobId)) {
     return NextResponse.json({ error: 'Неверный ID задания.' }, { status: 400 })
   }

@@ -7,8 +7,10 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit'
 
-export const runtime = 'nodejs'
+export const maxDuration = 10
+export const runtime     = 'nodejs'
 
 export async function GET() {
   const supabase = await createClient()
@@ -16,6 +18,15 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // HIGH-3: rate limit — 30 requests per minute per user
+  const rl = checkRateLimit('card-templates', user.id, 30, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.` },
+      { status: 429 }
+    )
   }
 
   const { data, error } = await supabase

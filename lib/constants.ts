@@ -95,3 +95,16 @@ export const MACRO_SHOT_ID = 'macro-shot' as const
 export function isMacroShotId(id: string): boolean {
   return id === MACRO_SHOT_ID
 }
+
+// ── Shared validation patterns ────────────────────────────────────────────────
+/** Standard UUID v4 regex — use this in all API routes instead of redefining locally. */
+export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// ── AI Free Lifestyle mode ────────────────────────────────────────────────────
+/** Special model ID: AI autonomously picks model, poses, and scenes for the product. */
+export const AI_FREE_LIFESTYLE_ID = 'ai-free-lifestyle' as const
+
+/** Returns true if the model ID is the AI free lifestyle mode. */
+export function isAiFreeLifestyleId(id: string): boolean {
+  return id === AI_FREE_LIFESTYLE_ID
+}

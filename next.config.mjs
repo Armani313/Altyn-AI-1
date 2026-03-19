@@ -61,6 +61,8 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Applied to ALL routes — non-CSP security headers.
+        // CSP is in the next entry (excluded from /remove-bg which needs its own).
         source: '/(.*)',
         headers: [
           // MED-2: HSTS — force HTTPS for 2 years (Cloudflare also enforces this,
@@ -69,9 +71,27 @@ const nextConfig = {
             key:   'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
-          // MED-1: Content-Security-Policy
-          // 'unsafe-inline' for scripts/styles is required by Next.js + framer-motion.
-          // Upgrade to nonce-based CSP when time allows.
+          // Prevent MIME-type sniffing
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          // Send minimal referrer info cross-origin
+          { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
+          // Restrict browser feature access
+          {
+            key:   'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+          // LOW-6: X-XSS-Protection removed — deprecated in all modern browsers
+          // and can cause issues in some older ones. CSP above replaces it.
+        ],
+      },
+      {
+        // MED-1: Content-Security-Policy — applied to all routes EXCEPT /remove-bg.
+        // /remove-bg needs 'unsafe-eval' for ONNX Runtime; if we set the global CSP here
+        // AND a /remove-bg CSP below, the browser enforces BOTH (most-restrictive union),
+        // which blocks 'unsafe-eval' even on /remove-bg. Excluding it here allows the
+        // /remove-bg-specific CSP (with 'unsafe-eval') to be the only one for that page.
+        source: '/((?!remove-bg).*)',
+        headers: [
           {
             key:   'Content-Security-Policy',
             value: [
@@ -99,17 +119,6 @@ const nextConfig = {
               "form-action 'self'",
             ].join('; '),
           },
-          // Prevent MIME-type sniffing
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          // Send minimal referrer info cross-origin
-          { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
-          // Restrict browser feature access
-          {
-            key:   'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
-          // LOW-6: X-XSS-Protection removed — deprecated in all modern browsers
-          // and can cause issues in some older ones. CSP above replaces it.
         ],
       },
       {

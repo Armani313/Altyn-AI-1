@@ -22,6 +22,10 @@ export const metadata: Metadata = {
   description:
     "Генерируйте профессиональные лайфстайл-фотографии украшений с помощью ИИ. Для ювелирных магазинов Казахстана.",
   keywords: ["ювелирные украшения", "ИИ фото", "генерация изображений", "фотосъёмка"],
+  icons: {
+    icon:  [{ url: '/icon', type: 'image/png', sizes: '32x32' }],
+    apple: [{ url: '/apple-icon', type: 'image/png', sizes: '180x180' }],
+  },
 };
 
 export default function RootLayout({

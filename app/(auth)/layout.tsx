@@ -1,4 +1,9 @@
+import type { Metadata } from 'next'
 import { Sparkles } from 'lucide-react'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 const STEPS = [
   'Загрузите фото украшения',

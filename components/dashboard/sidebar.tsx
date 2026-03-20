@@ -52,12 +52,22 @@ export function Sidebar({ profile }: SidebarProps) {
         <p className="px-3 pb-1.5 pt-0.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
           Создать
         </p>
-        {CREATE_ITEMS.map(({ href, icon: Icon, label }) => (
-          <Link key={href} href={href} className={navLinkCls(href)}>
-            <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
-            {label}
-          </Link>
-        ))}
+        {CREATE_ITEMS.map(({ href, icon: Icon, label }) =>
+          href === '/remove-bg' ? (
+            // Hard navigation required: /remove-bg needs 'unsafe-eval' CSP for ONNX Runtime.
+            // Next.js SPA navigation reuses the CSP from the initial page load, which lacks
+            // 'unsafe-eval'. A full page reload ensures the correct /remove-bg CSP is applied.
+            <a key={href} href={href} className={navLinkCls(href)}>
+              <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
+              {label}
+            </a>
+          ) : (
+            <Link key={href} href={href} className={navLinkCls(href)}>
+              <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
+              {label}
+            </Link>
+          )
+        )}
 
         <div className="py-2">
           <hr className="border-cream-200" />

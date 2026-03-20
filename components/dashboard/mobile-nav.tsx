@@ -71,17 +71,25 @@ export function MobileNav({ profile }: MobileNavProps) {
           <p className="px-3 pb-1.5 pt-0.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
             Создать
           </p>
-          {CREATE_ITEMS.map(({ href, icon: Icon, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className={navLinkCls(href)}
-            >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
-              {label}
-            </Link>
-          ))}
+          {CREATE_ITEMS.map(({ href, icon: Icon, label }) =>
+            href === '/remove-bg' ? (
+              // Hard navigation — see sidebar.tsx for explanation
+              <a key={href} href={href} className={navLinkCls(href)}>
+                <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
+                {label}
+              </a>
+            ) : (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={navLinkCls(href)}
+              >
+                <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
+                {label}
+              </Link>
+            )
+          )}
 
           <div className="py-2">
             <hr className="border-cream-200" />

@@ -750,7 +750,6 @@ export async function generateJewelryPhoto(
     contents: [{ parts }],
     generationConfig: {
       responseModalities: isCardMode ? ['IMAGE'] : ['IMAGE', 'TEXT'],
-      ...(params.contactSheetRatio ? { aspect_ratio: params.contactSheetRatio } : {}),
     },
   })
 

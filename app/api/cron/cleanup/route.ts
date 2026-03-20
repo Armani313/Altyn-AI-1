@@ -17,7 +17,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const RETENTION_DAYS = Number(process.env.CLEANUP_RETENTION_DAYS ?? 90)
+const RETENTION_DAYS = Number(process.env.CLEANUP_RETENTION_DAYS ?? 15)
 const BATCH_SIZE     = 100
 const INPUT_BUCKET   = 'jewelry-uploads'
 const OUTPUT_BUCKET  = 'generated-images'

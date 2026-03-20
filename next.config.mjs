@@ -99,17 +99,15 @@ const nextConfig = {
               // 'unsafe-eval' is needed by webpack HMR / React Refresh in dev only
               // blob: needed for ONNX Runtime — it injects its worker via a blob: script URL
           isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:"
-                : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.googletagmanager.com"
+                : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com",
               "style-src 'self' 'unsafe-inline'",
-              // Supabase storage for generated images (Gemini returns bytes, no external CDN needed)
-              "img-src 'self' data: blob: https://*.supabase.co",
+              // Supabase storage for generated images; Google Analytics tracking pixel
+              "img-src 'self' data: blob: https://*.supabase.co https://www.google-analytics.com https://www.googletagmanager.com",
               // Google Fonts (if ever added)
               "font-src 'self' https://fonts.gstatic.com",
-              // Supabase API + realtime; HuggingFace for RMBG-1.4 model download (bg-editor)
-              // Supabase + @imgly/background-removal model/WASM CDN
-              // blob: needed — ONNX Runtime workers fetch WASM via blob URLs internally
-              "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com",
+              // Supabase API + realtime; ONNX Runtime WASM CDN; Google Analytics
+              "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://region1.google-analytics.com",
               // Replaces X-Frame-Options — more expressive
               // Allow blob: workers — ONNX Runtime creates thread workers via blob URLs
               // when running in a Web Worker context (even in single-thread mode as fallback)

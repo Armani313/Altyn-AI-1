@@ -45,7 +45,7 @@ function GalleryCard({ src }: { src: string }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt=""
+        alt="Пример AI-фото ювелирного украшения"
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
     </div>

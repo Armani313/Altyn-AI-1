@@ -313,8 +313,19 @@ export async function POST(request: Request) {
     } else if (modelId) {
       const modelPhoto = MODEL_PHOTO_MAP[modelId]
       const modelPath  = path.join(process.cwd(), 'public', 'models', modelPhoto.filename)
-      modelImageBuffer = await fs.readFile(modelPath)
-      modelMimeType    = modelPhoto.filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
+      console.log(`[Generate] loading model photo: ${modelPath}`)
+      try {
+        modelImageBuffer = await fs.readFile(modelPath)
+        modelMimeType    = modelPhoto.filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
+      } catch (e) {
+        console.error(`[Generate] model photo read failed (${modelPath}):`, e)
+        await refundWithRetry(serviceSupabase, user.id, 'Generate/ModelFileRead')
+        await supabase
+          .from('generations')
+          .update({ status: 'failed', error_message: 'Файл шаблона недоступен.' } as never)
+          .eq('id', generationId)
+        return err('Шаблон временно недоступен. Попробуйте другой шаблон или обновите страницу.', 500)
+      }
     }
 
     // ── 8b. Load card template image ─────────────────────────────────────────

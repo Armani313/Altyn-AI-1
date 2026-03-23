@@ -140,11 +140,15 @@ export default function DashboardPage() {
         try {
           const fd = new FormData()
           fd.append('image',               uploadedFile)
-          fd.append('generate_mode',       'contact-sheet')
           fd.append('product_type',        productType)
           fd.append('contact_sheet_ratio', aspectRatio)
-          if (modelId !== 'standalone') fd.append('model_id', modelId)
-          if (userPrompt.trim())         fd.append('user_prompt', userPrompt.trim())
+          if (isAiFreeLifestyleId(modelId)) {
+            fd.append('generate_mode', 'lifestyle-free')
+          } else {
+            fd.append('generate_mode', 'contact-sheet')
+            if (modelId !== 'standalone') fd.append('model_id', modelId)
+          }
+          if (userPrompt.trim()) fd.append('user_prompt', userPrompt.trim())
 
           const res  = await fetch('/api/generate', { method: 'POST', body: fd })
           const data = await res.json() as {

@@ -41,6 +41,13 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/nurai-ai-studio
+
+            # Save current image as rollback target before building
+            if docker image inspect nurai-ai-studio:latest &>/dev/null; then
+              docker tag nurai-ai-studio:latest nurai-ai-studio:rollback
+              echo "Rollback snapshot saved"
+            fi
+
             docker compose build --no-cache
             docker compose up -d
             docker builder prune -af
@@ -54,5 +61,21 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             sleep 10
-            curl -sf http://127.0.0.1:3000/api/health || exit 1
+            if ! curl -sf http://127.0.0.1:3000/api/health; then
+              echo "Health check FAILED — rolling back to previous image"
+              cd /home/ubuntu/nurai-ai-studio
+              if docker image inspect nurai-ai-studio:rollback &>/dev/null; then
+                docker tag nurai-ai-studio:rollback nurai-ai-studio:latest
+                docker compose up -d --force-recreate
+                sleep 8
+                if curl -sf http://127.0.0.1:3000/api/health; then
+                  echo "Rollback successful"
+                else
+                  echo "Rollback also failed — manual intervention required"
+                fi
+              else
+                echo "No rollback image available"
+              fi
+              exit 1
+            fi
             echo "Health check passed"

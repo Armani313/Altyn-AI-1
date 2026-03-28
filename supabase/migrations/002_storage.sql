@@ -1,5 +1,5 @@
 -- ============================================================
--- Nurai AI Studio — Storage Buckets + Policies
+-- Luminify — Storage Buckets + Policies
 --
 -- Run AFTER 001_init.sql.
 -- Run in: Supabase Dashboard → SQL Editor → Run

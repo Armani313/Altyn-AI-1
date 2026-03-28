@@ -145,7 +145,7 @@ function DoneCard({
   const handleDownload = async () => {
     if (isDownloading) return
     setIsDownloading(true)
-    await downloadImage(imageUrl, `nurai-card-${Date.now()}`)
+    await downloadImage(imageUrl, `luminify-card-${Date.now()}`)
     setIsDownloading(false)
   }
 

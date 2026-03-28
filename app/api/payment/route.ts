@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // ── 2. Rate limit (HIGH-NEW-4: 5 payment attempts per hour) ───────────
-    const rl = checkRateLimit('payment', user.id, 5, 60 * 60_000)
+    const rl = await checkRateLimit('payment', user.id, 5, 60 * 60_000)
     if (!rl.ok) {
       return NextResponse.json(
         { error: `Слишком много попыток оплаты. Повторите через ${rl.retryAfterSec} сек.` },

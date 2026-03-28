@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
+import { Link } from '@/i18n/navigation'
 import { Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { loginSchema, type LoginInput } from '@/lib/validations'
 
 export function LoginForm() {
+  const t = useTranslations('auth.login')
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState('')
   const router = useRouter()
@@ -37,8 +39,8 @@ export function LoginForm() {
     if (error) {
       setServerError(
         error.message.includes('Invalid login credentials')
-          ? 'Неверный email или пароль. Попробуйте снова.'
-          : 'Произошла ошибка. Попробуйте позже.'
+          ? t('errorInvalidCredentials')
+          : t('errorGeneric')
       )
       return
     }
@@ -51,15 +53,14 @@ export function LoginForm() {
     <div>
       <div className="mb-7">
         <h1 className="font-serif text-3xl font-medium text-foreground mb-1.5">
-          Добро пожаловать
+          {t('title')}
         </h1>
         <p className="text-muted-foreground text-sm">
-          Войдите в свой аккаунт Nurai AI Studio
+          {t('subtitle')}
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Server error */}
         {serverError && (
           <div className="flex items-start gap-2.5 bg-destructive/8 border border-destructive/20 text-destructive text-sm p-3.5 rounded-xl">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -70,7 +71,7 @@ export function LoginForm() {
         {/* Email */}
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email
+            {t('email')}
           </Label>
           <Input
             id="email"
@@ -91,13 +92,10 @@ export function LoginForm() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="password" className="text-sm font-medium text-foreground">
-              Пароль
+              {t('password')}
             </Label>
-            <a
-              href="#"
-              className="text-xs text-primary hover:text-rose-gold-600 transition-colors"
-            >
-              Забыли пароль?
+            <a href="#" className="text-xs text-primary hover:text-rose-gold-600 transition-colors">
+              {t('forgotPassword')}
             </a>
           </div>
           <div className="relative">
@@ -116,13 +114,9 @@ export function LoginForm() {
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors w-9 h-9 flex items-center justify-center rounded-lg touch-manipulation"
             >
-              {showPassword ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               <span className="sr-only">
-                {showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                {showPassword ? t('hidePassword') : t('showPassword')}
               </span>
             </button>
           </div>
@@ -131,7 +125,6 @@ export function LoginForm() {
           )}
         </div>
 
-        {/* Submit */}
         <Button
           type="submit"
           disabled={isSubmitting}
@@ -140,21 +133,21 @@ export function LoginForm() {
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Входим...
+              {t('loading')}
             </span>
           ) : (
-            'Войти'
+            t('submit')
           )}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Нет аккаунта?{' '}
+        {t('noAccount')}{' '}
         <Link
           href="/register"
           className="text-primary hover:text-rose-gold-600 font-medium transition-colors"
         >
-          Зарегистрироваться
+          {t('register')}
         </Link>
       </p>
     </div>

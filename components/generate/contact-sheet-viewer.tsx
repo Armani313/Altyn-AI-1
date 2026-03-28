@@ -140,7 +140,7 @@ export function ContactSheetViewer({ generationId, panels }: ContactSheetViewerP
           </p>
           <DownloadButton
             url={panels.find((p) => p.id === selectedId)!.url}
-            name={`nurai-panel-${selectedId}-${generationId}`}
+            name={`luminify-panel-${selectedId}-${generationId}`}
           />
         </div>
       )}

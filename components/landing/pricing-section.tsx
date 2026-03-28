@@ -1,51 +1,44 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { motion } from 'framer-motion'
 import { Check, Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import { EASE } from '@/lib/motion'
 
-const plans = [
-  {
-    id: 'start',
-    name: 'Старт',
-    price: '9 900',
-    period: 'мес',
-    description: 'Для старта с ИИ-контентом',
-    badge: null,
-    credits: '30 генераций / мес',
-    features: [
-      'Все базовые шаблоны поз',
-      'Instagram, Kaspi и сайт',
-      'Email-поддержка',
-    ],
-    notIncluded: ['Премиум-позы', 'Пакетная загрузка'],
-    cta: 'Начать',
-    highlighted: false,
-  },
-  {
-    id: 'brand',
-    name: 'Бренд Бизнес',
-    price: '29 900',
-    period: 'мес',
-    description: 'Для брендов с высоким объёмом контента',
-    badge: 'Популярный выбор',
-    credits: '150 генераций / мес',
-    features: [
-      'Все шаблоны + эксклюзивные позы',
-      'Приоритетная очередь',
-      'Все платформы',
-      'Пакетная загрузка',
-      'Приоритетная поддержка',
-    ],
-    notIncluded: [],
-    cta: 'Выбрать Бренд Бизнес',
-    highlighted: true,
-  },
-]
-
 export function PricingSection() {
+  const t = useTranslations('pricing')
+
+  const plans = [
+    {
+      id: 'start',
+      name: t('startName'),
+      price: '$1',
+      period: t('per'),
+      description: t('startDesc'),
+      badge: null,
+      credits: t('startCredits'),
+      features: [t('startFeature1'), t('startFeature2'), t('startFeature3')],
+      notIncluded: [t('startNotIncluded1'), t('startNotIncluded2')],
+      cta: t('startCta'),
+      highlighted: false,
+    },
+    {
+      id: 'brand',
+      name: t('proName'),
+      price: '$20',
+      period: t('per'),
+      description: t('proDesc'),
+      badge: t('proBadge'),
+      credits: t('proCredits'),
+      features: [t('proFeature1'), t('proFeature2'), t('proFeature3'), t('proFeature4'), t('proFeature5')],
+      notIncluded: [] as string[],
+      cta: t('proCta'),
+      highlighted: true,
+    },
+  ]
+
   return (
     <section id="pricing" className="py-28 px-6 scroll-mt-20 bg-gradient-to-b from-cream-200/30 to-[#FAF9F6]">
       <div className="max-w-4xl mx-auto">
@@ -59,13 +52,13 @@ export function PricingSection() {
           className="text-center mb-14"
         >
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500 mb-3">
-            Тарифы
+            {t('overline')}
           </span>
           <h2 className="font-serif text-[clamp(1.75rem,4vw,2.5rem)] font-medium text-foreground mb-4 tracking-tight">
-            Прозрачные цены
+            {t('title')}
           </h2>
           <p className="text-muted-foreground text-lg">
-            Оплата через Kaspi Pay · Отмена в любой момент
+            {t('sub')}
           </p>
         </motion.div>
 
@@ -92,8 +85,7 @@ export function PricingSection() {
           transition={{ delay: 0.4 }}
           className="text-center mt-10 text-sm text-muted-foreground"
         >
-          <strong className="text-foreground">3 генерации бесплатно</strong>{' '}
-          при регистрации — карта не нужна.
+          <strong className="text-foreground">{t('freeTrial')}</strong>{t('freeTrialSub')}
         </motion.p>
       </div>
     </section>
@@ -111,10 +103,20 @@ function PlanCard({
   notIncluded,
   cta,
   highlighted,
-}: (typeof plans)[number]) {
+}: {
+  name: string
+  price: string
+  period: string
+  description: string
+  badge: string | null
+  credits: string
+  features: string[]
+  notIncluded: string[]
+  cta: string
+  highlighted: boolean
+}) {
   return (
     <div className="relative pt-4">
-      {/* Popular badge — outside overflow-hidden card to avoid clipping */}
       {badge && (
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 px-4 py-1 bg-white rounded-b-full shadow-soft whitespace-nowrap">
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-gold-600">
@@ -131,94 +133,66 @@ function PlanCard({
             : 'bg-white border border-cream-200 hover:shadow-card hover:border-rose-gold-200'
         }`}
       >
+        <div className="p-7 flex flex-col flex-1">
+          <div className="mb-5">
+            <h3 className={`font-serif text-2xl font-medium mb-1.5 ${highlighted ? 'text-white' : 'text-foreground'}`}>
+              {name}
+            </h3>
+            <p className={`text-sm leading-relaxed ${highlighted ? 'text-white/75' : 'text-muted-foreground'}`}>
+              {description}
+            </p>
+          </div>
 
-      <div className="p-7 flex flex-col flex-1">
-        {/* Plan name + description */}
-        <div className="mb-5">
-          <h3
-            className={`font-serif text-2xl font-medium mb-1.5 ${
-              highlighted ? 'text-white' : 'text-foreground'
-            }`}
-          >
-            {name}
-          </h3>
-          <p className={`text-sm leading-relaxed ${highlighted ? 'text-white/75' : 'text-muted-foreground'}`}>
-            {description}
-          </p>
-        </div>
+          <div className="flex items-baseline gap-1.5 mb-3">
+            <span className={`font-serif text-[2.5rem] font-bold leading-none tracking-tight ${highlighted ? 'text-white' : 'text-foreground'}`}>
+              {price}
+            </span>
+            <span className={`text-sm ${highlighted ? 'text-white/60' : 'text-muted-foreground'}`}>
+              /{period}
+            </span>
+          </div>
 
-        {/* Price */}
-        <div className="flex items-baseline gap-1.5 mb-3">
-          <span
-            className={`font-serif text-[2.5rem] font-bold leading-none tracking-tight ${
-              highlighted ? 'text-white' : 'text-foreground'
-            }`}
-          >
-            {price} ₸
+          <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full mb-6 self-start ${
+            highlighted ? 'bg-white/20 text-white' : 'bg-rose-gold-50 text-rose-gold-700'
+          }`}>
+            {credits}
           </span>
-          <span className={`text-sm ${highlighted ? 'text-white/60' : 'text-muted-foreground'}`}>
-            /{period}
-          </span>
+
+          <ul className="space-y-3 flex-1 mb-7">
+            {features.map((f) => (
+              <li key={f} className="flex items-start gap-3">
+                <span className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${highlighted ? 'bg-white/20' : 'bg-rose-gold-100'}`}>
+                  <Check className={`w-3 h-3 ${highlighted ? 'text-white' : 'text-rose-gold-600'}`} />
+                </span>
+                <span className={`text-sm leading-relaxed ${highlighted ? 'text-white/90' : 'text-muted-foreground'}`}>
+                  {f}
+                </span>
+              </li>
+            ))}
+            {notIncluded.map((f) => (
+              <li key={f} className="flex items-start gap-3 opacity-40">
+                <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-muted">
+                  <span className="text-muted-foreground text-xs leading-none">—</span>
+                </span>
+                <span className="text-sm text-muted-foreground line-through">{f}</span>
+              </li>
+            ))}
+          </ul>
+
+          <Link href="/register" className="block">
+            <Button
+              size="lg"
+              className={`w-full h-11 group transition-all duration-200 ${
+                highlighted
+                  ? 'bg-white text-rose-gold-600 hover:bg-white/90 font-semibold'
+                  : 'bg-primary hover:bg-rose-gold-600 text-white hover:shadow-soft'
+              }`}
+            >
+              {cta}
+              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </Button>
+          </Link>
         </div>
-
-        {/* Credits tag */}
-        <span
-          className={`inline-block text-xs font-semibold px-3 py-1 rounded-full mb-6 self-start ${
-            highlighted
-              ? 'bg-white/20 text-white'
-              : 'bg-rose-gold-50 text-rose-gold-700'
-          }`}
-        >
-          {credits}
-        </span>
-
-        {/* Features list */}
-        <ul className="space-y-3 flex-1 mb-7">
-          {features.map((f) => (
-            <li key={f} className="flex items-start gap-3">
-              <span
-                className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
-                  highlighted ? 'bg-white/20' : 'bg-rose-gold-100'
-                }`}
-              >
-                <Check
-                  className={`w-3 h-3 ${highlighted ? 'text-white' : 'text-rose-gold-600'}`}
-                />
-              </span>
-              <span
-                className={`text-sm leading-relaxed ${
-                  highlighted ? 'text-white/90' : 'text-muted-foreground'
-                }`}
-              >
-                {f}
-              </span>
-            </li>
-          ))}
-          {notIncluded.map((f) => (
-            <li key={f} className="flex items-start gap-3 opacity-40">
-              <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-muted">
-                <span className="text-muted-foreground text-xs leading-none">—</span>
-              </span>
-              <span className="text-sm text-muted-foreground line-through">{f}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* CTA */}
-        <Link href="/register" className="block">
-          <Button
-            size="lg"
-            className={`w-full h-11 group transition-all duration-200 ${
-              highlighted
-                ? 'bg-white text-rose-gold-600 hover:bg-white/90 font-semibold'
-                : 'bg-primary hover:bg-rose-gold-600 text-white hover:shadow-soft'
-            }`}
-          >
-            {cta}
-            <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </Button>
-        </Link>
-      </div>
       </div>
     </div>
   )

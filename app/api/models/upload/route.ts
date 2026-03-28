@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     if (!user) return err('Необходима авторизация.', 401)
 
     // HIGH-NEW-4: rate limit — 10 model uploads per 5 minutes per user
-    const rl = checkRateLimit('models-upload', user.id, 10, 5 * 60_000)
+    const rl = await checkRateLimit('models-upload', user.id, 10, 5 * 60_000)
     if (!rl.ok) {
       return err(`Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.`, 429)
     }

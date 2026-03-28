@@ -21,7 +21,7 @@ export async function GET() {
   }
 
   // HIGH-3: rate limit — 30 requests per minute per user
-  const rl = checkRateLimit('card-templates', user.id, 30, 60_000)
+  const rl = await checkRateLimit('card-templates', user.id, 30, 60_000)
   if (!rl.ok) {
     return NextResponse.json(
       { error: `Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.` },

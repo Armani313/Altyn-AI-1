@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,13 +11,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 
-const profileSchema = z.object({
-  business_name: z.string().min(1, 'Укажите название магазина').max(200),
-  contact_name:  z.string().min(1, 'Укажите ваше имя').max(100),
-  phone:         z.string().regex(/^\+?[0-9\s\-()]{7,20}$/, 'Неверный формат телефона').or(z.literal('')),
-})
-
-type ProfileInput = z.infer<typeof profileSchema>
+type ProfileInput = {
+  business_name: string
+  contact_name:  string
+  phone:         string
+}
 
 interface ProfileFormProps {
   initialData: {
@@ -28,8 +27,15 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ initialData, email }: ProfileFormProps) {
-  const [saved, setSaved]       = useState(false)
+  const t = useTranslations('profileForm')
+  const [saved, setSaved]             = useState(false)
   const [serverError, setServerError] = useState('')
+
+  const profileSchema = z.object({
+    business_name: z.string().min(1, t('validationBusinessName')).max(200),
+    contact_name:  z.string().min(1, t('validationContactName')).max(100),
+    phone:         z.string().regex(/^\+?[0-9\s\-()]{7,20}$/, t('validationPhone')).or(z.literal('')),
+  })
 
   const {
     register,
@@ -55,7 +61,7 @@ export function ProfileForm({ initialData, email }: ProfileFormProps) {
       .eq('id', (await supabase.auth.getUser()).data.user?.id ?? '')
 
     if (error) {
-      setServerError('Ошибка при сохранении. Попробуйте снова.')
+      setServerError(t('errorSave'))
       return
     }
 
@@ -74,18 +80,18 @@ export function ProfileForm({ initialData, email }: ProfileFormProps) {
           className="h-11 bg-cream-50 border-cream-300 text-muted-foreground cursor-not-allowed"
         />
         <p className="text-xs text-muted-foreground">
-          Email изменить нельзя — он используется для входа
+          {t('emailReadOnly')}
         </p>
       </div>
 
       {/* Business name */}
       <div className="space-y-1.5">
         <Label htmlFor="business_name" className="text-sm font-medium">
-          Название магазина
+          {t('businessName')}
         </Label>
         <Input
           id="business_name"
-          placeholder="Ювелирный салон «Жасмин»"
+          placeholder={t('businessNamePlaceholder')}
           className={`h-11 bg-white border-cream-300 focus:border-primary ${
             errors.business_name ? 'border-destructive' : ''
           }`}
@@ -100,11 +106,11 @@ export function ProfileForm({ initialData, email }: ProfileFormProps) {
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="contact_name" className="text-sm font-medium">
-            Ваше имя
+            {t('contactName')}
           </Label>
           <Input
             id="contact_name"
-            placeholder="Айгерим"
+            placeholder={t('contactNamePlaceholder')}
             className={`h-11 bg-white border-cream-300 focus:border-primary ${
               errors.contact_name ? 'border-destructive' : ''
             }`}
@@ -117,7 +123,7 @@ export function ProfileForm({ initialData, email }: ProfileFormProps) {
 
         <div className="space-y-1.5">
           <Label htmlFor="phone" className="text-sm font-medium">
-            Телефон
+            {t('phone')}
           </Label>
           <Input
             id="phone"
@@ -152,12 +158,12 @@ export function ProfileForm({ initialData, email }: ProfileFormProps) {
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Сохраняем...
+              {t('saving')}
             </span>
           ) : (
             <span className="flex items-center gap-2">
               <Save className="w-4 h-4" />
-              Сохранить
+              {t('save')}
             </span>
           )}
         </Button>
@@ -165,7 +171,7 @@ export function ProfileForm({ initialData, email }: ProfileFormProps) {
         {saved && (
           <span className="flex items-center gap-1.5 text-sm text-emerald-600">
             <CheckCircle2 className="w-4 h-4" />
-            Сохранено
+            {t('saved')}
           </span>
         )}
       </div>

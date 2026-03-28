@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     }
 
     // ── 2. Rate limit (HIGH-NEW-4) ────────────────────────────────────────────
-    const rl = checkRateLimit('generate', user.id, 10, 60_000)
+    const rl = await checkRateLimit('generate', user.id, 10, 60_000)
     if (!rl.ok) {
       return err(
         `Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.`,

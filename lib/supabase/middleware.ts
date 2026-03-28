@@ -2,6 +2,23 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { PROTECTED_ROUTES, AUTH_ROUTES } from '@/lib/config/routes'
 
+// Non-default locales that appear as a URL prefix (e.g. /en/login).
+// 'ru' is the default locale and has no prefix (just /login, /dashboard).
+const LOCALE_PREFIXES = ['en'] as const
+
+function getLocaleInfo(pathname: string) {
+  const parts = pathname.split('/').filter(Boolean) // e.g. ['en', 'dashboard']
+  const firstPart = parts[0] ?? ''
+  const hasPrefix = (LOCALE_PREFIXES as readonly string[]).includes(firstPart)
+  return {
+    locale: hasPrefix ? firstPart : 'ru',
+    // Path without locale prefix, e.g. /dashboard
+    strippedPath: hasPrefix ? '/' + parts.slice(1).join('/') : pathname,
+    // Prefix for redirect URLs, e.g. '/en' or ''
+    urlPrefix: hasPrefix ? `/${firstPart}` : '',
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -30,20 +47,20 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const path = request.nextUrl.pathname
+  const { strippedPath, urlPrefix } = getLocaleInfo(request.nextUrl.pathname)
 
-  const isProtected = PROTECTED_ROUTES.some((r) => path.startsWith(r))
-  const isAuthRoute = AUTH_ROUTES.some((r) => path.startsWith(r))
+  const isProtected = PROTECTED_ROUTES.some((r) => strippedPath.startsWith(r))
+  const isAuthRoute = AUTH_ROUTES.some((r) => strippedPath.startsWith(r))
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = `${urlPrefix}/login`
     return NextResponse.redirect(url)
   }
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = `${urlPrefix}/dashboard`
     return NextResponse.redirect(url)
   }
 

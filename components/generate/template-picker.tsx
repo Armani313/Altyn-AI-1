@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { Sparkles, Lock, Check, Upload, Loader2, User, X, ScanLine } from 'lucide-react'
 import {
   MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelCategory, type ProductType,
@@ -14,13 +15,6 @@ type TabCategory = 'all' | ModelCategory
 export const TEMPLATE_CATEGORY_MAP: Record<string, string> = Object.fromEntries(
   MODEL_PHOTOS.map((m) => [m.id, m.category])
 )
-
-const TABS: { id: TabCategory; label: string }[] = [
-  { id: 'all',       label: 'Все'    },
-  { id: 'necklaces', label: 'Колье'  },
-  { id: 'earrings',  label: 'Серьги' },
-  { id: 'rings',     label: 'Кольца' },
-]
 
 interface TemplatePickerProps {
   selectedIds:              string[]
@@ -41,12 +35,20 @@ export function TemplatePicker({
   customModelUrls,
   onCustomModelUrlsChange,
 }: TemplatePickerProps) {
+  const t = useTranslations('templatePicker')
   const [activeTab,    setActiveTab]    = useState<TabCategory>('all')
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const [deletingIdx,  setDeletingIdx]  = useState<number | null>(null)
   const [uploadError,  setUploadError]  = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<'new' | number>('new')
+
+  const TABS: { id: TabCategory; label: string }[] = [
+    { id: 'all',       label: t('tabAll')      },
+    { id: 'necklaces', label: t('tabNecklaces') },
+    { id: 'earrings',  label: t('tabEarrings')  },
+    { id: 'rings',     label: t('tabRings')     },
+  ]
 
   const isScarves = productType === 'scarves'
   const atMax     = selectedIds.length >= maxSelect
@@ -74,7 +76,6 @@ export function TemplatePicker({
     onSelect(picks)
   }
 
-  // Open file picker — either for a new slot or to replace an existing one
   const openFilePicker = (target: 'new' | number) => {
     if (disabled || uploadingIdx !== null) return
     uploadTargetRef.current = target
@@ -93,7 +94,6 @@ export function TemplatePicker({
     setUploadError(null)
 
     try {
-      // If replacing an existing slot — delete old one first
       if (target !== 'new' && customModelUrls[target] !== undefined) {
         const delRes = await fetch('/api/models/delete', {
           method: 'DELETE',
@@ -102,13 +102,11 @@ export function TemplatePicker({
         })
         if (!delRes.ok) {
           const delData = await delRes.json()
-          setUploadError(delData.error ?? 'Ошибка замены модели')
+          setUploadError(delData.error ?? t('errorReplace'))
           return
         }
         const delData = await delRes.json()
-        // Update URL list locally after deletion (before upload)
         onCustomModelUrlsChange(delData.urls)
-        // Deselect the old ID for this slot
         const oldId = makeCustomModelId(target)
         if (selectedIds.includes(oldId)) {
           onSelect(selectedIds.filter((s) => s !== oldId))
@@ -122,19 +120,18 @@ export function TemplatePicker({
       const data = await res.json()
 
       if (!res.ok) {
-        setUploadError(data.error ?? 'Ошибка загрузки')
+        setUploadError(data.error ?? t('errorUpload'))
         return
       }
 
       onCustomModelUrlsChange(data.urls)
 
-      // Auto-select the new slot if there's room
       const newId = makeCustomModelId(data.index)
       if (!selectedIds.includes(newId) && selectedIds.length < maxSelect) {
         onSelect([newId, ...selectedIds.filter((s) => !isCustomModelId(s) || s !== newId)])
       }
     } catch {
-      setUploadError('Ошибка соединения. Попробуйте снова.')
+      setUploadError(t('errorConnection'))
     } finally {
       setUploadingIdx(null)
     }
@@ -153,20 +150,17 @@ export function TemplatePicker({
       })
       const data = await res.json()
       if (!res.ok) {
-        setUploadError(data.error ?? 'Ошибка удаления')
+        setUploadError(data.error ?? t('errorDelete'))
         return
       }
       onCustomModelUrlsChange(data.urls)
-      // Deselect the removed model
       const removedId = makeCustomModelId(index)
-      // After deletion, the IDs of models after `index` shift down
-      // Rebuild selected custom IDs based on new array
       const newCustomSelected = selectedIds
         .filter((s) => isCustomModelId(s))
         .map((s) => {
           const i = parseInt(s.replace('user-custom-', ''), 10)
-          if (i === index) return null         // deleted
-          if (i > index)   return makeCustomModelId(i - 1) // shifted
+          if (i === index) return null
+          if (i > index)   return makeCustomModelId(i - 1)
           return s
         })
         .filter(Boolean) as string[]
@@ -174,13 +168,12 @@ export function TemplatePicker({
       onSelect([...newCustomSelected, ...staticSelected])
       void removedId
     } catch {
-      setUploadError('Ошибка соединения.')
+      setUploadError(t('errorConnection'))
     } finally {
       setDeletingIdx(null)
     }
   }
 
-  // How many custom cards to show: all existing + one "add" slot (if < max)
   const customCardCount = Math.min(customModelUrls.length + 1, MAX_CUSTOM_MODELS)
 
   return (
@@ -202,7 +195,7 @@ export function TemplatePicker({
           className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
-          Пусть ИИ выберет
+          {t('aiPick')}
         </button>
 
         {selectedIds.length > 0 && (
@@ -210,7 +203,7 @@ export function TemplatePicker({
             <span className="w-4 h-4 rounded-full gradient-rose-gold flex items-center justify-center text-white text-[9px] font-bold">
               {selectedIds.length}
             </span>
-            из {maxSelect}
+            {t('ofMax', { max: maxSelect })}
           </div>
         )}
       </div>
@@ -238,7 +231,7 @@ export function TemplatePicker({
       {isScarves && (
         <div className="mb-4 px-3 py-2 bg-rose-gold-50 border border-rose-gold-100 rounded-xl">
           <p className="text-xs text-rose-gold-700 text-center leading-snug">
-            ИИ задрапирует платок наиболее подходящим образом для каждой модели
+            {t('scarvesHint')}
           </p>
         </div>
       )}
@@ -272,7 +265,6 @@ export function TemplatePicker({
               `}
             >
               <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-rose-gold-400 via-rose-gold-500 to-rose-900 flex flex-col items-center justify-center gap-3 px-3">
-                {/* Decorative sparkle rings */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-20">
                   <div className="w-32 h-32 rounded-full border-2 border-white animate-ping" style={{ animationDuration: '3s' }} />
                   <div className="absolute w-20 h-20 rounded-full border border-white" />
@@ -282,10 +274,10 @@ export function TemplatePicker({
                     <Sparkles className="w-5 h-5 text-white" />
                   </div>
                   <p className="text-[10px] font-semibold text-white text-center leading-snug">
-                    ИИ создаёт
+                    {t('aiCreates')}
                   </p>
                   <p className="text-[9px] text-white/80 text-center leading-snug">
-                    Свободная генерация
+                    {t('freeGeneration')}
                   </p>
                 </div>
               </div>
@@ -302,7 +294,7 @@ export function TemplatePicker({
 
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-1.5 py-2">
                 <p className="text-[9px] font-medium text-white text-center leading-tight truncate">
-                  ИИ без шаблона
+                  {t('aiNoTemplate')}
                 </p>
               </div>
             </button>
@@ -328,7 +320,6 @@ export function TemplatePicker({
               `}
             >
               <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex flex-col items-center justify-center gap-3 px-3">
-                {/* Decorative rings */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-10">
                   <div className="w-32 h-32 rounded-full border-2 border-white" />
                   <div className="absolute w-20 h-20 rounded-full border border-white" />
@@ -338,10 +329,10 @@ export function TemplatePicker({
                     <ScanLine className="w-5 h-5 text-white" />
                   </div>
                   <p className="text-[10px] font-semibold text-white/90 text-center leading-snug">
-                    Макро съёмка
+                    {t('macroTitle')}
                   </p>
                   <p className="text-[9px] text-white/60 text-center leading-snug">
-                    Крупный план товара
+                    {t('macroDesc')}
                   </p>
                 </div>
               </div>
@@ -358,21 +349,21 @@ export function TemplatePicker({
 
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-1.5 py-2">
                 <p className="text-[9px] font-medium text-white text-center leading-tight truncate">
-                  Макро
+                  {t('macroLabel')}
                 </p>
               </div>
             </button>
           )
         })()}
 
-        {/* ── Custom model cards (always first) ────────────────────────── */}
+        {/* ── Custom model cards ────────────────────────────────────────── */}
         {Array.from({ length: customCardCount }).map((_, cardIdx) => {
           const url        = customModelUrls[cardIdx] ?? null
           const modelId    = makeCustomModelId(cardIdx)
           const isSelected = selectedIds.includes(modelId)
           const isLoading  = uploadingIdx === cardIdx
           const isDeleting = deletingIdx  === cardIdx
-          const isAddSlot  = url === null   // last card = "add new"
+          const isAddSlot  = url === null
           const isDisabledCard = isLoading || isDeleting || disabled || (atMax && !isSelected && !isAddSlot)
 
           return (
@@ -396,14 +387,14 @@ export function TemplatePicker({
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                     <Loader2 className="w-6 h-6 text-rose-gold-400 animate-spin" />
                     <p className="text-[10px] text-rose-gold-600 font-medium px-2 text-center">
-                      {isDeleting ? 'Удаление…' : 'Загрузка…'}
+                      {isDeleting ? t('deleting') : t('uploading')}
                     </p>
                   </div>
                 ) : url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={url}
-                    alt={`Моя модель ${cardIdx + 1}`}
+                    alt={t('myModelN', { n: cardIdx + 1 })}
                     className="w-full h-full object-cover object-top"
                     draggable={false}
                     loading="lazy"
@@ -414,7 +405,7 @@ export function TemplatePicker({
                       <Upload className="w-4 h-4 text-rose-gold-400 group-hover:text-rose-gold-600 transition-colors" />
                     </div>
                     <p className="text-[10px] font-semibold text-rose-gold-600 text-center leading-snug">
-                      Загрузить модель
+                      {t('uploadModel')}
                     </p>
                   </div>
                 )}
@@ -436,36 +427,39 @@ export function TemplatePicker({
                 <div className="absolute top-1.5 left-1.5">
                   <span className="text-[9px] font-bold uppercase tracking-wide bg-primary text-white px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                     <User className="w-2.5 h-2.5" />
-                    Моя {customModelUrls.length > 1 ? cardIdx + 1 : ''}
+                    {t('myModelBadge')}{customModelUrls.length > 1 ? ` ${cardIdx + 1}` : ''}
                   </span>
                 </div>
               )}
 
-              {/* Delete button — always visible for touch devices */}
+              {/* Delete button */}
               {url && !disabled && !isLoading && !isDeleting && (
                 <button
                   onClick={(e) => handleDelete(cardIdx, e)}
                   className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors"
-                  title="Удалить"
+                  title={t('delete')}
                 >
                   <X className="w-3.5 h-3.5 text-white" />
                 </button>
               )}
 
-              {/* Replace button — always visible for touch devices */}
+              {/* Replace button */}
               {url && !disabled && !isLoading && !isDeleting && (
                 <button
                   onClick={(e) => { e.stopPropagation(); openFilePicker(cardIdx) }}
                   className="absolute bottom-7 right-1.5 text-[8px] font-semibold bg-black/50 hover:bg-black/70 text-white rounded-full px-1.5 py-0.5 transition-colors"
                 >
-                  Заменить
+                  {t('replace')}
                 </button>
               )}
 
               {/* Bottom name bar */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent px-1.5 py-2">
                 <p className="text-[9px] font-medium text-white text-center leading-tight">
-                  {url ? `Моя модель${customModelUrls.length > 1 ? ` ${cardIdx + 1}` : ''}` : 'Своя модель'}
+                  {url
+                    ? (customModelUrls.length > 1 ? t('myModelN', { n: cardIdx + 1 }) : t('myModel'))
+                    : t('ownModel')
+                  }
                 </p>
               </div>
             </button>
@@ -549,9 +543,9 @@ export function TemplatePicker({
       <div className="mt-3 flex items-center justify-between">
         <p className="text-[11px] text-muted-foreground">
           <Lock className="w-3 h-3 inline mr-1" />
-          Премиум на тарифе{' '}
+          {t('premiumNote')}{' '}
           <a href="/settings/billing" className="text-primary underline-offset-2 hover:underline">
-            Бренд Бизнес
+            {t('premiumPlan')}
           </a>
         </p>
         {selectedIds.length > 0 && (
@@ -560,7 +554,7 @@ export function TemplatePicker({
             disabled={disabled}
             className="text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
-            Сбросить
+            {t('reset')}
           </button>
         )}
       </div>

@@ -1,5 +1,5 @@
 -- ============================================================
--- Nurai AI Studio — Initial Schema
+-- Luminify — Initial Schema
 --
 -- Run in: Supabase Dashboard → SQL Editor → Run
 -- ============================================================

@@ -8,7 +8,7 @@
  *
  * Called daily by server crontab:
  *   0 3 * * * curl -s -X POST http://localhost:3000/api/cron/cleanup \
- *     -H "Authorization: Bearer $CRON_SECRET" >> /var/log/nurai-cleanup.log 2>&1
+ *     -H "Authorization: Bearer $CRON_SECRET" >> /var/log/luminify-cleanup.log 2>&1
  */
 
 import { NextResponse } from 'next/server'

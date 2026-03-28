@@ -23,7 +23,7 @@ services:
         NEXT_PUBLIC_APP_URL:           ${NEXT_PUBLIC_APP_URL}
         NEXT_PUBLIC_GA_ID:             ${NEXT_PUBLIC_GA_ID:-}
 
-    image: nurai-ai-studio:latest
+    image: luminify:latest
 
     ports:
       # Bind only to localhost when using Cloudflare Tunnel / reverse proxy.

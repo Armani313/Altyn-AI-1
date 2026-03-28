@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export const metadata = {
   title: 'Условия использования',
-  description: 'Условия использования сервиса Nurai AI Studio',
+  description: 'Условия использования сервиса Luminify',
 }
 
 export default function TermsPage() {
@@ -22,10 +22,10 @@ export default function TermsPage() {
           <div className="w-px h-4 bg-cream-300" />
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-md gradient-rose-gold flex items-center justify-center">
-              <span className="text-white text-[9px] font-bold font-serif">N</span>
+              <span className="text-white text-[9px] font-bold font-serif">L</span>
             </div>
             <span className="font-serif text-sm font-semibold text-foreground">
-              Nurai AI Studio
+              Luminify
             </span>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function TermsPage() {
           <Section title="1. Общие положения">
             <p>
               Настоящие Условия использования регулируют порядок доступа и использования
-              сервиса Nurai AI Studio (далее — «Сервис»), предоставляемого ИП Nurai
+              сервиса Luminify (далее — «Сервис»), предоставляемого ИП Luminify
               (далее — «Компания»). Используя Сервис, вы соглашаетесь с настоящими Условиями.
             </p>
             <p>
@@ -56,7 +56,7 @@ export default function TermsPage() {
 
           <Section title="2. Описание сервиса">
             <p>
-              Nurai AI Studio — онлайн-сервис для генерации профессиональных лайфстайл-фотографий
+              Luminify — онлайн-сервис для генерации профессиональных лайфстайл-фотографий
               ювелирных украшений с помощью искусственного интеллекта. Сервис предназначен
               для ювелирных магазинов и предпринимателей Казахстана.
             </p>
@@ -152,10 +152,10 @@ export default function TermsPage() {
             <p>
               Email:{' '}
               <a
-                href="mailto:support@nurai.kz"
+                href="mailto:support@luminify.app"
                 className="text-primary hover:underline underline-offset-2"
               >
-                support@nurai.kz
+                support@luminify.app
               </a>
             </p>
             <p>Казахстан, г. Алматы</p>

@@ -27,7 +27,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT }}
           source: "."
-          target: "/home/ubuntu/nurai-ai-studio"
+          target: "/home/ubuntu/luminify"
           rm: false
           exclude: ".git,.github,node_modules,.next,.env*"
 
@@ -40,11 +40,11 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd /home/ubuntu/nurai-ai-studio
+            cd /home/ubuntu/luminify
 
             # Save current image as rollback target before building
-            if docker image inspect nurai-ai-studio:latest &>/dev/null; then
-              docker tag nurai-ai-studio:latest nurai-ai-studio:rollback
+            if docker image inspect luminify:latest &>/dev/null; then
+              docker tag luminify:latest luminify:rollback
               echo "Rollback snapshot saved"
             fi
 
@@ -63,9 +63,9 @@ jobs:
             sleep 10
             if ! curl -sf http://127.0.0.1:3000/api/health; then
               echo "Health check FAILED — rolling back to previous image"
-              cd /home/ubuntu/nurai-ai-studio
-              if docker image inspect nurai-ai-studio:rollback &>/dev/null; then
-                docker tag nurai-ai-studio:rollback nurai-ai-studio:latest
+              cd /home/ubuntu/luminify
+              if docker image inspect luminify:rollback &>/dev/null; then
+                docker tag luminify:rollback luminify:latest
                 docker compose up -d --force-recreate
                 sleep 8
                 if curl -sf http://127.0.0.1:3000/api/health; then

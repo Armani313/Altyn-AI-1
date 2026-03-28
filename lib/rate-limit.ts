@@ -1,8 +1,9 @@
 /**
  * In-memory per-user / per-IP rate limiter.
  *
- * NOTE: Works correctly for single-instance deployments.
- * For horizontal scaling (multiple containers) replace with Redis/Upstash.
+ * Works correctly for single-instance deployments.
+ * For horizontal scaling (multiple containers) connect Upstash Redis:
+ *   install @upstash/redis @upstash/ratelimit and set UPSTASH_REDIS_REST_URL + TOKEN
  */
 
 interface Entry { count: number; windowStart: number }
@@ -23,12 +24,12 @@ function getStore(route: string): Map<string, Entry> {
  * @param limit    Max allowed calls within the window.
  * @param windowMs Window duration in milliseconds.
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   route:    string,
   key:      string,
   limit:    number,
   windowMs: number,
-): { ok: boolean; retryAfterSec?: number } {
+): Promise<{ ok: boolean; retryAfterSec?: number }> {
   const store = getStore(route)
   const now   = Date.now()
   const entry = store.get(key)

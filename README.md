@@ -1,4 +1,4 @@
-# Nurai AI Studio
+# Luminify
 
 B2B SaaS-платформа для магазинов Казахстана. Позволяет загрузить фото товара и за несколько секунд получить профессиональный AI лайфстайл-снимок или товарную карточку — без фотосессии, модели и студии.
 
@@ -98,7 +98,7 @@ B2B SaaS-платформа для магазинов Казахстана. По
 
 ```
 Браузер → POST /api/generate/demo
-  1. Cookie-чек (nurai_demo_used) — UX-слой
+  1. Cookie-чек (luminify_demo_used) — UX-слой
   2. IP rate-limit (CF-Connecting-IP, in-memory Map, 24 ч) — слой безопасности
   3. Загрузка → jewelry-uploads/demo/{ts}-source.jpg (service role)
   4. Прямой вызов Gemini (без очереди)
@@ -206,7 +206,7 @@ retryDelays:   [3_000, 10_000, 30_000]
 ## Структура проекта
 
 ```
-nurai-ai-studio/
+luminify/
 │
 ├── app/
 │   ├── (auth)/
@@ -446,11 +446,11 @@ Auth required. Тело: `{ planKey: 'starter' | 'pro' }`
 | OS | Ubuntu 24.04.4 LTS |
 | RAM | 2 GB (swap 2 GB) |
 | Диск | 40 GB SSD (~7 GB занято) |
-| SSH | `ssh -i ~/.ssh/nurai_deploy ubuntu@85.202.193.146` |
-| Контейнер | `nurai-ai-studio-app-1` (healthy, порт `127.0.0.1:3000`) |
+| SSH | `ssh -i ~/.ssh/luminify_deploy ubuntu@85.202.193.146` |
+| Контейнер | `luminify-app-1` (healthy, порт `127.0.0.1:3000`) |
 | Reverse proxy | nginx (порты 80/443) |
 | Cloudflared | установлен, в настоящее время inactive |
-| Проект на сервере | `/home/ubuntu/nurai-ai-studio/` |
+| Проект на сервере | `/home/ubuntu/luminify/` |
 
 ---
 
@@ -462,23 +462,23 @@ Git-репозитория на сервере нет. Деплой — ручн
 
 ```bash
 # 1. Скопировать изменённые файлы
-scp -i ~/.ssh/nurai_deploy \
+scp -i ~/.ssh/luminify_deploy \
   lib/ai/gemini.ts \
-  ubuntu@85.202.193.146:/home/ubuntu/nurai-ai-studio/lib/ai/
+  ubuntu@85.202.193.146:/home/ubuntu/luminify/lib/ai/
 
 # 2. Пересобрать и перезапустить
-ssh -i ~/.ssh/nurai_deploy ubuntu@85.202.193.146 "
-  cd ~/nurai-ai-studio
+ssh -i ~/.ssh/luminify_deploy ubuntu@85.202.193.146 "
+  cd ~/luminify
   docker compose build
   docker compose up -d
 "
 
 # 3. Проверить
-ssh -i ~/.ssh/nurai_deploy ubuntu@85.202.193.146 \
+ssh -i ~/.ssh/luminify_deploy ubuntu@85.202.193.146 \
   "docker ps && curl -s http://localhost:3000/api/health"
 
 # 4. Очистить build cache (накапливает ~18 GB за несколько деплоев)
-ssh -i ~/.ssh/nurai_deploy ubuntu@85.202.193.146 \
+ssh -i ~/.ssh/luminify_deploy ubuntu@85.202.193.146 \
   "docker builder prune -af"
 ```
 
@@ -512,7 +512,7 @@ Stage 3  runner   — node:20-alpine, non-root user nextjs:1001
 
 ```bash
 git clone <repo>
-cd nurai-ai-studio
+cd luminify
 npm install
 
 cp .env.local.example .env.local
@@ -542,7 +542,7 @@ docker-compose -f docker-compose.dev.yml up
 |-----------|-----|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | build + runtime | URL проекта Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | build + runtime | Публичный anon ключ |
-| `NEXT_PUBLIC_APP_URL` | build + runtime | Публичный URL (`https://studio.nurai.kz`) |
+| `NEXT_PUBLIC_APP_URL` | build + runtime | Публичный URL (`https://luminify.app`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **secret**, runtime | Service-role ключ (только server-side) |
 | `GEMINI_API_KEY` | **secret**, runtime | Google AI Studio API Key |
 | `GEMINI_MODEL` | runtime | Переопределить модель (default: `gemini-3.1-flash-image-preview`) |

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Check, Zap, Crown, Sparkles, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Plan } from '@/types/database.types'
@@ -11,98 +12,53 @@ interface BillingPlansProps {
   creditsLeft:   number
 }
 
-interface PlanConfig {
-  key:         Plan
-  label:       string
-  price:       string
-  priceNote:   string
-  credits:     number
-  features:    string[]
-  icon:        React.ElementType
-  highlight:   boolean
-}
-
-const PLANS: PlanConfig[] = [
-  {
-    key:       'free',
-    label:     'Бесплатный',
-    price:     '0 ₸',
-    priceNote: 'навсегда',
-    credits:   3,
-    features:  [
-      '3 генерации всего',
-      'Базовые шаблоны',
-      'JPG-загрузка',
-    ],
-    icon:      Sparkles,
-    highlight: false,
-  },
-  {
-    key:       'starter',
-    label:     'Старт',
-    price:     '9 900 ₸',
-    priceNote: 'в месяц',
-    credits:   30,
-    features:  [
-      '30 генераций в месяц',
-      'Все базовые шаблоны',
-      'Приоритетная очередь',
-      'Поддержка по email',
-    ],
-    icon:      Zap,
-    highlight: false,
-  },
-  {
-    key:       'pro',
-    label:     'Бренд Бизнес',
-    price:     '29 900 ₸',
-    priceNote: 'в месяц',
-    credits:   150,
-    features:  [
-      '150 генераций в месяц',
-      'Премиум-шаблоны',
-      'Приоритетная генерация',
-      'Поддержка в WhatsApp',
-      'Ранний доступ к новинкам',
-    ],
-    icon:      Crown,
-    highlight: true,
-  },
-]
-
 export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPlansProps) {
+  const t = useTranslations('billingPlans')
   const [loading, setLoading] = useState<Plan | null>(null)
   const [error, setError]     = useState('')
 
-  const handleBuy = async (planKey: Plan) => {
+  const PLANS = [
+    {
+      key:       'free' as Plan,
+      label:     t('freeName'),
+      price:     '$0',
+      priceNote: t('freeForever'),
+      credits:   5,
+      features:  [t('freeFeature1'), t('freeFeature2'), t('freeFeature3')],
+      icon:      Sparkles,
+      highlight: false,
+    },
+    {
+      key:       'starter' as Plan,
+      label:     t('starterName'),
+      price:     '$1',
+      priceNote: t('perMonth'),
+      credits:   20,
+      features:  [t('starterFeature1'), t('starterFeature2'), t('starterFeature3'), t('starterFeature4')],
+      icon:      Zap,
+      highlight: false,
+    },
+    {
+      key:       'pro' as Plan,
+      label:     t('proName'),
+      price:     '$20',
+      priceNote: t('perMonth'),
+      credits:   150,
+      features:  [t('proFeature1'), t('proFeature2'), t('proFeature3'), t('proFeature4'), t('proFeature5')],
+      icon:      Crown,
+      highlight: true,
+    },
+  ]
+
+  const handleBuy = (planKey: Plan) => {
     if (planKey === 'free' || planKey === 'enterprise') return
     setError('')
     setLoading(planKey)
-
-    try {
-      const res  = await fetch('/api/payment', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ plan: planKey }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error ?? 'Ошибка при создании платежа. Попробуйте снова.')
-        return
-      }
-
-      // Redirect to Kaspi Pay
-      window.location.href = data.paymentUrl
-    } catch {
-      setError('Ошибка соединения. Проверьте интернет и попробуйте снова.')
-    } finally {
-      setLoading(null)
-    }
+    window.location.href = `/api/checkout?plan=${planKey}`
   }
 
   const expiryDate = expiresAt
-    ? new Date(expiresAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? new Date(expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
   return (
@@ -111,13 +67,13 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
       <div className="bg-cream-100 rounded-2xl border border-cream-200 p-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Текущий тариф</p>
+            <p className="text-xs text-muted-foreground mb-1">{t('currentPlanLabel')}</p>
             <p className="font-serif text-lg font-medium text-foreground">
               {PLANS.find((p) => p.key === currentPlan)?.label ?? currentPlan}
             </p>
             {expiryDate && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                Действует до {expiryDate}
+                {t('activeUntil', { date: expiryDate })}
               </p>
             )}
           </div>
@@ -125,7 +81,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
             <Zap className="w-4 h-4 text-rose-gold-500" />
             <div>
               <p className="text-sm font-semibold text-foreground leading-none">{creditsLeft}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">кредитов осталось</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{t('creditsLeft')}</p>
             </div>
           </div>
         </div>
@@ -162,7 +118,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
               {plan.highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="bg-primary text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-soft">
-                    Популярный
+                    {t('popular')}
                   </span>
                 </div>
               )}
@@ -171,7 +127,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
               {isCurrent && (
                 <div className="absolute -top-3 right-4">
                   <span className="bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
-                    Активен
+                    {t('active')}
                   </span>
                 </div>
               )}
@@ -191,7 +147,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
                   <span className="text-xs text-muted-foreground ml-1">{plan.priceNote}</span>
                 </div>
                 <p className="text-xs text-rose-gold-600 font-semibold mt-1">
-                  {plan.credits} генераций
+                  {t('generations', { n: plan.credits })}
                 </p>
               </div>
 
@@ -208,7 +164,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
               {/* CTA */}
               {isCurrent ? (
                 <div className="h-10 flex items-center justify-center text-sm text-muted-foreground font-medium">
-                  Текущий тариф
+                  {t('currentPlanBtn')}
                 </div>
               ) : isFree ? (
                 <div className="h-10 flex items-center justify-center text-sm text-muted-foreground">
@@ -227,10 +183,10 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
                   {isPaying ? (
                     <span className="flex items-center gap-2">
                       <span className="w-3.5 h-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
-                      Перенаправляем...
+                      {t('redirecting')}
                     </span>
                   ) : (
-                    'Оплатить через Kaspi'
+                    t('pay')
                   )}
                 </Button>
               )}
@@ -240,7 +196,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
-        Оплата через Kaspi Pay · Безопасная транзакция · Отмена в любой момент
+        {t('securePayment')}
       </p>
     </div>
   )

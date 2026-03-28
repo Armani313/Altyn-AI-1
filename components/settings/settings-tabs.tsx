@@ -1,16 +1,17 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
 import { User, CreditCard } from 'lucide-react'
 
-const TABS = [
-  { href: '/settings',         label: 'Профиль', icon: User       },
-  { href: '/settings/billing', label: 'Оплата',  icon: CreditCard },
-]
-
 export function SettingsTabs() {
+  const t        = useTranslations('settingsTabs')
   const pathname = usePathname()
+
+  const TABS = [
+    { href: '/settings',         label: t('profile'), icon: User       },
+    { href: '/settings/billing', label: t('billing'), icon: CreditCard },
+  ]
 
   return (
     <div className="flex gap-1 p-1 bg-cream-100 rounded-xl mb-6 w-fit">

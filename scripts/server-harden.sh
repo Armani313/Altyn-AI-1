@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# server-harden.sh — Comprehensive security hardening for Nurai AI Studio server
+# server-harden.sh — Comprehensive security hardening for Luminify server
 # Run as root on Ubuntu 24.04 LTS
 # Usage: bash server-harden.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-LOGFILE="/var/log/nurai-harden.log"
+LOGFILE="/var/log/luminify-harden.log"
 echo "[$(date)] Starting security hardening" | tee -a "$LOGFILE"
 
 # ── 1. SSH Hardening ────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ echo "[*] Hardening SSH..."
 
 # Write a drop-in config that overrides everything in sshd_config
 cat > /etc/ssh/sshd_config.d/99-hardening.conf << 'EOF'
-# Nurai hardening — overrides /etc/ssh/sshd_config
+# Luminify hardening — overrides /etc/ssh/sshd_config
 PasswordAuthentication no
 ChallengeResponseAuthentication no
 KbdInteractiveAuthentication no
@@ -42,7 +42,7 @@ fi
 # ── 2. Kernel (sysctl) Hardening ────────────────────────────────────────────
 echo "[*] Applying kernel hardening (sysctl)..."
 
-cat > /etc/sysctl.d/99-nurai-hardening.conf << 'EOF'
+cat > /etc/sysctl.d/99-luminify-hardening.conf << 'EOF'
 # ── Network: ignore ICMP redirects and broadcasts ──────────────────────────
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
@@ -76,7 +76,7 @@ fs.protected_symlinks = 1
 fs.suid_dumpable = 0
 EOF
 
-sysctl -p /etc/sysctl.d/99-nurai-hardening.conf 2>&1 | tee -a "$LOGFILE"
+sysctl -p /etc/sysctl.d/99-luminify-hardening.conf 2>&1 | tee -a "$LOGFILE"
 echo "OK: sysctl applied" | tee -a "$LOGFILE"
 
 # ── 3. Disable Unnecessary Services ─────────────────────────────────────────
@@ -137,7 +137,7 @@ echo "OK: UFW SSH changed to rate-limited" | tee -a "$LOGFILE"
 # ── 6. Fail2ban Tuning ───────────────────────────────────────────────────────
 echo "[*] Tuning fail2ban..."
 
-cat > /etc/fail2ban/jail.d/nurai.conf << 'EOF'
+cat > /etc/fail2ban/jail.d/luminify.conf << 'EOF'
 [sshd]
 enabled  = true
 port     = ssh
@@ -202,8 +202,8 @@ echo "OK: Auto security updates enabled" | tee -a "$LOGFILE"
 echo "[*] Hardening file permissions..."
 
 # .env files
-find /opt/nurai -name ".env*" -exec chmod 600 {} \; 2>/dev/null || true
-chmod 700 /opt/nurai 2>/dev/null || true
+find /opt/luminify -name ".env*" -exec chmod 600 {} \; 2>/dev/null || true
+chmod 700 /opt/luminify 2>/dev/null || true
 
 # SSH authorized_keys
 chmod 700 /root/.ssh 2>/dev/null || true

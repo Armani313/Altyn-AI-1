@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   // HIGH-NEW-4: rate limit — 20 uploads per minute per user
-  const rl = checkRateLimit('upload', user.id, 20, 60_000)
+  const rl = await checkRateLimit('upload', user.id, 20, 60_000)
   if (!rl.ok) {
     return NextResponse.json(
       { error: `Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.` },

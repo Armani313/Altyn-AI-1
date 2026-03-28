@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { Upload, Download, Loader2, Scissors, RefreshCw, ImagePlus, AlertCircle, CheckCircle2, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -37,14 +38,14 @@ function getCanvasDims(ratioW: number, ratioH: number): { cw: number; ch: number
 }
 
 const GRADIENT_PRESETS: GradientPreset[] = [
-  { label: 'Рассвет', from: '#ffecd2', to: '#fcb69f' },
-  { label: 'Небо',    from: '#a1c4fd', to: '#c2e9fb' },
-  { label: 'Лаванда', from: '#e0c3fc', to: '#8ec5fc' },
-  { label: 'Ночь',    from: '#1a1a2e', to: '#16213e' },
-  { label: 'Мята',    from: '#84fab0', to: '#8fd3f4' },
-  { label: 'Золото',  from: '#f6d365', to: '#fda085' },
-  { label: 'Роза',    from: '#fbc2eb', to: '#a6c1ee' },
-  { label: 'Мрамор',  from: '#e8e8e8', to: '#f5f5f5' },
+  { label: 'dawn',     from: '#ffecd2', to: '#fcb69f' },
+  { label: 'sky',      from: '#a1c4fd', to: '#c2e9fb' },
+  { label: 'lavender', from: '#e0c3fc', to: '#8ec5fc' },
+  { label: 'night',    from: '#1a1a2e', to: '#16213e' },
+  { label: 'mint',     from: '#84fab0', to: '#8fd3f4' },
+  { label: 'gold',     from: '#f6d365', to: '#fda085' },
+  { label: 'rose',     from: '#fbc2eb', to: '#a6c1ee' },
+  { label: 'marble',   from: '#e8e8e8', to: '#f5f5f5' },
 ]
 
 const SOLID_PRESETS = [
@@ -55,6 +56,17 @@ const SOLID_PRESETS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function BgRemovalEditor() {
+  const t = useTranslations('bgRemovalEditor')
+
+  const gradientName = (key: string): string => {
+    const map: Record<string, string> = {
+      dawn: t('gradientDawn'), sky: t('gradientSky'), lavender: t('gradientLavender'),
+      night: t('gradientNight'), mint: t('gradientMint'), gold: t('gradientGold'),
+      rose: t('gradientRose'), marble: t('gradientMarble'),
+    }
+    return map[key] ?? key
+  }
+
   const [uploadedFile,  setUploadedFile]  = useState<File | null>(null)
   const [previewUrl,    setPreviewUrl]    = useState<string | null>(null)
   const [previewEl,     setPreviewEl]     = useState<HTMLImageElement | null>(null)
@@ -302,18 +314,18 @@ export function BgRemovalEditor() {
           {uploadedFile ? (
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl!} alt="Товар"
+              <img src={previewUrl!} alt={t('productAlt')}
                 className="w-14 h-14 object-contain rounded-xl border border-cream-200 bg-white" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">{uploadedFile.name}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Нажмите для замены</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t('clickToReplace')}</p>
               </div>
               <RefreshCw className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             </div>
           ) : (
             <div className="text-center pointer-events-none">
               <Upload className="w-8 h-8 text-rose-gold-400 mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Загрузите фото товара</p>
+              <p className="text-sm font-medium text-foreground">{t('uploadProduct')}</p>
               <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WebP</p>
             </div>
           )}
@@ -325,7 +337,7 @@ export function BgRemovalEditor() {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
                 <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin" />
-                <span className="text-xs font-medium text-foreground">Загрузка модели ИИ…</span>
+                <span className="text-xs font-medium text-foreground">{t('loadingModel')}</span>
               </div>
               <span className="text-xs text-muted-foreground">{modelProgress}%</span>
             </div>
@@ -336,7 +348,7 @@ export function BgRemovalEditor() {
               />
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Загружается один раз — кешируется в браузере
+              {t('loadedOnce')}
             </p>
           </div>
         )}
@@ -344,14 +356,14 @@ export function BgRemovalEditor() {
         {modelStatus === 'ready' && (
           <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-100 rounded-xl">
             <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-            <span className="text-xs font-medium text-green-700">Модель готова к работе</span>
+            <span className="text-xs font-medium text-green-700">{t('modelReady')}</span>
           </div>
         )}
 
         {modelStatus === 'error' && (
           <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl">
             <WifiOff className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-            <span className="text-xs font-medium text-amber-700">Не удалось загрузить модель — проверьте соединение</span>
+            <span className="text-xs font-medium text-amber-700">{t('modelError')}</span>
           </div>
         )}
 
@@ -359,15 +371,15 @@ export function BgRemovalEditor() {
         <Button onClick={handleRemoveBg} disabled={!canProcess}
           className="w-full gradient-rose-gold text-white rounded-xl h-10 font-medium gap-2">
           {isProcessing
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> Обработка…</>
-            : <><Scissors className="w-4 h-4" /> Удалить фон</>}
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('processing')}</>
+            : <><Scissors className="w-4 h-4" /> {t('removeBg')}</>}
         </Button>
 
         {/* Progress */}
         {isProcessing && (
           <div className="bg-cream-100 rounded-xl p-3 border border-cream-200">
             <p className="text-xs font-medium text-foreground mb-1.5">
-              Удаление фона… <span className="text-muted-foreground font-normal">{progress}%</span>
+              {t('removingBg')} <span className="text-muted-foreground font-normal">{progress}%</span>
             </p>
             <div className="h-1.5 bg-cream-300 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-rose-gold-400 to-rose-gold-500
@@ -390,17 +402,17 @@ export function BgRemovalEditor() {
 
         {/* Background picker */}
         <div className="bg-white rounded-2xl border border-cream-200 p-4 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Фон</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">{t('background')}</p>
           <div className="grid grid-cols-4 gap-1.5">
-            {(['transparent','color','gradient','image'] as BgType[]).map((t) => (
-              <button key={t} onClick={() => setBgType(t)}
+            {(['transparent','color','gradient','image'] as BgType[]).map((bgTypeOpt) => (
+              <button key={bgTypeOpt} onClick={() => setBgType(bgTypeOpt)}
                 className={`py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                  bgType === t
+                  bgType === bgTypeOpt
                     ? 'bg-rose-gold-100 text-rose-gold-700 border border-rose-gold-200'
                     : 'bg-cream-100 text-muted-foreground hover:bg-cream-200'
                 }`}>
-                {t === 'transparent' ? 'Прозр.' : t === 'color' ? 'Цвет'
-                  : t === 'gradient' ? 'Градиент' : 'Фото'}
+                {bgTypeOpt === 'transparent' ? t('bgTransparent') : bgTypeOpt === 'color' ? t('bgColor')
+                  : bgTypeOpt === 'gradient' ? t('bgGradient') : t('bgPhoto')}
               </button>
             ))}
           </div>
@@ -426,7 +438,7 @@ export function BgRemovalEditor() {
           {bgType === 'gradient' && (
             <div className="flex flex-wrap gap-1.5">
               {GRADIENT_PRESETS.map((g) => (
-                <button key={g.label} onClick={() => setBgGradient(g)} title={g.label}
+                <button key={g.label} onClick={() => setBgGradient(g)} title={gradientName(g.label)}
                   className={`w-7 h-7 rounded-lg border-2 transition-all ${
                     bgGradient.label === g.label
                       ? 'border-rose-gold-500 scale-110' : 'border-transparent hover:border-cream-400'
@@ -442,7 +454,7 @@ export function BgRemovalEditor() {
               }`}>
                 <ImagePlus className="w-3.5 h-3.5 text-rose-gold-500 flex-shrink-0" />
                 <span className="truncate text-muted-foreground">
-                  {bgImageFile ? bgImageFile.name : 'Выбрать фото фона…'}
+                  {bgImageFile ? bgImageFile.name : t('selectBgPhoto')}
                 </span>
               </div>
               <input type="file" accept="image/*" className="hidden"
@@ -458,7 +470,7 @@ export function BgRemovalEditor() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-                Соотношение сторон
+                {t('aspectRatio')}
               </p>
               <span className="text-[10px] text-muted-foreground font-mono">
                 {canvasW}×{canvasH}
@@ -498,7 +510,7 @@ export function BgRemovalEditor() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-                Размер товара
+                {t('productSize')}
               </p>
               <span className="text-xs font-medium text-foreground">{Math.round(productScale * 100)}%</span>
             </div>
@@ -515,7 +527,7 @@ export function BgRemovalEditor() {
         <Button onClick={handleDownload} disabled={!canDownload} variant="outline"
           className="w-full rounded-xl h-10 gap-2 border-rose-gold-200 text-rose-gold-700
                      hover:bg-rose-gold-50 disabled:opacity-40">
-          <Download className="w-4 h-4" /> Скачать PNG
+          <Download className="w-4 h-4" /> {t('downloadPng')}
         </Button>
       </div>
 
@@ -527,7 +539,7 @@ export function BgRemovalEditor() {
                             flex flex-col items-center justify-center gap-2">
               <Loader2 className="w-8 h-8 text-rose-gold-500 animate-spin" />
               <p className="text-sm font-medium text-foreground">
-                Удаление фона… {progress > 0 ? `${progress}%` : ''}
+                {t('removingBg')} {progress > 0 ? `${progress}%` : ''}
               </p>
             </div>
           )}
@@ -542,8 +554,8 @@ export function BgRemovalEditor() {
             <div className="absolute inset-0 flex flex-col items-center justify-center
                             text-center p-6 pointer-events-none">
               <Scissors className="w-10 h-10 text-rose-gold-300 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">Загрузите фото товара</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Фон удаляется прямо в браузере</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('uploadToStart')}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">{t('removedInBrowser')}</p>
             </div>
           )}
         </div>

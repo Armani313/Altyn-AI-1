@@ -26,7 +26,7 @@ import { assertSafeImageBytes } from '@/lib/utils/security'
 export const maxDuration = 60
 export const runtime = 'nodejs'
 
-const DEMO_COOKIE       = 'nurai_demo_used'
+const DEMO_COOKIE       = 'luminify_demo_used'
 const INPUT_BUCKET      = 'jewelry-uploads'
 const OUTPUT_BUCKET     = 'generated-images'
 const IP_WINDOW_MS      = 24 * 60 * 60 * 1000 // 24 h

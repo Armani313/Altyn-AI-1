@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'Nurai AI Studio — ИИ-фотографии украшений'
+export const alt = 'Luminify — ИИ-фотографии украшений'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -60,7 +60,7 @@ export default function OgImage() {
             boxShadow: '0 8px 32px rgba(196, 131, 79, 0.4)',
           }}
         >
-          <span style={{ color: '#fff', fontSize: 36, fontWeight: 700 }}>N</span>
+          <span style={{ color: '#fff', fontSize: 36, fontWeight: 700 }}>L</span>
         </div>
 
         {/* Brand name */}
@@ -74,7 +74,7 @@ export default function OgImage() {
             fontFamily: 'Georgia, serif',
           }}
         >
-          Nurai AI Studio
+          Luminify
         </div>
 
         {/* Main headline */}

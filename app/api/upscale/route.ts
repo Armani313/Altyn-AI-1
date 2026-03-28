@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     if (!user) return err('Необходимо авторизоваться.', 401)
 
     // ── 2. Rate limit (5 upscales per minute) ─────────────────────────────────
-    const rl = checkRateLimit('upscale', user.id, 5, 60_000)
+    const rl = await checkRateLimit('upscale', user.id, 5, 60_000)
     if (!rl.ok) {
       return err(`Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.`, 429)
     }

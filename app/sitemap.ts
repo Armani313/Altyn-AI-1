@@ -1,12 +1,12 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nuraystudio.kz'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://luminify.app'
 
   return [
     {
       url: baseUrl,
-      lastModified: new Date('2026-03-20'),
+      lastModified: new Date('2026-03-25'),
       changeFrequency: 'monthly',
       priority: 1,
     },

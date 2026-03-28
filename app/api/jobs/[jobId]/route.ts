@@ -19,7 +19,7 @@ export const runtime     = 'nodejs'
 
 export async function GET(
   _request: Request,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   // ── Auth ────────────────────────────────────────────────────────────────────
   const supabase = await createClient()
@@ -29,7 +29,7 @@ export async function GET(
   }
 
   // ── Validate jobId ──────────────────────────────────────────────────────────
-  const jobId = params.jobId
+  const { jobId } = await params
   if (!UUID_REGEX.test(jobId)) {
     return NextResponse.json({ error: 'Неверный ID задания.' }, { status: 400 })
   }

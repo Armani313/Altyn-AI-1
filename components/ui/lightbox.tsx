@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { X, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
 
 export interface LightboxImage {
@@ -32,6 +33,7 @@ async function downloadImage(url: string, name: string) {
 }
 
 export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps) {
+  const t = useTranslations('lightbox')
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [isDownloading, setIsDownloading] = useState(false)
 
@@ -66,7 +68,7 @@ export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps)
   const handleDownload = async () => {
     if (!current?.url || isDownloading) return
     setIsDownloading(true)
-    await downloadImage(current.url, `nurai-${currentIndex + 1}-${Date.now()}`)
+    await downloadImage(current.url, `luminify-${currentIndex + 1}-${Date.now()}`)
     setIsDownloading(false)
   }
 
@@ -79,7 +81,7 @@ export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps)
       <button
         onClick={onClose}
         className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-        aria-label="Закрыть"
+        aria-label={t('close')}
       >
         <X className="w-5 h-5" />
       </button>
@@ -96,13 +98,13 @@ export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps)
         onClick={(e) => { e.stopPropagation(); handleDownload() }}
         disabled={isDownloading}
         className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
-        aria-label="Скачать"
+        aria-label={t('download')}
       >
         {isDownloading
           ? <Loader2 className="w-4 h-4 animate-spin" />
           : <Download className="w-4 h-4" />
         }
-        {isDownloading ? 'Загрузка…' : 'Скачать'}
+        {isDownloading ? t('downloading') : t('download')}
       </button>
 
       {/* Prev arrow */}
@@ -110,7 +112,7 @@ export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps)
         <button
           onClick={(e) => { e.stopPropagation(); prev() }}
           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-          aria-label="Назад"
+          aria-label={t('prev')}
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -121,7 +123,7 @@ export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps)
         <button
           onClick={(e) => { e.stopPropagation(); next() }}
           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-          aria-label="Вперёд"
+          aria-label={t('next')}
         >
           <ChevronRight className="w-6 h-6" />
         </button>
@@ -136,7 +138,7 @@ export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps)
         <img
           key={current.url}
           src={current.url}
-          alt={current.label ?? 'Изображение'}
+          alt={current.label ?? t('imageAlt')}
           className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
         />
       </div>

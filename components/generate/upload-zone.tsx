@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { Camera, X, ImagePlus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_MB } from '@/lib/constants'
@@ -15,7 +16,8 @@ interface UploadZoneProps {
 const ACCEPTED_TYPES = ACCEPTED_IMAGE_TYPES
 const MAX_SIZE_MB = MAX_IMAGE_MB
 
-export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Перетащите фото сюда' }: UploadZoneProps) {
+export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel }: UploadZoneProps) {
+  const t        = useTranslations('uploadZone')
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState('')
@@ -25,18 +27,18 @@ export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Пер
       setError('')
 
       if (!(ACCEPTED_TYPES as readonly string[]).includes(file.type)) {
-        setError('Поддерживаются форматы: JPG, PNG, WEBP, HEIC')
+        setError(t('errorFormat'))
         return
       }
       if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-        setError(`Максимальный размер файла — ${MAX_SIZE_MB} МБ`)
+        setError(t('errorSize', { size: MAX_SIZE_MB }))
         return
       }
 
       const url = URL.createObjectURL(file)
       onUpload(file, url)
     },
-    [onUpload]
+    [onUpload, t]
   )
 
   const handleDrop = useCallback(
@@ -61,7 +63,7 @@ export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Пер
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={previewUrl}
-          alt="Загруженное фото украшения"
+          alt={t('uploadedPhotoAlt')}
           className="w-full h-full object-cover"
         />
 
@@ -73,7 +75,7 @@ export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Пер
             className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white text-foreground border-0 shadow-card"
           >
             <X className="w-4 h-4 mr-1.5" />
-            Удалить
+            {t('remove')}
           </Button>
         </div>
 
@@ -81,7 +83,7 @@ export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Пер
         <button
           onClick={onRemove}
           className="absolute top-3 right-3 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-colors touch-manipulation"
-          aria-label="Удалить фото"
+          aria-label={t('removePhoto')}
         >
           <X className="w-4 h-4" />
         </button>
@@ -89,7 +91,7 @@ export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Пер
         {/* Status chip */}
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-xs font-medium text-foreground px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-soft">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Фото загружено
+          {t('photoUploaded')}
         </div>
       </div>
     )
@@ -142,26 +144,26 @@ export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel = 'Пер
           <div>
             <p className="font-medium text-foreground mb-1">
               {isDragging
-                ? 'Отпустите файл здесь'
+                ? t('dropHere')
                 : (
                   <>
-                    <span className="hidden sm:inline">{dragLabel}</span>
-                    <span className="sm:hidden">Нажмите, чтобы загрузить фото</span>
+                    <span className="hidden sm:inline">{dragLabel ?? t('tapToUpload')}</span>
+                    <span className="sm:hidden">{t('tapToUpload')}</span>
                   </>
                 )
               }
             </p>
             <p className="text-sm text-muted-foreground hidden sm:block">
-              или{' '}
+              {t('orSelectFile')}{' '}
               <span className="text-primary font-medium underline underline-offset-2">
-                выберите файл
+                {t('selectFile')}
               </span>
             </p>
           </div>
 
           {/* Format hint */}
           <p className="text-xs text-muted-foreground bg-cream-100 rounded-lg px-3 py-1.5">
-            JPG, PNG, WEBP, HEIC · до {MAX_SIZE_MB} МБ
+            JPG, PNG, WEBP, HEIC · {t('errorSize', { size: MAX_SIZE_MB })}
           </p>
         </div>
 

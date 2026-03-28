@@ -27,13 +27,13 @@ export const KASPI_PLANS = {
     name: PLAN_META.starter.label,
     priceKZT: 9_900,
     credits: PLAN_META.starter.credits,
-    description: `Nurai AI Studio — тариф Старт (${PLAN_META.starter.credits} генераций в месяц)`,
+    description: `Luminify — тариф Старт (${PLAN_META.starter.credits} генераций в месяц)`,
   },
   pro: {
     name: PLAN_META.pro.label,
     priceKZT: 29_900,
     credits: PLAN_META.pro.credits,
-    description: `Nurai AI Studio — тариф Бренд Бизнес (${PLAN_META.pro.credits} генераций в месяц)`,
+    description: `Luminify — тариф Бренд Бизнес (${PLAN_META.pro.credits} генераций в месяц)`,
   },
 } satisfies Record<string, KaspiPlan>
 
@@ -88,7 +88,7 @@ export async function createKaspiOrder(
     ReturnUrl: params.returnUrl,
     CallbackUrl: `${appUrl}/api/webhooks/kaspi`,
     // Kaspi-specific fields (verify exact names in your merchant docs):
-    Service: 'Nurai AI Studio',
+    Service: 'Luminify',
     DeviceId: null,
   }
 

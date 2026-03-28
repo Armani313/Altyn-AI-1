@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2, ChevronDown, Wand2, ScanLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
@@ -23,18 +24,11 @@ interface ResultViewerProps {
   onRetryFailed:       () => void
   canGenerate:         boolean
   creditsRemaining:    number | null
-  /** URLs of the user's custom models — used for thumbnails in result cards */
   customModelUrls?:    string[]
   userPrompt:          string
   onUserPromptChange:  (v: string) => void
-  /** Number of selected templates (1 credit each); 0 means standalone (1 credit) */
   selectedCount?:      number
 }
-
-const RATIOS: { id: AspectRatio; label: string; cls: string }[] = [
-  { id: '1:1',  label: '1:1 Пост',    cls: 'aspect-square'  },
-  { id: '9:16', label: '9:16 Сторис', cls: 'aspect-[9/16]'  },
-]
 
 async function downloadImage(url: string, name: string) {
   try {
@@ -64,6 +58,7 @@ function ResultCard({
   customModelUrls?: string[]
   onExpand?:       () => void
 }) {
+  const t = useTranslations('resultViewer')
   const [isDownloading, setIsDownloading] = useState(false)
   const isMacro      = isMacroShotId(result.modelId)
   const isCustom     = !isMacro && isCustomModelId(result.modelId)
@@ -73,7 +68,7 @@ function ResultCard({
   const handleDownload = async () => {
     if (!result.resultUrl || isDownloading) return
     setIsDownloading(true)
-    await downloadImage(result.resultUrl, `nurai-${result.modelId}-${Date.now()}`)
+    await downloadImage(result.resultUrl, `luminify-${result.modelId}-${Date.now()}`)
     setIsDownloading(false)
   }
 
@@ -90,7 +85,7 @@ function ResultCard({
             </div>
           </div>
           <p className="text-xs text-muted-foreground font-medium px-4 text-center">
-            ИИ создаёт фото…
+            {t('aiCreating')}
           </p>
           <div className="w-3/5 space-y-1.5">
             {[100, 75, 50].map((w) => (
@@ -106,7 +101,7 @@ function ResultCard({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={result.resultUrl}
-            alt="Результат генерации"
+            alt={t('resultsHere')}
             className="w-full h-full object-cover"
           />
           {/* Download button */}
@@ -119,7 +114,7 @@ function ResultCard({
               ? <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin flex-shrink-0" />
               : <Download className="w-3.5 h-3.5 text-rose-gold-500 flex-shrink-0" />
             }
-            {isDownloading ? 'Загрузка…' : 'Скачать'}
+            {isDownloading ? t('downloading') : t('download')}
           </button>
 
           {/* Expand / lightbox button */}
@@ -127,7 +122,7 @@ function ResultCard({
             <button
               onClick={onExpand}
               className="absolute bottom-2 left-2 w-9 h-9 flex items-center justify-center bg-white/90 hover:bg-white backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 touch-manipulation"
-              aria-label="Открыть полноэкранно"
+              aria-label={t('expandFullscreen')}
             >
               <Maximize2 className="w-3.5 h-3.5 text-foreground/70" />
             </button>
@@ -140,7 +135,7 @@ function ResultCard({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 bg-red-50">
           <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
           <p className="text-xs text-red-600 text-center leading-snug">
-            {result.error ?? 'Ошибка генерации'}
+            {result.error ?? t('errorGeneration')}
           </p>
         </div>
       )}
@@ -149,18 +144,21 @@ function ResultCard({
       {isMacro ? (
         <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
           <ScanLine className="w-3 h-3 text-white flex-shrink-0" />
-          <span className="text-[10px] text-white font-medium">Макро</span>
+          <span className="text-[10px] text-white font-medium">{t('macroLabel')}</span>
         </div>
       ) : (model || isCustom) && (
         <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 max-w-[80%]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={isCustom ? (customModelUrls?.[customIndex] ?? '') : `/models/${model!.filename}`}
-            alt={isCustom ? 'Ваша модель' : model!.name}
+            alt={isCustom ? t('yourModel') : model!.name}
             className="w-4 h-4 rounded-full object-cover object-top flex-shrink-0"
           />
           <span className="text-[10px] text-white font-medium truncate">
-            {isCustom ? `Моя модель${(customModelUrls?.length ?? 0) > 1 ? ` ${customIndex + 1}` : ''}` : model!.name}
+            {isCustom
+              ? ((customModelUrls?.length ?? 0) > 1 ? t('myModelLabelN', { n: customIndex + 1 }) : t('myModelLabel'))
+              : model!.name
+            }
           </span>
         </div>
       )}
@@ -182,8 +180,14 @@ export function ResultViewer({
   onUserPromptChange,
   selectedCount = 0,
 }: ResultViewerProps) {
+  const t = useTranslations('resultViewer')
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [promptOpen,    setPromptOpen]    = useState(false)
+
+  const RATIOS: { id: AspectRatio; label: string; cls: string }[] = [
+    { id: '1:1',  label: t('ratioPost'),    cls: 'aspect-square'  },
+    { id: '9:16', label: t('ratioStories'), cls: 'aspect-[9/16]'  },
+  ]
 
   const isAnyGenerating  = results.some((r) => r.status === 'generating')
   const hasResults       = results.length > 0
@@ -192,12 +196,10 @@ export function ResultViewer({
   const enoughCredits    = creditsRemaining == null || creditsRemaining >= requiredCredits
   const currentRatio     = RATIOS.find((r) => r.id === aspectRatio)!
 
-  // Build lightbox list from done results
   const lightboxImages: LightboxImage[] = results
     .filter((r) => r.status === 'done' && r.resultUrl)
     .map((r) => ({ url: r.resultUrl! }))
 
-  // Map a result's position among done results for the lightbox
   function doneIndexOf(result: GenerationResult): number {
     return lightboxImages.findIndex((img) => img.url === result.resultUrl)
   }
@@ -207,7 +209,7 @@ export function ResultViewer({
       return (
         <span className="flex items-center gap-2.5">
           <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-          Генерируем фото…
+          {t('generating')}
         </span>
       )
     }
@@ -215,7 +217,7 @@ export function ResultViewer({
       return (
         <span className="flex items-center gap-2.5">
           <Zap className="w-5 h-5" />
-          Недостаточно кредитов
+          {t('insufficientCredits')}
         </span>
       )
     }
@@ -223,15 +225,15 @@ export function ResultViewer({
       return (
         <span className="flex items-center gap-2.5">
           <Sparkles className="w-5 h-5" />
-          Выберите модель
+          {t('chooseModel')}
         </span>
       )
     }
     return (
       <span className="flex items-center gap-2.5">
         <Sparkles className="w-5 h-5" />
-        Сгенерировать {selectedCount * 4} фото
-        <span className="ml-0.5 text-white/70 text-sm font-normal">({requiredCredits} кр.)</span>
+        {t('generatePhotos', { n: selectedCount * 4 })}
+        <span className="ml-0.5 text-white/70 text-sm font-normal">({requiredCredits} {t('creditsSuffix')})</span>
       </span>
     )
   }
@@ -267,7 +269,7 @@ export function ResultViewer({
           }`}>
             <Zap className={`w-3.5 h-3.5 ${!enoughCredits ? 'text-red-500' : 'text-rose-gold-500'}`} />
             <span>
-              <strong className="text-foreground">{creditsRemaining}</strong> кредитов
+              {t('creditsN', { n: creditsRemaining })}
             </span>
           </div>
         )}
@@ -282,7 +284,7 @@ export function ResultViewer({
           <span className="flex items-center gap-2">
             <Wand2 className="w-3.5 h-3.5 text-rose-gold-400" />
             <span className="font-medium">
-              {userPrompt.trim() ? 'Пожелание добавлено' : 'Добавить пожелание'}
+              {userPrompt.trim() ? t('wishAdded') : t('addWish')}
             </span>
             {userPrompt.trim() && (
               <span className="w-1.5 h-1.5 rounded-full bg-rose-gold-400" />
@@ -296,14 +298,14 @@ export function ResultViewer({
             <textarea
               value={userPrompt}
               onChange={(e) => onUserPromptChange(e.target.value)}
-              placeholder="Например: золотой час, закат, цветочный фон, студийный свет…"
+              placeholder={t('wishPlaceholder')}
               maxLength={300}
               rows={3}
               className="mt-3 w-full resize-none rounded-lg border border-cream-200 bg-cream-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-rose-gold-300 focus:border-transparent transition-all"
             />
             <div className="flex items-center justify-between mt-1.5">
               <p className="text-[11px] text-muted-foreground">
-                Опишите желаемый стиль, фон или атмосферу
+                {t('wishHint')}
               </p>
               <span className="text-[11px] text-muted-foreground tabular-nums">
                 {userPrompt.length}/300
@@ -334,7 +336,7 @@ export function ResultViewer({
           onClick={onRetryFailed}
         >
           <RefreshCw className="w-4 h-4 mr-1.5" />
-          Повторить {failedCount === 1 ? 'неудачную' : `${failedCount} неудачных`} генераций
+          {failedCount === 1 ? t('retryFailed1') : t('retryFailedN', { n: failedCount })}
         </Button>
       )}
 
@@ -364,8 +366,8 @@ export function ResultViewer({
                 <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
               </div>
               <div>
-                <p className="font-medium text-foreground/70 text-sm mb-0.5">Здесь появятся результаты</p>
-                <p className="text-xs text-muted-foreground">Загрузите фото и нажмите «Сгенерировать»</p>
+                <p className="font-medium text-foreground/70 text-sm mb-0.5">{t('resultsHere')}</p>
+                <p className="text-xs text-muted-foreground">{t('resultsHint')}</p>
               </div>
             </div>
           </div>
@@ -375,12 +377,12 @@ export function ResultViewer({
       {/* Hint */}
       {!isAnyGenerating && !canGenerate && selectedCount === 0 && (
         <p className="text-center text-xs text-muted-foreground">
-          ← Выберите модель для генерации
+          {t('hintChooseModel')}
         </p>
       )}
       {!isAnyGenerating && !canGenerate && selectedCount > 0 && (
         <p className="text-center text-xs text-muted-foreground">
-          ↑ Загрузите фото товара для начала
+          {t('hintUploadPhoto')}
         </p>
       )}
 

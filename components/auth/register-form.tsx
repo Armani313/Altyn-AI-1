@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
+import { Link } from '@/i18n/navigation'
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { registerSchema, type RegisterInput } from '@/lib/validations'
 
 export function RegisterForm() {
+  const t = useTranslations('auth.register')
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -46,8 +48,8 @@ export function RegisterForm() {
     if (error) {
       setServerError(
         error.message.includes('already registered')
-          ? 'Пользователь с таким email уже зарегистрирован.'
-          : 'Произошла ошибка при регистрации. Попробуйте позже.'
+          ? t('errorAlreadyRegistered')
+          : t('errorGeneric')
       )
       return
     }
@@ -74,12 +76,10 @@ export function RegisterForm() {
           <CheckCircle2 className="w-7 h-7 text-emerald-500" />
         </div>
         <h2 className="font-serif text-2xl font-medium text-foreground mb-2">
-          Аккаунт создан!
+          {t('successTitle')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {hasSession
-            ? 'Перенаправляем в студию...'
-            : 'Мы отправили письмо для подтверждения. Проверьте почту и перейдите по ссылке.'}
+          {hasSession ? t('successRedirect') : t('successEmail')}
         </p>
       </div>
     )
@@ -89,10 +89,10 @@ export function RegisterForm() {
     <div>
       <div className="mb-6">
         <h1 className="font-serif text-3xl font-medium text-foreground mb-1.5">
-          Создать аккаунт
+          {t('title')}
         </h1>
         <p className="text-muted-foreground text-sm">
-          3 бесплатные генерации сразу после регистрации
+          {t('subtitle')}
         </p>
       </div>
 
@@ -107,11 +107,11 @@ export function RegisterForm() {
         {/* Business name */}
         <div className="space-y-1.5">
           <Label htmlFor="business_name" className="text-sm font-medium">
-            Название магазина
+            {t('businessName')}
           </Label>
           <Input
             id="business_name"
-            placeholder="Ювелирный салон «Жасмин»"
+            placeholder={t('businessNamePlaceholder')}
             className={`h-11 bg-white border-cream-300 focus:border-primary ${
               errors.business_name ? 'border-destructive' : ''
             }`}
@@ -126,11 +126,11 @@ export function RegisterForm() {
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="contact_name" className="text-sm font-medium">
-              Ваше имя
+              {t('contactName')}
             </Label>
             <Input
               id="contact_name"
-              placeholder="Айгерим"
+              placeholder={t('contactNamePlaceholder')}
               className={`h-11 bg-white border-cream-300 focus:border-primary ${
                 errors.contact_name ? 'border-destructive' : ''
               }`}
@@ -142,7 +142,7 @@ export function RegisterForm() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="phone" className="text-sm font-medium">
-              Телефон
+              {t('phone')}
             </Label>
             <Input
               id="phone"
@@ -162,7 +162,7 @@ export function RegisterForm() {
         {/* Email */}
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-sm font-medium">
-            Email
+            {t('email')}
           </Label>
           <Input
             id="email"
@@ -182,13 +182,13 @@ export function RegisterForm() {
         {/* Password */}
         <div className="space-y-1.5">
           <Label htmlFor="password" className="text-sm font-medium">
-            Пароль
+            {t('password')}
           </Label>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Минимум 6 символов"
+              placeholder={t('passwordPlaceholder')}
               autoComplete="new-password"
               className={`h-11 pr-11 bg-white border-cream-300 focus:border-primary ${
                 errors.password ? 'border-destructive' : ''
@@ -220,28 +220,28 @@ export function RegisterForm() {
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Создаём аккаунт...
+              {t('loading')}
             </span>
           ) : (
-            'Зарегистрироваться бесплатно'
+            t('submit')
           )}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
-          Нажимая кнопку, вы соглашаетесь с{' '}
-          <a href="/terms" className="underline hover:text-foreground">
-            условиями использования
-          </a>
+          {t('terms')}{' '}
+          <Link href="/terms" className="underline hover:text-foreground">
+            {t('termsLink')}
+          </Link>
         </p>
       </form>
 
       <p className="mt-5 text-center text-sm text-muted-foreground">
-        Уже есть аккаунт?{' '}
+        {t('hasAccount')}{' '}
         <Link
           href="/login"
           className="text-primary hover:text-rose-gold-600 font-medium transition-colors"
         >
-          Войти
+          {t('login')}
         </Link>
       </p>
     </div>

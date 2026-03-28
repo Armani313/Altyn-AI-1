@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
 import { Wand2, LayoutGrid, Scissors, Images, Settings, LogOut, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/supabase/actions'
@@ -12,21 +12,27 @@ interface SidebarProps {
   profile: Pick<Profile, 'contact_name' | 'business_name' | 'credits_remaining' | 'plan'> | null
 }
 
-const CREATE_ITEMS = [
-  { href: '/dashboard',  icon: Wand2,      label: 'Лайфстайл фото'   },
-  { href: '/cards',      icon: LayoutGrid, label: 'Карточки товаров' },
-  { href: '/remove-bg',  icon: Scissors,   label: 'Редактор фона'    },
-]
-
 export function Sidebar({ profile }: SidebarProps) {
+  const t        = useTranslations('sidebar')
+  const locale   = useLocale()
   const pathname = usePathname()
   const plan     = profile?.plan ?? 'free'
   const credits  = profile?.credits_remaining ?? 0
   const planMeta = PLAN_META[plan]
 
+  // Hard navigation required for /remove-bg: needs 'unsafe-eval' CSP for ONNX Runtime.
+  // Next.js SPA navigation reuses the CSP from the initial page load, which lacks it.
+  const removeBgHref = locale === 'en' ? '/remove-bg' : `/${locale}/remove-bg`
+
+  const CREATE_ITEMS = [
+    { href: '/dashboard', icon: Wand2,       label: t('lifestyle'),  hardNav: false },
+    { href: '/cards',     icon: LayoutGrid,  label: t('cards'),      hardNav: false },
+    { href: removeBgHref, icon: Scissors,    label: t('removeBg'),   hardNav: true  },
+  ]
+
   const navLinkCls = (href: string) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-      pathname === href
+      pathname === href || (href === removeBgHref && pathname === '/remove-bg')
         ? 'bg-rose-gold-50 text-rose-gold-700 border border-rose-gold-100'
         : 'text-muted-foreground hover:bg-cream-100 hover:text-foreground'
     }`
@@ -37,10 +43,10 @@ export function Sidebar({ profile }: SidebarProps) {
       <div className="px-5 py-5 border-b border-cream-200">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
           <div className="w-7 h-7 rounded-lg gradient-rose-gold flex items-center justify-center">
-            <span className="text-white text-xs font-bold font-serif">N</span>
+            <span className="text-white text-xs font-bold font-serif">L</span>
           </div>
           <span className="font-serif text-base font-semibold text-foreground tracking-tight">
-            Nurai AI Studio
+            Luminify
           </span>
         </Link>
       </div>
@@ -50,15 +56,12 @@ export function Sidebar({ profile }: SidebarProps) {
 
         {/* Create section */}
         <p className="px-3 pb-1.5 pt-0.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
-          Создать
+          {t('create')}
         </p>
-        {CREATE_ITEMS.map(({ href, icon: Icon, label }) =>
-          href === '/remove-bg' ? (
-            // Hard navigation required: /remove-bg needs 'unsafe-eval' CSP for ONNX Runtime.
-            // Next.js SPA navigation reuses the CSP from the initial page load, which lacks
-            // 'unsafe-eval'. A full page reload ensures the correct /remove-bg CSP is applied.
+        {CREATE_ITEMS.map(({ href, icon: Icon, label, hardNav }) =>
+          hardNav ? (
             <a key={href} href={href} className={navLinkCls(href)}>
-              <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === '/remove-bg' ? 'text-rose-gold-600' : ''}`} />
               {label}
             </a>
           ) : (
@@ -76,7 +79,7 @@ export function Sidebar({ profile }: SidebarProps) {
         {/* Library */}
         <Link href="/library" className={navLinkCls('/library')}>
           <Images className={`w-4 h-4 flex-shrink-0 ${pathname === '/library' ? 'text-rose-gold-600' : ''}`} />
-          Библиотека
+          {t('library')}
         </Link>
 
         <div className="py-2">
@@ -86,7 +89,7 @@ export function Sidebar({ profile }: SidebarProps) {
         {/* Settings */}
         <Link href="/settings" className={navLinkCls('/settings')}>
           <Settings className={`w-4 h-4 flex-shrink-0 ${pathname === '/settings' ? 'text-rose-gold-600' : ''}`} />
-          Настройки
+          {t('settings')}
         </Link>
       </nav>
 
@@ -97,7 +100,7 @@ export function Sidebar({ profile }: SidebarProps) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-rose-gold-500" />
-              <span className="text-xs font-semibold text-foreground">Кредиты</span>
+              <span className="text-xs font-semibold text-foreground">{t('credits')}</span>
             </div>
             <span className="text-xs text-muted-foreground">{planMeta.label}</span>
           </div>
@@ -111,14 +114,14 @@ export function Sidebar({ profile }: SidebarProps) {
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              <strong className="text-foreground">{credits}</strong> осталось
+              <strong className="text-foreground">{credits}</strong> {t('remaining')}
             </span>
             {plan === 'free' && (
               <Link
                 href="/settings/billing"
                 className="text-[10px] font-semibold text-primary hover:text-rose-gold-600 transition-colors"
               >
-                Улучшить →
+                {t('upgrade')}
               </Link>
             )}
           </div>
@@ -133,7 +136,7 @@ export function Sidebar({ profile }: SidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-foreground truncate">
-              {profile?.contact_name ?? 'Пользователь'}
+              {profile?.contact_name ?? t('user')}
             </p>
             <p className="text-[10px] text-muted-foreground truncate">
               {profile?.business_name ?? ''}
@@ -147,7 +150,7 @@ export function Sidebar({ profile }: SidebarProps) {
               className="w-7 h-7 text-muted-foreground hover:text-foreground hover:bg-cream-200 flex-shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="sr-only">Выйти</span>
+              <span className="sr-only">{t('logout')}</span>
             </Button>
           </form>
         </div>

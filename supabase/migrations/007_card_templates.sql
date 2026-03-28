@@ -1,5 +1,5 @@
 -- ============================================================
--- Nurai AI Studio — Card Templates Table
+-- Luminify — Card Templates Table
 --
 -- Moves hardcoded card template list from lib/card-templates.ts
 -- into the database so templates can be managed without deploys.

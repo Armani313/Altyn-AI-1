@@ -1,16 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Download, Maximize2, Calendar, ImageIcon } from 'lucide-react'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import type { Generation } from '@/types/database.types'
 
-// ── Status badge mapping ───────────────────────────────────────
-const STATUS_MAP: Record<Generation['status'], { label: string; class: string }> = {
-  pending:    { label: 'В очереди',  class: 'bg-amber-50 text-amber-600 border-amber-200' },
-  processing: { label: 'Создаётся', class: 'bg-blue-50 text-blue-600 border-blue-200' },
-  completed:  { label: 'Готово',    class: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
-  failed:     { label: 'Ошибка',    class: 'bg-red-50 text-red-600 border-red-200' },
+const STATUS_CLASSES: Record<Generation['status'], string> = {
+  pending:    'bg-amber-50 text-amber-600 border-amber-200',
+  processing: 'bg-blue-50 text-blue-600 border-blue-200',
+  completed:  'bg-emerald-50 text-emerald-600 border-emerald-200',
+  failed:     'bg-red-50 text-red-600 border-red-200',
 }
 
 async function downloadImage(url: string, name: string) {
@@ -34,14 +34,22 @@ interface LibraryGridProps {
 }
 
 export function LibraryGrid({ generations }: LibraryGridProps) {
+  const t = useTranslations('libraryGrid')
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  const STATUS_MAP: Record<Generation['status'], { label: string; class: string }> = {
+    pending:    { label: t('statusPending'),    class: STATUS_CLASSES.pending    },
+    processing: { label: t('statusProcessing'), class: STATUS_CLASSES.processing },
+    completed:  { label: t('statusCompleted'),  class: STATUS_CLASSES.completed  },
+    failed:     { label: t('statusFailed'),     class: STATUS_CLASSES.failed     },
+  }
 
   // Build lightbox image list from completed generations only
   const lightboxImages: LightboxImage[] = generations
     .filter((g) => g.status === 'completed' && g.output_image_url)
     .map((g) => ({
       url:   g.output_image_url!,
-      label: new Date(g.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }),
+      label: new Date(g.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }),
     }))
 
   // Map a generation's index in the full list to its index in lightboxImages
@@ -54,7 +62,7 @@ export function LibraryGrid({ generations }: LibraryGridProps) {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
         {generations.map((gen) => {
           const status    = STATUS_MAP[gen.status]
-          const date      = new Date(gen.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+          const date      = new Date(gen.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
           const lbIndex   = gen.output_image_url ? toLightboxIndex(gen) : -1
           const canExpand = gen.status === 'completed' && gen.output_image_url && lbIndex >= 0
 
@@ -69,7 +77,7 @@ export function LibraryGrid({ generations }: LibraryGridProps) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={gen.output_image_url}
-                    alt="Сгенерированное изображение"
+                    alt={t('imageAlt')}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -78,7 +86,7 @@ export function LibraryGrid({ generations }: LibraryGridProps) {
                       <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      {gen.status === 'processing' ? 'Создаётся...' : 'Нет изображения'}
+                      {gen.status === 'processing' ? t('generating') : t('noImage')}
                     </span>
                   </div>
                 )}
@@ -100,19 +108,19 @@ export function LibraryGrid({ generations }: LibraryGridProps) {
                 {gen.output_image_url && (
                   <div className="flex gap-1.5">
                     <button
-                      onClick={() => downloadImage(gen.output_image_url!, `nurai-${gen.id.slice(0, 8)}`)}
+                      onClick={() => downloadImage(gen.output_image_url!, `luminify-${gen.id.slice(0, 8)}`)}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 text-[10px] font-semibold py-3 rounded-lg transition-colors touch-manipulation min-h-[40px]"
-                      aria-label="Скачать"
+                      aria-label={t('download')}
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Скачать
+                      {t('download')}
                     </button>
 
                     {canExpand && (
                       <button
                         onClick={() => setLightboxIndex(lbIndex)}
                         className="w-10 h-10 flex items-center justify-center bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 rounded-lg transition-colors touch-manipulation"
-                        aria-label="Открыть полноэкранно"
+                        aria-label={t('expandFullscreen')}
                       >
                         <Maximize2 className="w-3.5 h-3.5" />
                       </button>

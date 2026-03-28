@@ -2,8 +2,9 @@
 
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
+import { useTranslations } from 'next-intl'
 import { Sparkles, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import { EASE } from '@/lib/motion'
 
 const GALLERY: string[] = [
@@ -39,26 +40,26 @@ const ROW_2 = GALLERY.slice(13)
 
 const GalleryRows = dynamic(() => Promise.resolve(GalleryRowsInner), { ssr: false })
 
-function GalleryCard({ src }: { src: string }) {
+function GalleryCard({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="relative flex-shrink-0 w-56 h-64 rounded-2xl overflow-hidden border border-cream-200 shadow-card group">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt="Пример AI-фото ювелирного украшения"
+        alt={alt}
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
     </div>
   )
 }
 
-function MarqueeRow({ items, reverse = false }: { items: string[]; reverse?: boolean }) {
+function MarqueeRow({ items, alt, reverse = false }: { items: string[]; alt: string; reverse?: boolean }) {
   const doubled = [...items, ...items]
   return (
     <div className="flex overflow-hidden select-none">
       <div className={`flex gap-4 ${reverse ? 'animate-marquee-reverse' : 'animate-marquee'}`}>
         {doubled.map((src, i) => (
-          <GalleryCard key={`${src}-${i}`} src={src} />
+          <GalleryCard key={`${src}-${i}`} src={src} alt={alt} />
         ))}
       </div>
     </div>
@@ -66,15 +67,18 @@ function MarqueeRow({ items, reverse = false }: { items: string[]; reverse?: boo
 }
 
 function GalleryRowsInner() {
+  const t = useTranslations('demoSection')
   return (
     <>
-      <MarqueeRow items={ROW_1} />
-      <MarqueeRow items={ROW_2} reverse />
+      <MarqueeRow items={ROW_1} alt={t('imageAlt')} />
+      <MarqueeRow items={ROW_2} alt={t('imageAlt')} reverse />
     </>
   )
 }
 
 export function DemoSection() {
+  const t = useTranslations('demoSection')
+
   return (
     <section className="py-24 bg-cream-50 border-y border-cream-200 overflow-hidden">
       <div className="max-w-[1200px] mx-auto px-6">
@@ -89,13 +93,13 @@ export function DemoSection() {
         >
           <span className="inline-flex items-center gap-2 bg-rose-gold-100 text-rose-gold-700 text-xs font-semibold px-4 py-1.5 rounded-full mb-5 tracking-wide uppercase">
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-            Галерея результатов
+            {t('badge')}
           </span>
           <h2 className="font-serif text-[clamp(1.75rem,4vw,2.75rem)] font-medium text-foreground leading-tight mb-3">
-            Реальные результаты для наших клиентов
+            {t('title')}
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto text-lg leading-relaxed">
-            Украшения казахстанских ювелирных магазинов — переработанные ИИ в профессиональные лайфстайл-фотографии.
+            {t('sub')}
           </p>
         </motion.div>
 
@@ -124,10 +128,10 @@ export function DemoSection() {
           href="/register"
           className="inline-flex items-center gap-2 bg-primary hover:bg-rose-gold-600 text-white font-semibold px-7 py-3.5 rounded-xl shadow-soft hover:shadow-glow transition-all duration-300 text-base"
         >
-          Попробовать бесплатно
+          {t('cta')}
           <ArrowRight className="w-4 h-4" />
         </Link>
-        <p className="text-muted-foreground text-sm mt-3">3 генерации бесплатно · Без привязки карты</p>
+        <p className="text-muted-foreground text-sm mt-3">{t('ctaSub')}</p>
       </motion.div>
 
     </section>

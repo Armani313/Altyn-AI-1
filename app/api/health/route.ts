@@ -6,10 +6,15 @@
  *   - Cloudflare health monitor (optional)
  *   - Uptime tracking services
  */
+import { version } from '@/package.json'
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export function GET() {
-  // LOW-4: return minimal response — no timestamp or internal details
-  return Response.json({ status: 'ok' })
+  return Response.json({
+    status: 'ok',
+    version,
+    timestamp: new Date().toISOString(),
+  })
 }

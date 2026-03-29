@@ -4,49 +4,69 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/navigation'
 import { Link } from '@/i18n/navigation'
-import { Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { loginSchema, type LoginInput } from '@/lib/validations'
+import { z } from 'zod'
 
-export function LoginForm() {
-  const t = useTranslations('auth.login')
-  const [showPassword, setShowPassword] = useState(false)
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+})
+type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
+
+export function ForgotPasswordForm() {
+  const t = useTranslations('auth.forgotPassword')
   const [serverError, setServerError] = useState('')
-  const router = useRouter()
+  const [success, setSuccess] = useState(false)
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<ForgotPasswordInput>({
+    resolver: zodResolver(forgotPasswordSchema),
   })
 
-  const onSubmit = async (data: LoginInput) => {
+  const onSubmit = async (data: ForgotPasswordInput) => {
     setServerError('')
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
+    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo: `${window.location.origin}/api/auth/callback?type=recovery`,
     })
 
     if (error) {
-      setServerError(
-        error.message.includes('Invalid login credentials')
-          ? t('errorInvalidCredentials')
-          : t('errorGeneric')
-      )
+      setServerError(t('errorGeneric'))
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    setSuccess(true)
+  }
+
+  if (success) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+        </div>
+        <h2 className="font-serif text-2xl font-medium text-foreground mb-2">
+          {t('successTitle')}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {t('successDesc')}
+        </p>
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-rose-gold-600 font-medium transition-colors mt-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {t('backToLogin')}
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -68,7 +88,6 @@ export function LoginForm() {
           </div>
         )}
 
-        {/* Email */}
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-sm font-medium text-foreground">
             {t('email')}
@@ -85,43 +104,6 @@ export function LoginForm() {
           />
           {errors.email && (
             <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
-        </div>
-
-        {/* Password */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium text-foreground">
-              {t('password')}
-            </Label>
-            <Link href="/forgot-password" className="text-xs text-primary hover:text-rose-gold-600 transition-colors">
-              {t('forgotPassword')}
-            </Link>
-          </div>
-          <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              className={`h-11 pr-11 bg-white border-cream-300 focus:border-primary focus:ring-primary/20 ${
-                errors.password ? 'border-destructive' : ''
-              }`}
-              {...register('password')}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors w-9 h-9 flex items-center justify-center rounded-lg touch-manipulation"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="sr-only">
-                {showPassword ? t('hidePassword') : t('showPassword')}
-              </span>
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
           )}
         </div>
 
@@ -142,12 +124,12 @@ export function LoginForm() {
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        {t('noAccount')}{' '}
         <Link
-          href="/register"
-          className="text-primary hover:text-rose-gold-600 font-medium transition-colors"
+          href="/login"
+          className="inline-flex items-center gap-1.5 text-primary hover:text-rose-gold-600 font-medium transition-colors"
         >
-          {t('register')}
+          <ArrowLeft className="w-4 h-4" />
+          {t('backToLogin')}
         </Link>
       </p>
     </div>

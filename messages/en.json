@@ -132,6 +132,34 @@
       "errorGeneric": "An error occurred. Please try again later.",
       "pageTitle": "Sign in"
     },
+    "forgotPassword": {
+      "title": "Reset password",
+      "subtitle": "Enter your email and we'll send you a password reset link",
+      "email": "Email",
+      "submit": "Send reset link",
+      "loading": "Sending...",
+      "successTitle": "Email sent!",
+      "successDesc": "Check your inbox and follow the link to reset your password. If you don't see it, check your spam folder.",
+      "backToLogin": "Back to sign in",
+      "errorGeneric": "An error occurred. Please try again later.",
+      "pageTitle": "Reset password"
+    },
+    "resetPassword": {
+      "title": "New password",
+      "subtitle": "Choose a new password for your account",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "passwordPlaceholder": "Minimum 6 characters",
+      "submit": "Save password",
+      "loading": "Saving...",
+      "successTitle": "Password changed!",
+      "successRedirect": "Redirecting to the studio...",
+      "backToLogin": "Back to sign in",
+      "errorGeneric": "Failed to change password. Please try again.",
+      "errorMinLength": "Password must be at least 6 characters",
+      "errorMismatch": "Passwords do not match",
+      "pageTitle": "New password"
+    },
     "register": {
       "title": "Create account",
       "subtitle": "3 free generations right after registration",

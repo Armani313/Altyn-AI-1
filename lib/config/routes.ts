@@ -12,4 +12,4 @@ export const PROTECTED_ROUTES = [
 ]
 
 /** Require NO auth. Authenticated users are redirected to /dashboard. */
-export const AUTH_ROUTES = ['/login', '/register']
+export const AUTH_ROUTES = ['/login', '/register', '/forgot-password']

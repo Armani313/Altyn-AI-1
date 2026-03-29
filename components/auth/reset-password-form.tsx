@@ -6,47 +6,70 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Link } from '@/i18n/navigation'
-import { Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { loginSchema, type LoginInput } from '@/lib/validations'
+import { z } from 'zod'
 
-export function LoginForm() {
-  const t = useTranslations('auth.login')
+const resetPasswordSchema = z.object({
+  password: z.string().min(6),
+  confirmPassword: z.string().min(6),
+}).refine((data) => data.password === data.confirmPassword, {
+  path: ['confirmPassword'],
+})
+type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
+
+export function ResetPasswordForm() {
+  const t = useTranslations('auth.resetPassword')
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
   })
 
-  const onSubmit = async (data: LoginInput) => {
+  const onSubmit = async (data: ResetPasswordInput) => {
     setServerError('')
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
+    const { error } = await supabase.auth.updateUser({
       password: data.password,
     })
 
     if (error) {
-      setServerError(
-        error.message.includes('Invalid login credentials')
-          ? t('errorInvalidCredentials')
-          : t('errorGeneric')
-      )
+      setServerError(t('errorGeneric'))
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    setSuccess(true)
+    setTimeout(() => {
+      router.push('/dashboard')
+      router.refresh()
+    }, 2000)
+  }
+
+  if (success) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+        </div>
+        <h2 className="font-serif text-2xl font-medium text-foreground mb-2">
+          {t('successTitle')}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {t('successRedirect')}
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -68,42 +91,17 @@ export function LoginForm() {
           </div>
         )}
 
-        {/* Email */}
+        {/* New password */}
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-medium text-foreground">
-            {t('email')}
+          <Label htmlFor="password" className="text-sm font-medium text-foreground">
+            {t('newPassword')}
           </Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="your@email.com"
-            autoComplete="email"
-            className={`h-11 bg-white border-cream-300 focus:border-primary focus:ring-primary/20 ${
-              errors.email ? 'border-destructive focus:border-destructive' : ''
-            }`}
-            {...register('email')}
-          />
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
-        </div>
-
-        {/* Password */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium text-foreground">
-              {t('password')}
-            </Label>
-            <Link href="/forgot-password" className="text-xs text-primary hover:text-rose-gold-600 transition-colors">
-              {t('forgotPassword')}
-            </Link>
-          </div>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              autoComplete="current-password"
+              placeholder={t('passwordPlaceholder')}
+              autoComplete="new-password"
               className={`h-11 pr-11 bg-white border-cream-300 focus:border-primary focus:ring-primary/20 ${
                 errors.password ? 'border-destructive' : ''
               }`}
@@ -115,13 +113,30 @@ export function LoginForm() {
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors w-9 h-9 flex items-center justify-center rounded-lg touch-manipulation"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="sr-only">
-                {showPassword ? t('hidePassword') : t('showPassword')}
-              </span>
             </button>
           </div>
           {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
+            <p className="text-xs text-destructive">{t('errorMinLength')}</p>
+          )}
+        </div>
+
+        {/* Confirm password */}
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+            {t('confirmPassword')}
+          </Label>
+          <Input
+            id="confirmPassword"
+            type={showPassword ? 'text' : 'password'}
+            placeholder={t('passwordPlaceholder')}
+            autoComplete="new-password"
+            className={`h-11 bg-white border-cream-300 focus:border-primary focus:ring-primary/20 ${
+              errors.confirmPassword ? 'border-destructive' : ''
+            }`}
+            {...register('confirmPassword')}
+          />
+          {errors.confirmPassword && (
+            <p className="text-xs text-destructive">{t('errorMismatch')}</p>
           )}
         </div>
 
@@ -142,12 +157,11 @@ export function LoginForm() {
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        {t('noAccount')}{' '}
         <Link
-          href="/register"
+          href="/login"
           className="text-primary hover:text-rose-gold-600 font-medium transition-colors"
         >
-          {t('register')}
+          {t('backToLogin')}
         </Link>
       </p>
     </div>

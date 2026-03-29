@@ -93,7 +93,7 @@ const nextConfig = {
         // AND a /remove-bg CSP below, the browser enforces BOTH (most-restrictive union),
         // which blocks 'unsafe-eval' even on /remove-bg. Excluding it here allows the
         // /remove-bg-specific CSP (with 'unsafe-eval') to be the only one for that page.
-        source: '/((?!remove-bg).*)',
+        source: '/((?!(?:ru/|en/)?remove-bg).*)',
         headers: [
           {
             key:   'Content-Security-Policy',
@@ -102,8 +102,8 @@ const nextConfig = {
               // 'unsafe-eval' is needed by webpack HMR / React Refresh in dev only
               // blob: needed for ONNX Runtime — it injects its worker via a blob: script URL
           isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.googletagmanager.com"
-                : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com",
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com"
+                : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com",
               "style-src 'self' 'unsafe-inline'",
               // Supabase storage for generated images; Google Analytics tracking pixel
               "img-src 'self' data: blob: https://*.supabase.co https://www.google-analytics.com https://www.googletagmanager.com",
@@ -137,7 +137,7 @@ const nextConfig = {
         //    internally for dynamic code generation (WebGL/WASM glue). The global
         //    CSP only allows 'wasm-unsafe-eval' which is not enough for JS eval.
         //    Scoped to /remove-bg only to minimise attack surface on other pages.
-        source: '/remove-bg',
+        source: '/:locale(ru|en)?/remove-bg',
         headers: [
           { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
           { key: 'Cross-Origin-Embedder-Policy',  value: 'credentialless' },
@@ -145,7 +145,7 @@ const nextConfig = {
             key:   'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://static.cloudflareinsights.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.supabase.co",
               "font-src 'self' https://fonts.gstatic.com",

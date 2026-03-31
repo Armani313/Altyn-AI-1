@@ -177,7 +177,7 @@ export default function CardsPage() {
       />
 
       {/* ── Mobile step tabs ───────────────────────────────────────── */}
-      <div className="lg:hidden sticky top-[60px] z-20 bg-white border-b border-cream-200 flex mt-3">
+      <div className="lg:hidden sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-cream-200 flex mt-3">
         {MOBILE_STEPS.map((step) => {
           const done   = step.id === 1 ? step1Done : step.id === 2 ? step2Done : false
           const active = mobileStep === step.id
@@ -185,7 +185,7 @@ export default function CardsPage() {
             <button
               key={step.id}
               onClick={() => setMobileStep(step.id)}
-              className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors touch-manipulation ${
+              className={`flex-1 py-3.5 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors min-h-[48px] touch-feedback ${
                 active ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
               }`}
             >

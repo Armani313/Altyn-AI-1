@@ -26,6 +26,7 @@
     "@supabase/supabase-js": "^2.98.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fabric": "^6.9.1",
     "framer-motion": "^12.34.3",
     "google-auth-library": "^10.6.2",
     "lucide-react": "^0.575.0",

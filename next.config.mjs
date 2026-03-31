@@ -93,7 +93,7 @@ const nextConfig = {
         // AND a /remove-bg CSP below, the browser enforces BOTH (most-restrictive union),
         // which blocks 'unsafe-eval' even on /remove-bg. Excluding it here allows the
         // /remove-bg-specific CSP (with 'unsafe-eval') to be the only one for that page.
-        source: '/((?!(?:ru/|en/)?remove-bg).*)',
+        source: '/((?!(?:ru/|en/)?(?:remove-bg|editor)).*)',
         headers: [
           {
             key:   'Content-Security-Policy',
@@ -137,7 +137,7 @@ const nextConfig = {
         //    internally for dynamic code generation (WebGL/WASM glue). The global
         //    CSP only allows 'wasm-unsafe-eval' which is not enough for JS eval.
         //    Scoped to /remove-bg only to minimise attack surface on other pages.
-        source: '/:locale(ru|en)?/remove-bg',
+        source: '/:locale(ru|en)?/(remove-bg|editor)',
         headers: [
           { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
           { key: 'Cross-Origin-Embedder-Policy',  value: 'credentialless' },

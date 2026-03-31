@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { Menu, Wand2, LayoutGrid, Scissors, Images, Settings, LogOut, Zap } from 'lucide-react'
+import { Menu, Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { logout } from '@/lib/supabase/actions'
@@ -23,18 +23,18 @@ export function MobileNav({ profile }: MobileNavProps) {
   const credits  = profile?.credits_remaining ?? 0
   const planMeta = PLAN_META[plan]
 
-  // Hard navigation required for /remove-bg — see sidebar.tsx for explanation
-  const removeBgHref = locale === 'en' ? '/remove-bg' : `/${locale}/remove-bg`
+  // Hard navigation required for /editor: needs 'unsafe-eval' CSP for ONNX Runtime.
+  const editorHref = locale === 'en' ? '/editor' : `/${locale}/editor`
 
   const CREATE_ITEMS = [
-    { href: '/dashboard', icon: Wand2,       label: t('lifestyle'),  hardNav: false },
-    { href: '/cards',     icon: LayoutGrid,  label: t('cards'),      hardNav: false },
-    { href: removeBgHref, icon: Scissors,    label: t('removeBg'),   hardNav: true  },
+    { href: '/dashboard',  icon: Wand2,       label: t('lifestyle'),  hardNav: false },
+    { href: '/cards',      icon: LayoutGrid,  label: t('cards'),      hardNav: false },
+    { href: editorHref,    icon: PenTool,     label: t('editor'),     hardNav: true  },
   ]
 
   const navLinkCls = (href: string) =>
     `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-      pathname === href || (href === removeBgHref && pathname === '/remove-bg')
+      pathname === href || (href === editorHref && pathname === '/editor')
         ? 'bg-rose-gold-50 text-rose-gold-700 border border-rose-gold-100'
         : 'text-muted-foreground hover:bg-cream-100 hover:text-foreground'
     }`
@@ -79,7 +79,7 @@ export function MobileNav({ profile }: MobileNavProps) {
           {CREATE_ITEMS.map(({ href, icon: Icon, label, hardNav }) =>
             hardNav ? (
               <a key={href} href={href} className={navLinkCls(href)}>
-                <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === '/remove-bg' ? 'text-rose-gold-600' : ''}`} />
+                <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === '/editor' ? 'text-rose-gold-600' : ''}`} />
                 {label}
               </a>
             ) : (

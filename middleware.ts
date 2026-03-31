@@ -39,6 +39,6 @@ export const config = {
   matcher: [
     // Match all paths except Next.js internals, static files, and API routes.
     // API routes don't need locale handling and have their own auth checks.
-    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|mp3|woff2?)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|mp3|woff2?)$).*)',
   ],
 }

@@ -108,7 +108,7 @@ function ResultCard({
           <button
             onClick={handleDownload}
             disabled={isDownloading}
-            className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-xs font-semibold px-3 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70 touch-manipulation"
+            className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white backdrop-blur-md text-foreground text-xs font-semibold px-3.5 py-2.5 min-h-[44px] rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 disabled:opacity-70 touch-feedback"
           >
             {isDownloading
               ? <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin flex-shrink-0" />
@@ -121,10 +121,10 @@ function ResultCard({
           {onExpand && (
             <button
               onClick={onExpand}
-              className="absolute bottom-2 left-2 w-9 h-9 flex items-center justify-center bg-white/90 hover:bg-white backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 touch-manipulation"
+              className="absolute bottom-2 left-2 w-11 h-11 flex items-center justify-center bg-white/90 hover:bg-white backdrop-blur-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 touch-feedback"
               aria-label={t('expandFullscreen')}
             >
-              <Maximize2 className="w-3.5 h-3.5 text-foreground/70" />
+              <Maximize2 className="w-4 h-4 text-foreground/70" />
             </button>
           )}
         </>
@@ -249,7 +249,7 @@ export function ResultViewer({
             <button
               key={ratio.id}
               onClick={() => onAspectRatioChange(ratio.id)}
-              className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              className={`py-2.5 px-4 min-h-[44px] rounded-lg text-xs font-semibold transition-all duration-200 touch-feedback ${
                 aspectRatio === ratio.id
                   ? 'bg-white text-foreground shadow-soft'
                   : 'text-muted-foreground hover:text-foreground'
@@ -319,7 +319,7 @@ export function ResultViewer({
       <Button
         onClick={onGenerate}
         disabled={!canGenerate || isAnyGenerating || !enoughCredits}
-        className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
+        className={`w-full h-12 text-base font-semibold transition-all duration-300 touch-feedback ${
           canGenerate && !isAnyGenerating && enoughCredits
             ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow'
             : 'bg-muted text-muted-foreground cursor-not-allowed'

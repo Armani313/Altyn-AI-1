@@ -82,10 +82,10 @@ export function UploadZone({ onUpload, onRemove, previewUrl, dragLabel }: Upload
         {/* Remove badge */}
         <button
           onClick={onRemove}
-          className="absolute top-3 right-3 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-colors touch-manipulation"
+          className="absolute top-3 right-3 w-11 h-11 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-colors touch-feedback"
           aria-label={t('removePhoto')}
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
 
         {/* Status chip */}

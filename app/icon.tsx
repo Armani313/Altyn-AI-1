@@ -22,7 +22,7 @@ export default function Icon() {
           letterSpacing:  '-0.5px',
         }}
       >
-        N
+        L
       </div>
     ),
     { ...size },

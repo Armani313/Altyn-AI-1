@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { Check, Gem, Wind, Glasses, Shirt, Layers, Watch, ShoppingBag } from 'lucide-react'
+import { Check, Gem, Wind, Glasses, Shirt, Layers, Watch, ShoppingBag, ArrowRight, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Header }         from '@/components/dashboard/header'
 import { UploadZone }     from '@/components/generate/upload-zone'
 import { TemplatePicker } from '@/components/generate/template-picker'
@@ -296,6 +297,7 @@ export default function DashboardPage() {
   }, [uploadedFile, generationResults, selectedTemplates, productType, aspectRatio, userPrompt, creditsRemaining, t])
 
   const isAnyGenerating = generationResults.some((r) => r.status === 'generating')
+  const canGenerate     = !!uploadedFile && !isAnyGenerating && selectedTemplates.length > 0
   const step1Done = !!previewUrl
   const step2Done = selectedTemplates.length > 0
 
@@ -323,7 +325,7 @@ export default function DashboardPage() {
                   key={type.id}
                   onClick={() => handleProductTypeChange(type.id)}
                   disabled={isAnyGenerating}
-                  className={`flex items-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 disabled:opacity-60 ${
+                  className={`flex items-center gap-2 py-3 px-4 min-h-[44px] rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 disabled:opacity-60 touch-feedback ${
                     active
                       ? 'bg-white text-foreground shadow-soft'
                       : 'text-muted-foreground hover:text-foreground'
@@ -339,7 +341,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Mobile step tabs ──────────────────────────────────────────── */}
-      <div className="lg:hidden sticky top-[57px] z-20 bg-white border-b border-cream-200 flex mt-3">
+      <div className="lg:hidden sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-cream-200 flex mt-3">
         {MOBILE_STEPS.map((step) => {
           const done   = step.id === 1 ? step1Done : step.id === 2 ? step2Done : false
           const active = mobileStep === step.id
@@ -347,7 +349,7 @@ export default function DashboardPage() {
             <button
               key={step.id}
               onClick={() => setMobileStep(step.id)}
-              className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors touch-manipulation ${
+              className={`flex-1 py-3.5 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors min-h-[48px] touch-feedback ${
                 active ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
               }`}
             >
@@ -417,7 +419,7 @@ export default function DashboardPage() {
               onAspectRatioChange={setAspectRatio}
               onGenerate={handleGenerate}
               onRetryFailed={handleRetryFailed}
-              canGenerate={!!uploadedFile && !isAnyGenerating && selectedTemplates.length > 0}
+              canGenerate={canGenerate}
               creditsRemaining={creditsRemaining}
               customModelUrls={customModelUrls}
               userPrompt={userPrompt}
@@ -427,6 +429,70 @@ export default function DashboardPage() {
           </div>
 
         </div>
+      </div>
+
+      {/* ── Mobile floating CTA ──────────────────────────────────────── */}
+      <div className="lg:hidden sticky bottom-0 z-20 p-3 bg-gradient-to-t from-[#FAF9F6] via-[#FAF9F6] to-transparent pt-6">
+        {mobileStep === 1 && (
+          <Button
+            onClick={() => previewUrl ? setMobileStep(2) : undefined}
+            disabled={!previewUrl}
+            size="mobile"
+            className={`w-full touch-feedback ${
+              previewUrl
+                ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-soft'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            {previewUrl ? (
+              <span className="flex items-center gap-2">
+                {t('mobileNextModels')}
+                <ArrowRight className="w-5 h-5" />
+              </span>
+            ) : (
+              t('mobileUploadFirst')
+            )}
+          </Button>
+        )}
+        {mobileStep === 2 && (
+          <Button
+            onClick={() => selectedTemplates.length > 0 ? setMobileStep(3) : undefined}
+            disabled={selectedTemplates.length === 0}
+            size="mobile"
+            className={`w-full touch-feedback ${
+              selectedTemplates.length > 0
+                ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-soft'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              {t('mobileNextGenerate')}
+              {selectedTemplates.length > 0 && (
+                <span className="bg-white/20 rounded-full px-2 py-0.5 text-sm">
+                  {selectedTemplates.length}
+                </span>
+              )}
+              <ArrowRight className="w-5 h-5" />
+            </span>
+          </Button>
+        )}
+        {mobileStep === 3 && !isAnyGenerating && generationResults.length === 0 && (
+          <Button
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            size="mobile"
+            className={`w-full touch-feedback ${
+              canGenerate
+                ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-glow'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              {t('mobileStep3')}
+            </span>
+          </Button>
+        )}
       </div>
     </div>
   )

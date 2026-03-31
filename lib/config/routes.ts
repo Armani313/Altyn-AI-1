@@ -9,6 +9,7 @@ export const PROTECTED_ROUTES = [
   '/generate',
   '/history',
   '/settings',
+  '/editor',
 ]
 
 /** Require NO auth. Authenticated users are redirected to /dashboard. */

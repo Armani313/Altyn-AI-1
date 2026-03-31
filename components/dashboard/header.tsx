@@ -36,7 +36,7 @@ export function Header({ title, subtitle, profile, freeService = false }: Header
   }
 
   return (
-    <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-cream-200 bg-white/70 backdrop-blur-sm sticky top-0 z-30">
+    <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cream-200 bg-white/70 backdrop-blur-sm sticky top-0 z-30">
       <div>
         <h1 className="font-serif text-xl font-medium text-foreground">{title}</h1>
         {subtitle && (
@@ -51,7 +51,7 @@ export function Header({ title, subtitle, profile, freeService = false }: Header
             <Button
               variant="ghost"
               size="icon"
-              className="w-8 h-8 text-muted-foreground hover:text-foreground hover:bg-cream-100"
+              className="w-11 h-11 sm:w-8 sm:h-8 text-muted-foreground hover:text-foreground hover:bg-cream-100"
               aria-label={t('changeLang')}
             >
               <Globe className="w-4 h-4" />

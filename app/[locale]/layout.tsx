@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Playfair_Display, Inter } from 'next/font/google'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { NextIntlClientProvider } from 'next-intl'
@@ -44,9 +44,17 @@ export const metadata: Metadata = {
     ],
   },
   icons: {
-    icon:  [{ url: '/icon',       type: 'image/png', sizes: '32x32'  }],
-    apple: [{ url: '/apple-icon', type: 'image/png', sizes: '180x180' }],
+    icon:  [{ url: new URL('/icon', APP_URL).toString(),       type: 'image/png', sizes: '32x32'  }],
+    apple: [{ url: new URL('/apple-icon', APP_URL).toString(), type: 'image/png', sizes: '180x180' }],
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 }
 
 export function generateStaticParams() {
@@ -116,8 +124,10 @@ export default async function LocaleLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale} className={`${playfair.variable} ${inter.variable}`}>
+    <html lang={locale} data-scroll-behavior="smooth" className={`${playfair.variable} ${inter.variable}`}>
       <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

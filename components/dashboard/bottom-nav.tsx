@@ -1,0 +1,67 @@
+'use client'
+
+import { useTranslations, useLocale } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
+import { Wand2, LayoutGrid, PenTool, Images, Settings } from 'lucide-react'
+
+export function BottomNav() {
+  const t        = useTranslations('sidebar')
+  const locale   = useLocale()
+  const pathname = usePathname()
+
+  // Hard navigation required for /editor (ONNX Runtime CSP)
+  const editorHref = locale === 'en' ? '/editor' : `/${locale}/editor`
+
+  const items = [
+    { href: '/dashboard', icon: Wand2,       label: t('lifestyle'), hardNav: false },
+    { href: '/cards',     icon: LayoutGrid,  label: t('cards'),     hardNav: false },
+    { href: editorHref,   icon: PenTool,     label: t('editor'),    hardNav: true  },
+    { href: '/library',   icon: Images,      label: t('library'),   hardNav: false },
+    { href: '/settings',  icon: Settings,    label: t('settings'),  hardNav: false },
+  ]
+
+  const isActive = (href: string) =>
+    pathname === href ||
+    (href === editorHref && pathname === '/editor') ||
+    (href === '/settings' && pathname.startsWith('/settings'))
+
+  return (
+    <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-t border-cream-200 lg:hidden">
+      <div
+        className="flex items-end justify-around px-1"
+        style={{ paddingBottom: 'var(--safe-bottom, 0px)' }}
+      >
+        {items.map(({ href, icon: Icon, label, hardNav }) => {
+          const active = isActive(href)
+          const cls = `flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-w-[48px] min-h-[48px] transition-colors duration-150 touch-feedback ${
+            active
+              ? 'text-primary'
+              : 'text-muted-foreground active:text-foreground'
+          }`
+
+          const content = (
+            <>
+              <Icon className="w-[22px] h-[22px]" strokeWidth={active ? 2.2 : 1.8} />
+              <span className={`text-[10px] leading-tight ${active ? 'font-semibold' : 'font-medium'}`}>
+                {label}
+              </span>
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-primary" />
+              )}
+            </>
+          )
+
+          return hardNav ? (
+            <a key={href} href={href} className={`relative ${cls}`}>
+              {content}
+            </a>
+          ) : (
+            <Link key={href} href={href} className={`relative ${cls}`}>
+              {content}
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}

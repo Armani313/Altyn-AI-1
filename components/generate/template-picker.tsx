@@ -192,7 +192,7 @@ export function TemplatePicker({
         <button
           onClick={handleAIPick}
           disabled={disabled}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 min-h-[48px] rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed touch-feedback"
         >
           <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
           {t('aiPick')}
@@ -215,7 +215,7 @@ export function TemplatePicker({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              className={`flex-1 py-2.5 px-2 min-h-[44px] rounded-lg text-xs font-semibold transition-all duration-200 touch-feedback ${
                 activeTab === tab.id
                   ? 'bg-white text-foreground shadow-soft'
                   : 'text-muted-foreground hover:text-foreground'
@@ -436,10 +436,10 @@ export function TemplatePicker({
               {url && !disabled && !isLoading && !isDeleting && (
                 <button
                   onClick={(e) => handleDelete(cardIdx, e)}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors"
+                  className="absolute top-1 right-1 w-8 h-8 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors touch-feedback"
                   title={t('delete')}
                 >
-                  <X className="w-3.5 h-3.5 text-white" />
+                  <X className="w-4 h-4 text-white" />
                 </button>
               )}
 

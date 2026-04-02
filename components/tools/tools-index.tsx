@@ -54,7 +54,7 @@ const CATEGORIES: Category[] = [
     titleKey: 'catAiTitle',
     descKey: 'catAiDesc',
     tools: [
-      { icon: Sparkles, titleKey: 'toolGenerateTitle', descKey: 'toolGenerateDesc', href: '/editor' },
+      { icon: Sparkles, titleKey: 'toolGenerateTitle', descKey: 'toolGenerateDesc', href: '/dashboard' },
       { icon: LayoutGrid, titleKey: 'toolCardsTitle', descKey: 'toolCardsDesc', href: '/cards' },
     ],
   },

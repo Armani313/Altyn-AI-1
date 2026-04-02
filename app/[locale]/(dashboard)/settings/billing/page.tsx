@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/dashboard/header'
@@ -17,7 +17,7 @@ export default async function BillingPage({
   searchParams,
   params,
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; error?: string }>
   params: Promise<{ locale: string }>
 }) {
   const [{ locale }, resolvedSearchParams] = await Promise.all([params, searchParams])
@@ -58,6 +58,7 @@ export default async function BillingPage({
   > | null
 
   const paymentSuccess = resolvedSearchParams.status === 'success'
+  const portalError    = resolvedSearchParams.error === 'portal'
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -74,6 +75,13 @@ export default async function BillingPage({
                 <p className="font-semibold text-sm">{t('successTitle')}</p>
                 <p className="text-xs text-emerald-600 mt-0.5">{t('successDesc')}</p>
               </div>
+            </div>
+          )}
+
+          {portalError && (
+            <div className="flex items-center gap-3 bg-destructive/5 border border-destructive/20 text-destructive rounded-2xl px-5 py-4 mb-6">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <p className="text-sm">{t('portalError')}</p>
             </div>
           )}
 

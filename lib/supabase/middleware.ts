@@ -2,16 +2,16 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { PROTECTED_ROUTES, AUTH_ROUTES } from '@/lib/config/routes'
 
-// Non-default locales that appear as a URL prefix (e.g. /en/login).
-// 'ru' is the default locale and has no prefix (just /login, /dashboard).
-const LOCALE_PREFIXES = ['en'] as const
+// Non-default locales that appear as a URL prefix (e.g. /ru/login).
+// 'en' is the default locale and has no prefix (just /login, /dashboard).
+const LOCALE_PREFIXES = ['ru'] as const
 
 function getLocaleInfo(pathname: string) {
   const parts = pathname.split('/').filter(Boolean) // e.g. ['en', 'dashboard']
   const firstPart = parts[0] ?? ''
   const hasPrefix = (LOCALE_PREFIXES as readonly string[]).includes(firstPart)
   return {
-    locale: hasPrefix ? firstPart : 'ru',
+    locale: hasPrefix ? firstPart : 'en',
     // Path without locale prefix, e.g. /dashboard
     strippedPath: hasPrefix ? '/' + parts.slice(1).join('/') : pathname,
     // Prefix for redirect URLs, e.g. '/en' or ''

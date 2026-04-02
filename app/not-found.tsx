@@ -13,7 +13,7 @@ export default function NotFound() {
           </span>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-16 h-16 rounded-full gradient-rose-gold flex items-center justify-center shadow-glow">
-              <span className="text-white text-2xl font-bold font-serif">N</span>
+              <span className="text-white text-2xl font-bold font-serif">L</span>
             </div>
           </div>
         </div>

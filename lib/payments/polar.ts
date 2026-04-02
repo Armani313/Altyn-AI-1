@@ -1,15 +1,17 @@
 /**
- * Polar — Billing Integration (Sandbox)
+ * Polar — Billing Integration
  *
  * Polar acts as Merchant of Record: handles payments, tax, and subscriptions.
- * Sandbox dashboard: https://sandbox.polar.sh
+ * Dashboard: https://polar.sh
  * Docs: https://polar.sh/docs
  *
  * Required env vars:
- *   POLAR_ACCESS_TOKEN       — Organization Access Token from sandbox.polar.sh
+ *   POLAR_ACCESS_TOKEN       — Organization Access Token from polar.sh
  *   POLAR_WEBHOOK_SECRET     — Webhook endpoint secret (polar_whs_...)
- *   POLAR_PRODUCT_ID_STARTER — Product ID for "Старт" plan
- *   POLAR_PRODUCT_ID_PRO     — Product ID for "Бренд Бизнес" plan
+ *   POLAR_PRODUCT_ID_STARTER  — Product ID for "Старт" plan
+ *   POLAR_PRODUCT_ID_PRO      — Product ID for "Про" plan
+ *   POLAR_PRODUCT_ID_BUSINESS — Product ID for "Бизнес" plan
+ *   POLAR_ENVIRONMENT         — 'production' (default) or 'sandbox'
  */
 
 import { Polar } from '@polar-sh/sdk'
@@ -23,7 +25,7 @@ if (typeof window === 'undefined' && !process.env.POLAR_ACCESS_TOKEN) {
 
 export const polar = new Polar({
   accessToken: process.env.POLAR_ACCESS_TOKEN ?? '',
-  server: 'sandbox', // switch to 'production' when going live
+  server: (process.env.POLAR_ENVIRONMENT as 'sandbox' | 'production') ?? 'production',
 })
 
 // ── Plan → Polar Product mapping ──────────────────────────────────────────────
@@ -36,15 +38,14 @@ interface PolarPlan {
 
 // MED-1: warn if product IDs are empty/missing (catches typos like " " or missing env)
 if (typeof window === 'undefined') {
-  if (!process.env.POLAR_PRODUCT_ID_STARTER?.trim()) {
-    console.error('POLAR_PRODUCT_ID_STARTER is not configured')
-  }
-  if (!process.env.POLAR_PRODUCT_ID_PRO?.trim()) {
-    console.error('POLAR_PRODUCT_ID_PRO is not configured')
+  for (const name of ['POLAR_PRODUCT_ID_STARTER', 'POLAR_PRODUCT_ID_PRO', 'POLAR_PRODUCT_ID_BUSINESS']) {
+    if (!process.env[name]?.trim()) {
+      console.error(`${name} is not configured`)
+    }
   }
 }
 
-export const POLAR_PLANS: Record<'starter' | 'pro', PolarPlan> = {
+export const POLAR_PLANS: Record<'starter' | 'pro' | 'business', PolarPlan> = {
   starter: {
     productId: process.env.POLAR_PRODUCT_ID_STARTER?.trim() ?? '',
     credits: PLAN_META.starter.credits,
@@ -54,6 +55,11 @@ export const POLAR_PLANS: Record<'starter' | 'pro', PolarPlan> = {
     productId: process.env.POLAR_PRODUCT_ID_PRO?.trim() ?? '',
     credits: PLAN_META.pro.credits,
     label: PLAN_META.pro.label,
+  },
+  business: {
+    productId: process.env.POLAR_PRODUCT_ID_BUSINESS?.trim() ?? '',
+    credits: PLAN_META.business.credits,
+    label: PLAN_META.business.label,
   },
 }
 

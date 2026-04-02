@@ -367,12 +367,15 @@ export function TemplatePicker({
           const isDisabledCard = isLoading || isDeleting || disabled || (atMax && !isSelected && !isAddSlot)
 
           return (
-            <button
+            <div
               key={`custom-${cardIdx}`}
-              onClick={() => isAddSlot ? openFilePicker('new') : toggle(modelId)}
-              disabled={isDisabledCard}
+              role="button"
+              tabIndex={isDisabledCard ? -1 : 0}
+              onClick={() => !isDisabledCard && (isAddSlot ? openFilePicker('new') : toggle(modelId))}
+              onKeyDown={(e) => { if (!isDisabledCard && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); isAddSlot ? openFilePicker('new') : toggle(modelId) } }}
+              aria-disabled={isDisabledCard || undefined}
               className={`
-                relative group rounded-xl overflow-hidden border-2 transition-all duration-200
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200 cursor-pointer
                 ${isSelected
                   ? 'border-primary shadow-glow scale-[0.97]'
                   : isAddSlot
@@ -434,23 +437,29 @@ export function TemplatePicker({
 
               {/* Delete button */}
               {url && !disabled && !isLoading && !isDeleting && (
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => handleDelete(cardIdx, e)}
-                  className="absolute top-1 right-1 w-8 h-8 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors touch-feedback"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDelete(cardIdx, e) } }}
+                  className="absolute top-1 right-1 w-8 h-8 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors touch-feedback cursor-pointer"
                   title={t('delete')}
                 >
                   <X className="w-4 h-4 text-white" />
-                </button>
+                </div>
               )}
 
               {/* Replace button */}
               {url && !disabled && !isLoading && !isDeleting && (
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => { e.stopPropagation(); openFilePicker(cardIdx) }}
-                  className="absolute bottom-7 right-1.5 text-[8px] font-semibold bg-black/50 hover:bg-black/70 text-white rounded-full px-1.5 py-0.5 transition-colors"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openFilePicker(cardIdx) } }}
+                  className="absolute bottom-7 right-1.5 text-[8px] font-semibold bg-black/50 hover:bg-black/70 text-white rounded-full px-1.5 py-0.5 transition-colors cursor-pointer"
                 >
                   {t('replace')}
-                </button>
+                </div>
               )}
 
               {/* Bottom name bar */}
@@ -462,7 +471,7 @@ export function TemplatePicker({
                   }
                 </p>
               </div>
-            </button>
+            </div>
           )
         })}
 

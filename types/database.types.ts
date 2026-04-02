@@ -16,7 +16,7 @@ export type Database = {
           contact_name: string | null
           phone: string | null
           avatar_url: string | null
-          plan: 'free' | 'starter' | 'pro' | 'enterprise'
+          plan: 'free' | 'starter' | 'pro' | 'business'
           credits_remaining: number
           custom_model_urls: string[]
           created_at: string
@@ -28,7 +28,7 @@ export type Database = {
           contact_name?: string | null
           phone?: string | null
           avatar_url?: string | null
-          plan?: 'free' | 'starter' | 'pro' | 'enterprise'
+          plan?: 'free' | 'starter' | 'pro' | 'business'
           credits_remaining?: number
           custom_model_url?: string | null
           created_at?: string
@@ -39,7 +39,7 @@ export type Database = {
           contact_name?: string | null
           phone?: string | null
           avatar_url?: string | null
-          plan?: 'free' | 'starter' | 'pro' | 'enterprise'
+          plan?: 'free' | 'starter' | 'pro' | 'business'
           credits_remaining?: number
           custom_model_url?: string | null
           updated_at?: string
@@ -117,7 +117,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          plan: 'starter' | 'pro' | 'enterprise'
+          plan: 'starter' | 'pro' | 'business'
           status: 'pending' | 'active' | 'expired' | 'cancelled'
           kaspi_order_id: string | null
           amount: number
@@ -130,7 +130,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          plan: 'starter' | 'pro' | 'enterprise'
+          plan: 'starter' | 'pro' | 'business'
           status?: 'pending' | 'active' | 'expired' | 'cancelled'
           kaspi_order_id?: string | null
           amount: number

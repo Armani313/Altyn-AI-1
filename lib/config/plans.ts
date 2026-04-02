@@ -12,8 +12,8 @@ interface PlanMeta {
 }
 
 export const PLAN_META: Record<Plan, PlanMeta> = {
-  free:       { label: 'Бесплатный',   credits: 5   },
-  starter:    { label: 'Старт',        credits: 20  },
-  pro:        { label: 'Бренд Бизнес', credits: 150 },
-  enterprise: { label: 'Enterprise',   credits: 500 },
+  free:     { label: 'Бесплатный', credits: 5   },
+  starter:  { label: 'Старт',     credits: 20  },
+  pro:      { label: 'Про',       credits: 150 },
+  business: { label: 'Бизнес',    credits: 500 },
 }

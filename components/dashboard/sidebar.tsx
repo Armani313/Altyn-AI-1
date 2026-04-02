@@ -2,7 +2,7 @@
 
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap } from 'lucide-react'
+import { Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/supabase/actions'
 import type { Profile } from '@/types/database.types'
@@ -30,9 +30,14 @@ export function Sidebar({ profile }: SidebarProps) {
     { href: editorHref,    icon: PenTool,     label: t('editor'),     hardNav: true  },
   ]
 
+  const isNavActive = (href: string) =>
+    pathname === href ||
+    (href === editorHref && pathname === '/editor') ||
+    (href === '/dashboard' && pathname.startsWith('/dashboard/'))
+
   const navLinkCls = (href: string) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-      pathname === href || (href === editorHref && pathname === '/editor')
+      isNavActive(href)
         ? 'bg-rose-gold-50 text-rose-gold-700 border border-rose-gold-100'
         : 'text-muted-foreground hover:bg-cream-100 hover:text-foreground'
     }`
@@ -41,14 +46,14 @@ export function Sidebar({ profile }: SidebarProps) {
     <aside className="fixed left-0 top-0 h-screen w-[240px] bg-white border-r border-cream-200 hidden lg:flex flex-col z-40">
       {/* Logo */}
       <div className="px-5 py-5 border-b border-cream-200">
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+        <a href={locale === 'en' ? '/' : `/${locale}`} className="flex items-center gap-2.5 group">
           <div className="w-7 h-7 rounded-lg gradient-rose-gold flex items-center justify-center">
             <span className="text-white text-xs font-bold font-serif">L</span>
           </div>
           <span className="font-serif text-base font-semibold text-foreground tracking-tight">
             Luminify
           </span>
-        </Link>
+        </a>
       </div>
 
       {/* Navigation */}
@@ -66,7 +71,7 @@ export function Sidebar({ profile }: SidebarProps) {
             </a>
           ) : (
             <Link key={href} href={href} className={navLinkCls(href)}>
-              <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === href ? 'text-rose-gold-600' : ''}`} />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isNavActive(href) ? 'text-rose-gold-600' : ''}`} />
               {label}
             </Link>
           )
@@ -91,6 +96,16 @@ export function Sidebar({ profile }: SidebarProps) {
           <Settings className={`w-4 h-4 flex-shrink-0 ${pathname === '/settings' ? 'text-rose-gold-600' : ''}`} />
           {t('settings')}
         </Link>
+
+        <div className="py-2">
+          <hr className="border-cream-200" />
+        </div>
+
+        {/* Home / landing page — plain <a> to avoid next-intl Link hydration mismatch on root "/" */}
+        <a href={locale === 'en' ? '/' : `/${locale}`} className={navLinkCls('/')}>
+          <Home className={`w-4 h-4 flex-shrink-0 ${pathname === '/' ? 'text-rose-gold-600' : ''}`} />
+          {t('home')}
+        </a>
       </nav>
 
       {/* Credits + user */}

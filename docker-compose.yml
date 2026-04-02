@@ -39,10 +39,13 @@ services:
       # Google Gemini AI
       GEMINI_API_KEY:              ${GEMINI_API_KEY}
       GEMINI_MODEL:                ${GEMINI_MODEL:-}
-      # Kaspi Pay
-      KASPI_MERCHANT_ID:           ${KASPI_MERCHANT_ID:-}
-      KASPI_API_KEY:               ${KASPI_API_KEY:-}
-      KASPI_WEBHOOK_SECRET:        ${KASPI_WEBHOOK_SECRET}
+      # Polar (Billing)
+      POLAR_ACCESS_TOKEN:          ${POLAR_ACCESS_TOKEN}
+      POLAR_WEBHOOK_SECRET:        ${POLAR_WEBHOOK_SECRET}
+      POLAR_PRODUCT_ID_STARTER:    ${POLAR_PRODUCT_ID_STARTER}
+      POLAR_PRODUCT_ID_PRO:        ${POLAR_PRODUCT_ID_PRO}
+      POLAR_PRODUCT_ID_BUSINESS:   ${POLAR_PRODUCT_ID_BUSINESS}
+      POLAR_ENVIRONMENT:           ${POLAR_ENVIRONMENT:-production}
 
     restart: unless-stopped
 

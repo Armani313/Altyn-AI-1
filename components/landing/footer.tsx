@@ -5,24 +5,34 @@ import { Separator } from '@/components/ui/separator'
 export function Footer() {
   const t = useTranslations('footer')
 
-  const productLinks = [
-    { label: t('features'), href: '#features' },
-    { label: t('pricing'),  href: '#pricing'  },
-    { label: t('portfolio'), href: '#'         },
+  const toolLinks = [
+    { label: t('toolLifestyle'), href: '/dashboard' },
+    { label: t('toolCards'), href: '/dashboard' },
+    { label: t('toolRemoveBg'), href: '/dashboard' },
+    { label: t('toolEditor'), href: '/dashboard' },
+  ]
+
+  const categoryLinks = [
+    { label: t('catJewelry'), href: '/dashboard' },
+    { label: t('catScarves'), href: '/dashboard' },
+    { label: t('catWatches'), href: '/dashboard' },
+    { label: t('catBags'), href: '/dashboard' },
+    { label: t('catOuterwear'), href: '/dashboard' },
   ]
 
   const companyLinks = [
-    { label: t('about'),   href: '#'                    },
+    { label: t('about'), href: '#' },
+    { label: t('pricing'), href: '#pricing' },
     { label: t('contact'), href: 'mailto:support@luminify.app' },
-    { label: t('terms'),   href: '/terms'               },
+    { label: t('terms'), href: '/terms' },
   ]
 
   return (
     <footer className="bg-cream-100 border-t border-cream-200">
       <div className="max-w-6xl mx-auto px-6 py-14">
-        <div className="grid md:grid-cols-3 gap-10 mb-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
           {/* Brand */}
-          <div className="md:col-span-1">
+          <div>
             <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group">
               <div className="w-7 h-7 rounded-lg gradient-rose-gold flex items-center justify-center">
                 <span className="text-white text-xs font-bold font-serif">L</span>
@@ -39,26 +49,45 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Product links */}
+          {/* Tools */}
           <div>
             <h4 className="font-sans font-semibold text-sm text-foreground mb-4">
-              {t('product')}
+              {t('toolsTitle')}
             </h4>
             <ul className="space-y-2.5">
-              {productLinks.map((link) => (
+              {toolLinks.map((link) => (
                 <li key={link.label}>
-                  <a
+                  <Link
                     href={link.href}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Company links */}
+          {/* Categories */}
+          <div>
+            <h4 className="font-sans font-semibold text-sm text-foreground mb-4">
+              {t('categoriesTitle')}
+            </h4>
+            <ul className="space-y-2.5">
+              {categoryLinks.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company */}
           <div>
             <h4 className="font-sans font-semibold text-sm text-foreground mb-4">
               {t('company')}

@@ -130,8 +130,8 @@ async function handleSubscriptionActive(supabase: any, sub: any) {
   const startsAt = sub.currentPeriodStart?.toISOString() ?? new Date().toISOString()
   const endsAt   = sub.currentPeriodEnd?.toISOString()   ?? null
 
-  // Upsert subscription row — reuse kaspi_order_id column for Polar sub ID
-  // (column will be renamed in a future migration)
+  // Upsert subscription row — kaspi_order_id column stores Polar subscription ID
+  // (legacy column name from previous payment provider)
   await supabase
     .from('subscriptions')
     .upsert({
@@ -198,7 +198,7 @@ async function handleSubscriptionCanceled(supabase: any, sub: any) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function resolvePlanByProductId(productId: string | undefined): 'starter' | 'pro' | null {
+function resolvePlanByProductId(productId: string | undefined): 'starter' | 'pro' | 'business' | null {
   if (!productId) return null
 
   for (const [key, plan] of Object.entries(POLAR_PLANS)) {

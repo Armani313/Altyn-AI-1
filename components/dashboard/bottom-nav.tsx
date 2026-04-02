@@ -23,7 +23,8 @@ export function BottomNav() {
   const isActive = (href: string) =>
     pathname === href ||
     (href === editorHref && pathname === '/editor') ||
-    (href === '/settings' && pathname.startsWith('/settings'))
+    (href === '/settings' && pathname.startsWith('/settings')) ||
+    (href === '/dashboard' && pathname.startsWith('/dashboard/'))
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-t border-cream-200 lg:hidden">

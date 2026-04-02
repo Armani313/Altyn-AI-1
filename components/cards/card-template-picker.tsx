@@ -316,7 +316,7 @@ export function CardTemplatePicker({
           <Lock className="w-3 h-3 inline mr-1" />
           Премиум на тарифе{' '}
           <a href="/settings/billing" className="text-primary underline-offset-2 hover:underline">
-            Бренд Бизнес
+            Про
           </a>
         </p>
         {selectedIds.length > 0 && (

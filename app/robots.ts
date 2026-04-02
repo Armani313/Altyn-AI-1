@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
     '/library',
     '/cards',
     '/remove-bg',
+    '/editor',
     '/settings',
     '/api/',
   ]

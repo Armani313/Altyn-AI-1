@@ -7,6 +7,7 @@ import {
   Type, Sticker, Layers, SlidersHorizontal, ChevronUp, ChevronDown,
   Sun, Contrast, Droplets, Move3d, Eye, Trash2, Palette,
   AlignLeft, AlignCenter, AlignRight, Paintbrush, ArrowLeft, X,
+  MoreHorizontal,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useEditorHistory } from './use-editor-history'
@@ -116,6 +117,9 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   const [textColor, setTextColor] = useState('#1a1a1a')
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center')
 
+  // Mobile: show/hide secondary toolbar actions
+  const [showMobileActions, setShowMobileActions] = useState(false)
+
   // History
   const history = useEditorHistory()
   const [historyTick, setHistoryTick] = useState(0)
@@ -193,6 +197,34 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cw, ch, productBlobUrl])
+
+  // ── Keep Fabric pointer offset in sync with CSS-scaled canvas ─────────────
+  useEffect(() => {
+    const recalc = () => fabricRef.current?.calcOffset()
+    window.addEventListener('resize', recalc)
+    window.addEventListener('scroll', recalc)
+    // Also recalc when orientation changes (mobile)
+    window.addEventListener('orientationchange', recalc)
+    return () => {
+      window.removeEventListener('resize', recalc)
+      window.removeEventListener('scroll', recalc)
+      window.removeEventListener('orientationchange', recalc)
+    }
+  }, [])
+
+  // Close panel when tapping canvas on mobile
+  useEffect(() => {
+    const canvas = fabricRef.current
+    if (!canvas) return
+    const handleMouseDown = () => {
+      // On mobile, if panel is open, close it to give more space
+      if (window.innerWidth < 1024 && panel) {
+        setPanel(null)
+      }
+    }
+    canvas.on('mouse:down', handleMouseDown)
+    return () => { canvas.off('mouse:down', handleMouseDown) }
+  }, [panel])
 
   // ── Apply background config to canvas ─────────────────────────────────────
   useEffect(() => {
@@ -808,89 +840,117 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   return (
     <div className="flex flex-col h-full">
       {/* ── Top toolbar ── */}
-      <div className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-2.5 border-b border-cream-200 bg-white shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}>
-        <div className="flex items-center gap-0.5 lg:gap-1 overflow-x-auto scrollbar-hide">
-          {/* Back button */}
-          {onBack && (
-            <>
+      <div className="shrink-0 border-b border-cream-200 bg-white"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+
+        {/* Row 1: Back + Undo/Redo + Ratios + Export */}
+        <div className="flex items-center justify-between px-2 lg:px-4 py-1.5 lg:py-2">
+          <div className="flex items-center gap-0.5 shrink-0">
+            {onBack && (
+              <>
+                <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
+                  onClick={onBack} title={t('backToUpload')}>
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <div className="w-px h-5 bg-cream-200 mx-0.5 shrink-0" />
+              </>
+            )}
+            <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
+              onClick={handleUndo} disabled={!history.canUndo()}>
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
+              onClick={handleRedo} disabled={!history.canRedo()}>
+              <Redo2 className="w-4 h-4" />
+            </Button>
+
+            {/* Desktop-only: object actions inline */}
+            <div className="hidden lg:flex items-center gap-0.5">
+              <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
               <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-                onClick={onBack} title={t('backToUpload')}>
-                <ArrowLeft className="w-4 h-4" />
+                onClick={() => handleFlip('x')} disabled={!activeObj} title={t('flipH')}>
+                <FlipHorizontal2 className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
+                onClick={() => handleFlip('y')} disabled={!activeObj} title={t('flipV')}>
+                <FlipVertical2 className="w-4 h-4" />
               </Button>
               <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
-            </>
-          )}
-          {/* Undo / Redo */}
-          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-            onClick={handleUndo} disabled={!history.canUndo()}>
-            <Undo2 className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-            onClick={handleRedo} disabled={!history.canRedo()}>
-            <Redo2 className="w-4 h-4" />
-          </Button>
+              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
+                onClick={handleBringForward} disabled={!activeObj} title={t('bringForward')}>
+                <ChevronUp className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
+                onClick={handleSendBackward} disabled={!activeObj} title={t('sendBackward')}>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+              <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
+              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={handleDelete} disabled={!activeObj || activeType === 'background'} title={t('delete')}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
 
-          <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
+            {/* Mobile-only: toggle object actions row */}
+            {activeObj && (
+              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0 lg:hidden"
+                onClick={() => setShowMobileActions((v) => !v)}>
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
 
-          {/* Flip */}
-          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-            onClick={() => handleFlip('x')} disabled={!activeObj}
-            title={t('flipH')}>
-            <FlipHorizontal2 className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-            onClick={() => handleFlip('y')} disabled={!activeObj}
-            title={t('flipV')}>
-            <FlipVertical2 className="w-4 h-4" />
-          </Button>
+          {/* Ratio presets */}
+          <div className="flex items-center gap-0.5 lg:gap-1 overflow-x-auto scrollbar-hide mx-1 lg:mx-2 flex-1 justify-center">
+            {RATIOS.map((r) => (
+              <button key={r.label}
+                onClick={() => setRatio(r)}
+                className={`px-1.5 lg:px-2.5 py-1 rounded-lg text-[10px] lg:text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                  ratio.label === r.label
+                    ? 'bg-rose-gold-100 text-rose-gold-700 border border-rose-gold-200'
+                    : 'text-muted-foreground hover:bg-cream-100'
+                }`}>
+                {r.label}
+                <span className="hidden lg:inline text-[10px] text-muted-foreground ml-1">{r.desc}</span>
+              </button>
+            ))}
+          </div>
 
-          <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
-
-          {/* Layer order */}
-          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-            onClick={handleBringForward} disabled={!activeObj}
-            title={t('bringForward')}>
-            <ChevronUp className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-            onClick={handleSendBackward} disabled={!activeObj}
-            title={t('sendBackward')}>
-            <ChevronDown className="w-4 h-4" />
-          </Button>
-
-          <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
-
-          {/* Delete */}
-          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-            onClick={handleDelete} disabled={!activeObj || activeType === 'background'}
-            title={t('delete')}>
-            <Trash2 className="w-4 h-4" />
+          {/* Export */}
+          <Button onClick={handleExport} size="sm"
+            className="gradient-rose-gold text-white rounded-lg h-8 px-2 lg:px-3 text-xs gap-1 shrink-0">
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t('export')}</span>
           </Button>
         </div>
 
-        {/* Ratio presets — horizontal scroll on mobile, flex on desktop */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide ml-2 shrink-0">
-          {RATIOS.map((r) => (
-            <button key={r.label}
-              onClick={() => setRatio(r)}
-              className={`px-2 lg:px-2.5 py-1 rounded-lg text-[11px] lg:text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
-                ratio.label === r.label
-                  ? 'bg-rose-gold-100 text-rose-gold-700 border border-rose-gold-200'
-                  : 'text-muted-foreground hover:bg-cream-100'
-              }`}>
-              {r.label}
-              <span className="hidden lg:inline text-[10px] text-muted-foreground ml-1">{r.desc}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Export */}
-        <Button onClick={handleExport} size="sm"
-          className="gradient-rose-gold text-white rounded-lg h-8 px-2.5 lg:px-3 text-xs gap-1 lg:gap-1.5 ml-2 shrink-0">
-          <Download className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t('export')}</span>
-        </Button>
+        {/* Row 2 (mobile-only): Object actions — shown when an object is selected and toggled */}
+        {showMobileActions && activeObj && (
+          <div className="flex items-center justify-center gap-1 px-2 pb-1.5 lg:hidden border-t border-cream-100">
+            <Button variant="ghost" size="icon" className="w-9 h-9"
+              onClick={() => handleFlip('x')} title={t('flipH')}>
+              <FlipHorizontal2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="w-9 h-9"
+              onClick={() => handleFlip('y')} title={t('flipV')}>
+              <FlipVertical2 className="w-4 h-4" />
+            </Button>
+            <div className="w-px h-5 bg-cream-200 mx-0.5" />
+            <Button variant="ghost" size="icon" className="w-9 h-9"
+              onClick={handleBringForward} title={t('bringForward')}>
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="w-9 h-9"
+              onClick={handleSendBackward} title={t('sendBackward')}>
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+            <div className="w-px h-5 bg-cream-200 mx-0.5" />
+            <Button variant="ghost" size="icon" className="w-9 h-9 text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={handleDelete} disabled={activeType === 'background'} title={t('delete')}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ── Main area ── */}
@@ -929,25 +989,33 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
               className="rounded-xl shadow-card"
               style={{
                 maxWidth: '100%',
-                maxHeight: 'calc(100dvh - 160px)',
+                maxHeight: 'calc(100dvh - 120px)',
               }}
             />
           </div>
         </div>
 
+        {/* ── Mobile: backdrop when panel is open ── */}
+        {panel && (
+          <div
+            className="lg:hidden absolute inset-0 z-10 bg-black/20"
+            onClick={() => setPanel(null)}
+          />
+        )}
+
         {/* ── Mobile: bottom sheet panel overlay (< lg) ── */}
         {panel && (
-          <div className="lg:hidden absolute inset-x-0 bottom-0 z-20 flex flex-col"
-            style={{ maxHeight: '55vh' }}>
-            {/* Drag handle + close */}
-            <div className="flex items-center justify-between px-4 pt-2.5 pb-1.5 bg-white rounded-t-2xl border-t border-cream-200 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
-              <div className="w-8 h-1 rounded-full bg-cream-300 mx-auto" />
-              <button onClick={() => setPanel(null)} className="absolute right-3 top-2.5 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-cream-100">
+          <div className="lg:hidden absolute inset-x-0 bottom-0 z-20 flex flex-col animate-in slide-in-from-bottom duration-200"
+            style={{ maxHeight: '45dvh' }}>
+            {/* Handle + close */}
+            <div className="relative flex items-center justify-center px-4 pt-2 pb-1 bg-white rounded-t-2xl border-t border-cream-200 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
+              <div className="w-8 h-1 rounded-full bg-cream-300" />
+              <button onClick={() => setPanel(null)} className="absolute right-3 top-1.5 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-cream-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="bg-white overflow-y-auto p-4 space-y-4 overscroll-contain"
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)' }}>
+            <div className="bg-white overflow-y-auto p-3 space-y-3 overscroll-contain"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)' }}>
               {panelContent}
             </div>
           </div>

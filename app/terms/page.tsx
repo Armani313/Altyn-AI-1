@@ -1,9 +1,14 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://luminify.app'
+
 export const metadata = {
-  title: 'Условия использования',
-  description: 'Условия использования сервиса Luminify',
+  title: 'Условия использования | Luminify',
+  description: 'Условия использования сервиса Luminify — ИИ-генерация фотографий украшений.',
+  alternates: {
+    canonical: `${APP_URL}/terms`,
+  },
 }
 
 export default function TermsPage() {

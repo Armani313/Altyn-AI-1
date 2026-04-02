@@ -31,30 +31,48 @@ export const metadata: Metadata = {
   authors: [{ name: 'Luminify' }],
   creator: 'Luminify',
   publisher: 'Luminify',
+  alternates: {
+    canonical: APP_URL,
+    languages: {
+      'en': APP_URL,
+      'ru': `${APP_URL}/ru`,
+      'x-default': APP_URL,
+    },
+  },
   openGraph: {
     type: 'website',
     siteName: 'Luminify',
+    locale: 'ru_RU',
+    alternateLocale: 'en_US',
     images: [
       {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'Luminify',
+        alt: 'Luminify — ИИ-фотографии украшений',
       },
     ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Luminify — ИИ-фотографии украшений',
+    description: 'Генерируйте профессиональные лайфстайл-фотографии украшений с помощью ИИ.',
+    images: ['/opengraph-image'],
   },
   icons: {
     icon:  [{ url: new URL('/icon', APP_URL).toString(),       type: 'image/png', sizes: '32x32'  }],
     apple: [{ url: new URL('/apple-icon', APP_URL).toString(), type: 'image/png', sizes: '180x180' }],
   },
+  manifest: '/manifest.webmanifest',
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: 'cover',
+  themeColor: '#C4834F',
 }
 
 export function generateStaticParams() {
@@ -134,7 +152,7 @@ export default async function LocaleLayout({
         />
       </head>
       <body className="antialiased">
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
         </NextIntlClientProvider>
       </body>

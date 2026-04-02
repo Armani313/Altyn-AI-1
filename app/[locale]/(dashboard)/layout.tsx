@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { setRequestLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { BottomNav } from '@/components/dashboard/bottom-nav'
@@ -53,14 +54,14 @@ export default async function DashboardLayout({
           className="flex items-center justify-center px-4 py-3 border-b border-cream-200 bg-white/80 backdrop-blur-xl lg:hidden"
           style={{ paddingTop: 'calc(var(--safe-top, 0px) + 8px)' }}
         >
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg gradient-rose-gold flex items-center justify-center">
               <span className="text-white text-[10px] font-bold font-serif">L</span>
             </div>
             <span className="font-serif text-sm font-semibold text-foreground tracking-tight">
               Luminify
             </span>
-          </div>
+          </Link>
         </div>
 
         {/* Content area with bottom padding for bottom nav on mobile */}

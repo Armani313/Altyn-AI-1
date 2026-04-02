@@ -30,7 +30,7 @@ export function EditorPageClient() {
   return (
     <div className={
       phase === 'edit'
-        ? 'fixed inset-0 z-50 bg-[#FAF9F6] flex flex-col lg:relative lg:z-auto lg:h-screen'
+        ? 'fixed inset-0 z-[60] bg-[#FAF9F6] flex flex-col lg:relative lg:z-auto lg:h-screen'
         : 'h-[calc(100vh-56px)] lg:h-screen flex flex-col'
     }>
       {phase === 'upload' && (

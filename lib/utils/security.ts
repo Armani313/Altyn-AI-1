@@ -68,25 +68,3 @@ export function assertSafeImageBytes(buf: Uint8Array): void {
   }
 }
 
-// ── Payment URL validation ────────────────────────────────────────────────────
-
-const KASPI_PAYMENT_HOSTS = new Set(['pay.kaspi.kz', 'mc.kaspi.kz', 'kaspi.kz'])
-
-/**
- * Asserts that a URL returned by the Kaspi API is a known Kaspi payment domain.
- * Prevents open-redirect attacks if the Kaspi API is ever compromised.
- */
-export function assertSafePaymentUrl(url: string): void {
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    throw new Error('Платёжный шлюз вернул некорректный URL.')
-  }
-  if (parsed.protocol !== 'https:') {
-    throw new Error('Платёжный шлюз вернул небезопасный URL.')
-  }
-  if (!KASPI_PAYMENT_HOSTS.has(parsed.hostname)) {
-    throw new Error('Платёжный шлюз вернул URL с неизвестным доменом.')
-  }
-}

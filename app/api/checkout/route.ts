@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
   if (!planKey || !isPolarPlanKey(planKey)) {
     return NextResponse.json(
-      { error: 'Неверный тариф. Доступны: starter, pro.' },
+      { error: 'Неверный тариф. Доступны: starter, pro, business.' },
       { status: 400 }
     )
   }

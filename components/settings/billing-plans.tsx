@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Check, Zap, Crown, Sparkles, AlertCircle } from 'lucide-react'
+import { Check, Zap, Crown, Sparkles, AlertCircle, ExternalLink, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Plan } from '@/types/database.types'
 
@@ -41,17 +41,27 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
     {
       key:       'pro' as Plan,
       label:     t('proName'),
-      price:     '$20',
+      price:     '$10',
       priceNote: t('perMonth'),
       credits:   150,
       features:  [t('proFeature1'), t('proFeature2'), t('proFeature3'), t('proFeature4'), t('proFeature5')],
       icon:      Crown,
       highlight: true,
     },
+    {
+      key:       'business' as Plan,
+      label:     t('businessName'),
+      price:     '$25',
+      priceNote: t('perMonth'),
+      credits:   500,
+      features:  [t('businessFeature1'), t('businessFeature2'), t('businessFeature3'), t('businessFeature4'), t('businessFeature5')],
+      icon:      Building2,
+      highlight: false,
+    },
   ]
 
   const handleBuy = (planKey: Plan) => {
-    if (planKey === 'free' || planKey === 'enterprise') return
+    if (planKey === 'free') return
     setError('')
     setLoading(planKey)
     window.location.href = `/api/checkout?plan=${planKey}`
@@ -76,6 +86,15 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
                 {t('activeUntil', { date: expiryDate })}
               </p>
             )}
+            {currentPlan !== 'free' && (
+              <a
+                href="/api/portal"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline underline-offset-2 mt-2"
+              >
+                {t('manageSubscription')}
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
           </div>
           <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 border border-cream-200 shadow-soft">
             <Zap className="w-4 h-4 text-rose-gold-500" />
@@ -96,7 +115,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
       )}
 
       {/* Plan cards */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {PLANS.map((plan) => {
           const Icon      = plan.icon
           const isCurrent = currentPlan === plan.key

@@ -45,7 +45,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          command_timeout: 10m
+          command_timeout: 20m
           script: |
             set -e
             cd /home/ubuntu/luminify

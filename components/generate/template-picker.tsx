@@ -137,7 +137,7 @@ export function TemplatePicker({
     }
   }
 
-  const handleDelete = async (index: number, e: React.MouseEvent) => {
+  const handleDelete = async (index: number, e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     if (disabled || deletingIdx !== null) return
 

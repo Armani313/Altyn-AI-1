@@ -88,12 +88,11 @@ const nextConfig = {
         ],
       },
       {
-        // MED-1: Content-Security-Policy — applied to all routes EXCEPT /remove-bg.
-        // /remove-bg needs 'unsafe-eval' for ONNX Runtime; if we set the global CSP here
-        // AND a /remove-bg CSP below, the browser enforces BOTH (most-restrictive union),
-        // which blocks 'unsafe-eval' even on /remove-bg. Excluding it here allows the
-        // /remove-bg-specific CSP (with 'unsafe-eval') to be the only one for that page.
-        source: '/((?!(?:ru/|en/)?(?:remove-bg|editor)).*)',
+        // MED-1: Content-Security-Policy — applied to all routes EXCEPT pages that use
+        // ONNX Runtime (remove-bg, editor, tools/*). Those pages need 'unsafe-eval' for
+        // onnxruntime-web; if we set the global CSP here AND a per-page CSP below, the
+        // browser enforces BOTH (most-restrictive union), blocking 'unsafe-eval'.
+        source: '/((?!(?:ru/|en/)?(?:remove-bg|editor|tools)).*)',
         headers: [
           {
             key:   'Content-Security-Policy',
@@ -131,13 +130,11 @@ const nextConfig = {
         ],
       },
       {
-        // COOP + COEP + CSP override for /remove-bg:
+        // COOP + COEP + CSP override for ONNX Runtime pages (remove-bg, editor, tools/*):
         // 1. COOP/COEP unlocks SharedArrayBuffer → multi-threaded WASM inference.
         // 2. CSP adds 'unsafe-eval' — onnxruntime-web CJS build uses new Function()
-        //    internally for dynamic code generation (WebGL/WASM glue). The global
-        //    CSP only allows 'wasm-unsafe-eval' which is not enough for JS eval.
-        //    Scoped to /remove-bg only to minimise attack surface on other pages.
-        source: '/:locale(ru|en)?/(remove-bg|editor)',
+        //    internally for dynamic code generation (WebGL/WASM glue).
+        source: '/:locale(ru|en)?/(remove-bg|editor|tools/:path*)',
         headers: [
           { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
           { key: 'Cross-Origin-Embedder-Policy',  value: 'credentialless' },

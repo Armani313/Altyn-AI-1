@@ -23,7 +23,8 @@
     "toolAddBgDesc": "Your own image as background",
     "toolGenerate": "AI photo generation",
     "toolGenerateDesc": "Studio photos with AI",
-    "allTools": "All tools"
+    "allTools": "All tools",
+    "dashboard": "Dashboard"
   },
   "hero": {
     "badge": "AI for jewelry stores",

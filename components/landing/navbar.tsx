@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { Link } from '@/i18n/navigation'
-import { Menu, Globe, Eraser, Square, Focus, Palette, ImagePlus, Sparkles, LayoutGrid, ArrowRight } from 'lucide-react'
+import { Menu, Globe, Eraser, Square, Focus, Palette, ImagePlus, Sparkles, LayoutGrid, ArrowRight, LayoutDashboard } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -40,11 +41,19 @@ export function Navbar() {
   const router   = useRouter()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 24)
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session)
+    })
   }, [])
 
   const toolItems = [
@@ -168,23 +177,37 @@ export function Navbar() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Link href="/login">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground hover:bg-cream-200"
-            >
-              {t('login')}
-            </Button>
-          </Link>
-          <Link href="/register">
-            <Button
-              size="sm"
-              className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft transition-all duration-200 hover:shadow-glow"
-            >
-              {t('startFree')}
-            </Button>
-          </Link>
+          {isLoggedIn ? (
+            <Link href="/dashboard">
+              <Button
+                size="sm"
+                className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft transition-all duration-200 hover:shadow-glow gap-2"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                {t('dashboard')}
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground hover:bg-cream-200"
+                >
+                  {t('login')}
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button
+                  size="sm"
+                  className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft transition-all duration-200 hover:shadow-glow"
+                >
+                  {t('startFree')}
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile menu */}
@@ -251,16 +274,27 @@ export function Navbar() {
               </div>
             </div>
             <div className="flex flex-col gap-3 mt-4">
-              <Link href="/login" onClick={() => setOpen(false)}>
-                <Button variant="outline" className="w-full border-cream-300">
-                  {t('login')}
-                </Button>
-              </Link>
-              <Link href="/register" onClick={() => setOpen(false)}>
-                <Button className="w-full bg-primary hover:bg-rose-gold-600 text-white">
-                  {t('startFree')}
-                </Button>
-              </Link>
+              {isLoggedIn ? (
+                <Link href="/dashboard" onClick={() => setOpen(false)}>
+                  <Button className="w-full bg-primary hover:bg-rose-gold-600 text-white gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
+                    {t('dashboard')}
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" onClick={() => setOpen(false)}>
+                    <Button variant="outline" className="w-full border-cream-300">
+                      {t('login')}
+                    </Button>
+                  </Link>
+                  <Link href="/register" onClick={() => setOpen(false)}>
+                    <Button className="w-full bg-primary hover:bg-rose-gold-600 text-white">
+                      {t('startFree')}
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </SheetContent>
         </Sheet>

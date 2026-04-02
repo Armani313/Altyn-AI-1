@@ -23,7 +23,8 @@
     "toolAddBgDesc": "Своё изображение как фон",
     "toolGenerate": "ИИ-генерация фото",
     "toolGenerateDesc": "Студийное фото с ИИ",
-    "allTools": "Все инструменты"
+    "allTools": "Все инструменты",
+    "dashboard": "Панель"
   },
   "hero": {
     "badge": "ИИ для ювелирных магазинов",

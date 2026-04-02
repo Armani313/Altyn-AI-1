@@ -34,7 +34,7 @@ console.log(`Cleanup: retention=${RETENTION}d cutoff=${cutoff}`)
 // Query expired generations
 const { data: rows, error: queryErr } = await supabase
   .from('generations')
-  .select('id, user_id, input_image_url, output_image_url, panel_variants')
+  .select('id, user_id, input_image_url, output_image_url')
   .lt('created_at', cutoff)
   .neq('status', 'processing')
   .limit(BATCH_SIZE)
@@ -65,14 +65,6 @@ for (const row of rows) {
 
   if (row.output_image_url?.startsWith(outputPrefix)) {
     outputPaths.push(row.output_image_url.slice(outputPrefix.length))
-  }
-
-  if (Array.isArray(row.panel_variants)) {
-    for (const panel of row.panel_variants) {
-      if (panel.url?.startsWith(outputPrefix)) {
-        outputPaths.push(panel.url.slice(outputPrefix.length))
-      }
-    }
   }
 }
 

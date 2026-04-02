@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   const { data: rows, error: queryErr } = await supabase
     .from('generations')
-    .select('id, user_id, input_image_url, output_image_url, panel_variants')
+    .select('id, user_id, input_image_url, output_image_url')
     .lt('created_at', cutoffDate)
     .neq('status', 'processing') // never delete in-flight jobs
     .limit(BATCH_SIZE)
@@ -70,7 +70,6 @@ export async function POST(request: Request) {
     user_id: string
     input_image_url: string | null
     output_image_url: string | null
-    panel_variants: Array<{ id: number; url: string }> | null
   }>) {
     ids.push(row.id)
 
@@ -82,15 +81,6 @@ export async function POST(request: Request) {
     // output_image_url is stored as full public URL — extract path
     if (row.output_image_url?.startsWith(outputPrefix)) {
       outputPaths.push(row.output_image_url.slice(outputPrefix.length))
-    }
-
-    // panel_variants contains additional output files
-    if (Array.isArray(row.panel_variants)) {
-      for (const panel of row.panel_variants) {
-        if (panel.url?.startsWith(outputPrefix)) {
-          outputPaths.push(panel.url.slice(outputPrefix.length))
-        }
-      }
     }
   }
 

@@ -34,6 +34,8 @@ services:
     environment:
       NODE_ENV:                    production
       NEXT_TELEMETRY_DISABLED:     "1"
+      # App URL (needed at runtime for server-side redirects)
+      NEXT_PUBLIC_APP_URL:         ${NEXT_PUBLIC_APP_URL}
       # Supabase (server-side only)
       SUPABASE_SERVICE_ROLE_KEY:   ${SUPABASE_SERVICE_ROLE_KEY}
       # Google Gemini AI

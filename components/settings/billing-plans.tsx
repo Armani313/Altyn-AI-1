@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
-import { Check, Zap, Crown, Sparkles, AlertCircle, ExternalLink, Building2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Check, Zap, Crown, Sparkles, AlertCircle, ExternalLink, Building2, ShieldCheck, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PolarEmbedCheckout } from '@polar-sh/checkout/embed'
 import type { Plan } from '@/types/database.types'
 
 interface BillingPlansProps {
@@ -15,8 +17,19 @@ interface BillingPlansProps {
 export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPlansProps) {
   const t = useTranslations('billingPlans')
   const locale = useLocale()
+  const router = useRouter()
   const [loading, setLoading] = useState<Plan | null>(null)
   const [error, setError]     = useState('')
+  const checkoutRef = useRef<ReturnType<typeof PolarEmbedCheckout.create> | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (checkoutRef.current) {
+        checkoutRef.current.then(c => c.close()).catch(() => {})
+      }
+    }
+  }, [])
 
   const PLANS = [
     {
@@ -61,11 +74,47 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
     },
   ]
 
-  const handleBuy = (planKey: Plan) => {
+  const handleBuy = async (planKey: Plan) => {
     if (planKey === 'free') return
     setError('')
     setLoading(planKey)
-    window.location.href = `/api/checkout?plan=${planKey}&locale=${locale}`
+
+    try {
+      // Create checkout session via API
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planKey }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || t('checkoutError'))
+      }
+
+      const { url } = await res.json()
+
+      // Open Polar Embed overlay
+      const checkout = PolarEmbedCheckout.create(url, {
+        theme: 'light',
+      })
+      checkoutRef.current = checkout
+
+      const instance = await checkout
+
+      instance.addEventListener('success', () => {
+        router.push(`/${locale}/settings/billing?status=success`)
+      })
+
+      instance.addEventListener('close', () => {
+        setLoading(null)
+        checkoutRef.current = null
+      })
+    } catch (err) {
+      console.error('Checkout error:', err)
+      setError(err instanceof Error ? err.message : t('checkoutError'))
+      setLoading(null)
+    }
   }
 
   const expiryDate = expiresAt
@@ -193,7 +242,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
               ) : (
                 <Button
                   onClick={() => handleBuy(plan.key)}
-                  disabled={isPaying}
+                  disabled={!!loading}
                   className={`w-full h-10 transition-all duration-300 ${
                     plan.highlight
                       ? 'bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow'
@@ -203,7 +252,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
                   {isPaying ? (
                     <span className="flex items-center gap-2">
                       <span className="w-3.5 h-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
-                      {t('redirecting')}
+                      {t('loading')}
                     </span>
                   ) : (
                     t('pay')
@@ -215,9 +264,10 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
         })}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
+      <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+        <Lock className="w-3 h-3" />
         {t('securePayment')}
-      </p>
+      </div>
     </div>
   )
 }

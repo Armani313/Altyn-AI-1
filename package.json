@@ -12,6 +12,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@imgly/background-removal": "^1.7.0",
     "@next/third-parties": "^16.2.1",
+    "@polar-sh/checkout": "^0.2.0",
     "@polar-sh/sdk": "0.46.6",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",

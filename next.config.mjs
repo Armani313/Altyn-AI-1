@@ -110,6 +110,8 @@ const nextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               // Supabase API + realtime; ONNX Runtime WASM CDN; Google Analytics
               "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://region1.google-analytics.com",
+              // Polar embedded checkout iframe (buy.polar.sh is the checkout domain)
+              "frame-src https://buy.polar.sh https://*.polar.sh",
               // Replaces X-Frame-Options — more expressive
               // Allow blob: workers — ONNX Runtime creates thread workers via blob URLs
               // when running in a Web Worker context (even in single-thread mode as fallback)

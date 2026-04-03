@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Check, Zap, Crown, Sparkles, AlertCircle, ExternalLink, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Plan } from '@/types/database.types'
@@ -14,6 +14,7 @@ interface BillingPlansProps {
 
 export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPlansProps) {
   const t = useTranslations('billingPlans')
+  const locale = useLocale()
   const [loading, setLoading] = useState<Plan | null>(null)
   const [error, setError]     = useState('')
 
@@ -64,7 +65,7 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
     if (planKey === 'free') return
     setError('')
     setLoading(planKey)
-    window.location.href = `/api/checkout?plan=${planKey}`
+    window.location.href = `/api/checkout?plan=${planKey}&locale=${locale}`
   }
 
   const expiryDate = expiresAt

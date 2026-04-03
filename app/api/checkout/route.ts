@@ -33,6 +33,7 @@ export async function GET(request: Request) {
   // ── 3. Validate plan param ────────────────────────────────────────────────
   const { searchParams } = new URL(request.url)
   const planKey = searchParams.get('plan')
+  const locale  = searchParams.get('locale') === 'ru' ? 'ru' : 'en'
 
   if (!planKey || !isPolarPlanKey(planKey)) {
     return NextResponse.json(
@@ -59,6 +60,7 @@ export async function GET(request: Request) {
       externalCustomerId: user.id,              // links to Supabase user
       customerEmail:      user.email ?? undefined,
       successUrl:         `${appUrl}/settings/billing?status=success`,
+      locale,
       metadata: {
         plan:   planKey,
         userId: user.id,

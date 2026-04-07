@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { Link } from '@/i18n/navigation'
-import { Menu, Globe, Eraser, Square, Focus, Palette, ImagePlus, Sparkles, LayoutGrid, ArrowRight, LayoutDashboard } from 'lucide-react'
+import { Menu, Globe, Eraser, Square, Focus, Palette, ImagePlus, LayoutGrid, ArrowRight, LayoutDashboard } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -62,7 +62,6 @@ export function Navbar() {
     { icon: Focus, label: t('toolBlurBg'), desc: t('toolBlurBgDesc'), href: '/tools/blur-background' },
     { icon: Palette, label: t('toolChangeBg'), desc: t('toolChangeBgDesc'), href: '/tools/change-background-color' },
     { icon: ImagePlus, label: t('toolAddBg'), desc: t('toolAddBgDesc'), href: '/tools/add-background' },
-    { icon: Sparkles, label: t('toolGenerate'), desc: t('toolGenerateDesc'), href: '/editor' },
     { icon: LayoutGrid, label: t('toolCards'), desc: t('toolCardsDesc'), href: '/cards' },
   ]
 

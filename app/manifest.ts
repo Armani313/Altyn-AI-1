@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Luminify — ИИ-фотографии украшений',
+    name: 'Luminify — AI jewelry photography',
     short_name: 'Luminify',
-    description: 'Генерируйте профессиональные лайфстайл-фотографии украшений с помощью ИИ.',
+    description: 'Generate professional jewelry lifestyle photos with AI.',
     start_url: '/',
     display: 'standalone',
     background_color: '#FAF7F4',

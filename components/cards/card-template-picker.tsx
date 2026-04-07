@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import { useLocale } from 'next-intl'
 import { Sparkles, Lock, Check, Upload, X, Wand2 } from 'lucide-react'
 import {
   type CardTemplate,
@@ -29,6 +30,38 @@ export function CardTemplatePicker({
   onCustomTemplateChange,
 }: CardTemplatePickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const locale = useLocale() === 'ru' ? 'ru' : 'en'
+  const copy = locale === 'ru'
+    ? {
+        aiPick: 'Пусть ИИ выберет',
+        ofMax: `из ${maxSelect}`,
+        customAlt: 'Мой шаблон',
+        uploadTemplate: 'Загрузить свой шаблон',
+        myBadge: 'Мой',
+        myTemplate: 'Мой шаблон',
+        ownTemplate: 'Свой шаблон',
+        aiCreates: 'ИИ создаёт',
+        withoutTemplate: 'без шаблона',
+        freeGeneration: 'Свободная генерация',
+        premiumNote: 'Премиум на тарифе',
+        premiumPlan: 'Про',
+        reset: 'Сбросить',
+      }
+    : {
+        aiPick: 'Let AI pick',
+        ofMax: `of ${maxSelect}`,
+        customAlt: 'My template',
+        uploadTemplate: 'Upload your template',
+        myBadge: 'Mine',
+        myTemplate: 'My template',
+        ownTemplate: 'Your template',
+        aiCreates: 'AI creates',
+        withoutTemplate: 'without template',
+        freeGeneration: 'Free generation',
+        premiumNote: 'Premium on',
+        premiumPlan: 'Pro',
+        reset: 'Reset',
+      }
 
   const atMax    = selectedIds.length >= maxSelect
   const filtered = templates
@@ -87,19 +120,19 @@ export function CardTemplatePicker({
       <div className="flex items-center gap-2 mb-4">
         <button
           onClick={handleAIPick}
-          disabled={disabled}
-          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
-        >
-          <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
-          Пусть ИИ выберет
-        </button>
+        disabled={disabled}
+        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+      >
+        <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
+        {copy.aiPick}
+      </button>
 
         {selectedIds.length > 0 && (
           <div className="flex items-center gap-1.5 bg-cream-100 border border-cream-200 rounded-xl px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">
             <span className="w-4 h-4 rounded-full gradient-rose-gold flex items-center justify-center text-white text-[9px] font-bold">
               {selectedIds.length}
             </span>
-            из {maxSelect}
+            {copy.ofMax}
           </div>
         )}
       </div>
@@ -130,7 +163,7 @@ export function CardTemplatePicker({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={customTemplateUrl}
-                alt="Мой шаблон"
+                alt={copy.customAlt}
                 className="w-full h-full object-cover"
                 draggable={false}
               />
@@ -140,7 +173,7 @@ export function CardTemplatePicker({
                   <Upload className="w-4 h-4 text-rose-gold-400 group-hover:text-rose-gold-600 transition-colors" />
                 </div>
                 <p className="text-[10px] font-semibold text-rose-gold-600 text-center leading-snug">
-                  Загрузить свой шаблон
+                  {copy.uploadTemplate}
                 </p>
               </div>
             )}
@@ -160,7 +193,7 @@ export function CardTemplatePicker({
             <>
               <div className="absolute top-1.5 left-1.5">
                 <span className="text-[9px] font-bold uppercase tracking-wide bg-primary text-white px-1.5 py-0.5 rounded-full shadow-sm">
-                  Мой
+                  {copy.myBadge}
                 </span>
               </div>
               <button
@@ -174,7 +207,7 @@ export function CardTemplatePicker({
 
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent px-1.5 py-2">
             <p className="text-[9px] font-medium text-white text-center leading-tight">
-              {customTemplateUrl ? 'Мой шаблон' : 'Свой шаблон'}
+              {customTemplateUrl ? copy.myTemplate : copy.ownTemplate}
             </p>
           </div>
         </button>
@@ -206,7 +239,7 @@ export function CardTemplatePicker({
                     <Wand2 className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-violet-500 group-hover:text-rose-gold-600'} transition-colors`} />
                   </div>
                   <p className="text-[10px] font-bold text-center leading-snug text-violet-700 group-hover:text-rose-gold-700 transition-colors">
-                    ИИ создаёт<br />без шаблона
+                    {copy.aiCreates}<br />{copy.withoutTemplate}
                   </p>
                 </div>
               </div>
@@ -229,7 +262,7 @@ export function CardTemplatePicker({
 
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent px-1.5 py-2">
                 <p className="text-[9px] font-medium text-white text-center leading-tight">
-                  Свободная генерация
+                  {copy.freeGeneration}
                 </p>
               </div>
             </button>
@@ -314,9 +347,12 @@ export function CardTemplatePicker({
       <div className="mt-3 flex items-center justify-between">
         <p className="text-[11px] text-muted-foreground">
           <Lock className="w-3 h-3 inline mr-1" />
-          Премиум на тарифе{' '}
-          <a href="/settings/billing" className="text-primary underline-offset-2 hover:underline">
-            Про
+          {copy.premiumNote}{' '}
+          <a
+            href={locale === 'ru' ? '/ru/settings/billing' : '/settings/billing'}
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            {copy.premiumPlan}
           </a>
         </p>
         {selectedIds.length > 0 && (
@@ -325,7 +361,7 @@ export function CardTemplatePicker({
             disabled={disabled}
             className="text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1 px-2 -mr-1 touch-manipulation"
           >
-            Сбросить
+            {copy.reset}
           </button>
         )}
       </div>

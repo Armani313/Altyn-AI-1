@@ -9,7 +9,12 @@
 
 import { NextResponse }     from 'next/server'
 import { createClient }     from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { MAX_CUSTOM_MODELS } from '@/lib/constants'
+import {
+  buildSignedCustomModelUrls,
+  resolveCustomModelStorageRef,
+} from '@/lib/custom-models'
 
 export const runtime = 'nodejs'
 
@@ -53,7 +58,7 @@ export async function DELETE(request: Request) {
       return err('Модель с таким индексом не найдена.', 404)
     }
 
-    // ── Remove element at index ───────────────────────────────────────────────
+    const removedRef = current[index]
     const updated = current.filter((_, i) => i !== index)
 
     const { error: updateErr } = await supabase
@@ -66,7 +71,21 @@ export async function DELETE(request: Request) {
       return err('Ошибка обновления профиля.', 500)
     }
 
-    return NextResponse.json({ success: true, urls: updated })
+    const serviceSupabase = createServiceClient()
+    const objectRef = resolveCustomModelStorageRef(removedRef, user.id)
+    if (objectRef) {
+      const { error: removeErr } = await serviceSupabase.storage
+        .from(objectRef.bucket)
+        .remove([objectRef.path])
+
+      if (removeErr) {
+        console.error('Custom model storage delete error:', removeErr)
+      }
+    }
+
+    const signedUrls = await buildSignedCustomModelUrls(serviceSupabase, user.id, updated)
+
+    return NextResponse.json({ success: true, urls: signedUrls })
   } catch (fatal) {
     console.error('Model delete fatal error:', fatal)
     return err('Внутренняя ошибка сервера.', 500)

@@ -8,6 +8,7 @@ import { BlurBgHowTo } from '@/components/tools/blur-bg-how-to'
 import { BgRemoverTools } from '@/components/tools/bg-remover-tools'
 import { BlurBgFaq } from '@/components/tools/blur-bg-faq'
 import { BgRemoverCta } from '@/components/tools/bg-remover-cta'
+import { buildLocalizedMetadata, getSeoKeywords, type SeoLocale } from '@/lib/seo'
 
 export async function generateMetadata({
   params,
@@ -16,10 +17,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'blurBgPage' })
-  return {
+  const currentLocale = locale === 'ru' ? 'ru' : 'en'
+
+  return buildLocalizedMetadata({
+    locale: currentLocale as SeoLocale,
+    path: '/tools/blur-background',
     title: t('metaTitle'),
     description: t('metaDescription'),
-  }
+    keywords: getSeoKeywords('blur-background', currentLocale as SeoLocale),
+  })
 }
 
 export default async function BlurBackgroundPage({

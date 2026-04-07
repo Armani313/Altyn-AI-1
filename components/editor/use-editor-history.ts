@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useMemo } from 'react'
 import type { Canvas } from 'fabric'
 
 const MAX_HISTORY = 15
@@ -50,5 +50,11 @@ export function useEditorHistory() {
     []
   )
 
-  return { save, undo, redo, canUndo, canRedo }
+  return useMemo(() => ({
+    save,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  }), [save, undo, redo, canUndo, canRedo])
 }

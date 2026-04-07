@@ -10,6 +10,7 @@ import { TestimonialsSection } from '@/components/landing/testimonials-section'
 import { ToolsShowcaseSection } from '@/components/landing/tools-showcase-section'
 import { FaqSection } from '@/components/landing/faq-section'
 import { Footer } from '@/components/landing/footer'
+import { buildLocalizedMetadata, getSeoKeywords, type SeoLocale } from '@/lib/seo'
 
 export async function generateMetadata({
   params,
@@ -18,15 +19,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'metadata' })
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://luminify.app'
-  return {
+  const currentLocale = locale === 'ru' ? 'ru' : 'en'
+
+  return buildLocalizedMetadata({
+    locale: currentLocale as SeoLocale,
+    path: '/',
     title: t('landingTitle'),
     description: t('landingDescription'),
-    alternates: {
-      canonical: '/',
-      languages: { en: APP_URL, ru: `${APP_URL}/ru`, 'x-default': APP_URL },
-    },
-  }
+    keywords: getSeoKeywords('landing', currentLocale as SeoLocale),
+  })
 }
 
 export default async function LandingPage({ params }: { params: Promise<{ locale: string }> }) {

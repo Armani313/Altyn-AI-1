@@ -3,18 +3,24 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+.npm/
+.cache/
 
 # ── Next.js build output ─────────────────────────────────────────────────────
 /.next/
 /out/
 /build
+.turbo/
 
 # ── Testing ──────────────────────────────────────────────────────────────────
 /coverage
+.eslintcache
 
 # ── Environment & secrets — NEVER commit ─────────────────────────────────────
 .env
 .env.*
+.envrc
+.direnv/
 # Allow only public template files (no real values inside)
 !.env.example
 !.env.local.example
@@ -22,6 +28,7 @@
 # ── Supabase ──────────────────────────────────────────────────────────────────
 supabase/.temp/
 supabase/.branches/
+supabase/config.toml
 
 # ── TypeScript ────────────────────────────────────────────────────────────────
 *.tsbuildinfo
@@ -29,7 +36,11 @@ next-env.d.ts
 
 # ── Logs ─────────────────────────────────────────────────────────────────────
 *.log
+*.pid
+*.pid.lock
+*.orig
 npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
@@ -43,6 +54,7 @@ Thumbs.db
 .claude/
 .idea/
 .vscode/settings.json
+.vscode/tasks.json
 
 # ── Agent skills ──────────────────────────────────────────────────────────────
 .agents/

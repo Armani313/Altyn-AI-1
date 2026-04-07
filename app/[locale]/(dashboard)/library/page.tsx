@@ -1,12 +1,17 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Wand2, ImageIcon } from 'lucide-react'
+import { Wand2, ImageIcon, Loader2 } from 'lucide-react'
 import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/dashboard/header'
 import { Button } from '@/components/ui/button'
-import { LibraryGrid } from '@/components/library/library-grid'
-import type { Generation } from '@/types/database.types'
+import { LibraryGridShell } from '@/components/library/library-grid-shell'
+import {
+  buildLibraryDisplayItems,
+  summarizeLibraryGenerations,
+  type LibraryDisplayCard,
+  type LibraryGeneration,
+} from '@/lib/library/display-items'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
@@ -22,6 +27,7 @@ export default async function LibraryPage({
   const { locale } = await params
   setRequestLocale(locale)
   const t = await getTranslations({ locale, namespace: 'library' })
+  const tGrid = await getTranslations({ locale, namespace: 'libraryGrid' })
 
   const supabase = await createClient()
   const {
@@ -41,12 +47,33 @@ export default async function LibraryPage({
 
   const { data: generationsRaw } = await supabase
     .from('generations')
-    .select('id, status, output_image_url, created_at')
+    .select('id, status, output_image_url, created_at, metadata')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .limit(48)
+    .limit(120)
 
-  const items = (generationsRaw ?? []) as Generation[]
+  const items = (generationsRaw ?? []) as LibraryGeneration[]
+  const displayItems = buildLibraryDisplayItems(items)
+  const summary = summarizeLibraryGenerations(items)
+  const displayCount = displayItems.length
+  const processingCount = summary.processingCount
+  const pendingGenerationIds = summary.pendingGenerationIds
+  const shortDateFormatter = new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+  })
+  const longDateFormatter = new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const displayCards: LibraryDisplayCard[] = displayItems.map((item) => ({
+    ...item,
+    dateShort: shortDateFormatter.format(new Date(item.createdAt)),
+    lightboxLabel: item.panelId
+      ? `${longDateFormatter.format(new Date(item.createdAt))} · ${tGrid('variantLabel', { n: item.panelId })}`
+      : longDateFormatter.format(new Date(item.createdAt)),
+  }))
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -59,12 +86,16 @@ export default async function LibraryPage({
       <div className="flex-1 p-3 sm:p-5 xl:p-6">
         <div className="max-w-6xl mx-auto">
 
-          {items.length === 0 && (
+          {displayCount === 0 && (
             <div className="flex flex-col items-center justify-center py-12 sm:py-24 text-center">
               <div className="relative mb-8">
                 <div className="w-28 h-28 rounded-full bg-gradient-to-br from-rose-gold-100 to-rose-gold-200 flex items-center justify-center">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-gold-200 to-rose-gold-300 flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-rose-gold-600" />
+                    {processingCount > 0 ? (
+                      <Loader2 className="w-8 h-8 text-rose-gold-600 animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-8 h-8 text-rose-gold-600" />
+                    )}
                   </div>
                 </div>
                 <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-rose-gold-300 opacity-70" />
@@ -72,10 +103,14 @@ export default async function LibraryPage({
               </div>
 
               <h2 className="font-serif text-2xl font-medium text-foreground mb-3">
-                {t('empty')}
+                {processingCount > 0
+                  ? t('processingTitle')
+                  : t('empty')}
               </h2>
-              <p className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-8">
-                {t('emptyDesc')}
+              <p className="text-muted-foreground text-sm max-w-sm leading-relaxed mb-8">
+                {processingCount > 0
+                  ? t('processingDesc', { count: processingCount })
+                  : t('emptyDesc')}
               </p>
 
               <Link href={locale === 'en' ? '/dashboard' : `/${locale}/dashboard`}>
@@ -87,15 +122,34 @@ export default async function LibraryPage({
             </div>
           )}
 
-          {items.length > 0 && (
+          {displayCount > 0 && (
             <>
-              <div className="flex items-center justify-between mb-5">
-                <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">{items.length}</strong> {t('images')}
-                </p>
+              <div className="mb-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">{displayCount}</strong> {t('images')}
+                  </p>
+                </div>
+
+                {processingCount > 0 && (
+                  <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    <Loader2 className="w-4 h-4 mt-0.5 flex-shrink-0 animate-spin" />
+                    <p>{t('processingDesc', { count: processingCount })}</p>
+                  </div>
+                )}
               </div>
-              <LibraryGrid generations={items} />
+              <LibraryGridShell
+                items={displayCards}
+                pendingGenerationIds={pendingGenerationIds}
+              />
             </>
+          )}
+
+          {displayCount === 0 && pendingGenerationIds.length > 0 && (
+            <LibraryGridShell
+              items={displayCards}
+              pendingGenerationIds={pendingGenerationIds}
+            />
           )}
         </div>
       </div>

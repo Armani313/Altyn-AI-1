@@ -30,6 +30,10 @@ import { upscaleToFourK }     from '@/lib/ai/imagen-upscale'
 import { checkRateLimit }     from '@/lib/rate-limit'
 import { refundWithRetry }    from '@/lib/utils/refund'
 import { UUID_REGEX }         from '@/lib/constants'
+import {
+  readPanelVariantsFromMetadata,
+  writePanelVariantsToMetadata,
+} from '@/lib/generate/panel-variants'
 
 export const maxDuration = 120   // Imagen upscale can take up to 90s
 export const runtime     = 'nodejs'
@@ -84,19 +88,18 @@ export async function POST(request: Request) {
     // ── 5. Load generation + ownership check ──────────────────────────────────
     const { data: genRaw } = await supabase
       .from('generations')
-      .select('status, panel_variants')
+      .select('status, metadata')
       .eq('id', rawGenId)
       .eq('user_id', user.id)   // ownership enforced at query level
       .single()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gen = genRaw as { status: string; panel_variants: any } | null
+    const gen = genRaw as { status: string; metadata?: unknown } | null
     if (!gen)                               return err('Генерация не найдена.', 404)
     if (gen.status !== 'completed')         return err('Генерация ещё не завершена.', 400)
-    if (!Array.isArray(gen.panel_variants)) return err('Это не контактный лист.', 400)
+    const currentVariants = readPanelVariantsFromMetadata(gen.metadata as never)
+    if (currentVariants.length === 0) return err('Это не контактный лист.', 400)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const panelEntry = (gen.panel_variants as any[]).find((p) => p.id === panelId)
+    const panelEntry = currentVariants.find((p) => p.id === panelId)
     if (!panelEntry?.url) return err(`Панель ${panelId} не найдена.`, 404)
 
     const panel1KUrl: string = panelEntry.url
@@ -157,13 +160,12 @@ export async function POST(request: Request) {
       .getPublicUrl(upscaledPath)
     const upscaledUrl = upscaledPub.publicUrl
 
-    // ── 10. Update panel_variants JSONB ───────────────────────────────────────
+    // ── 10. Update panel_variants in metadata ─────────────────────────────────
     // CRITICAL-1 fix: always filter by user_id to prevent cross-user writes.
     // LOGIC-1 note: concurrent upscales of different panels on the same generation
     // carry a lost-update risk; a Postgres JSONB function would be ideal, but for
     // the current load (upscale is UI-hidden) this read-modify-write is acceptable.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updatedVariants = (gen.panel_variants as any[]).map((p) =>
+    const updatedVariants = currentVariants.map((p) =>
       p.id === panelId
         ? { ...p, is_upscaled: true, upscaled_url: upscaledUrl }
         : p
@@ -171,12 +173,14 @@ export async function POST(request: Request) {
 
     const { error: updateErr } = await supabase
       .from('generations')
-      .update({ panel_variants: updatedVariants } as never)
+      .update({
+        metadata: writePanelVariantsToMetadata(gen.metadata as never, updatedVariants),
+      } as never)
       .eq('id', rawGenId)
       .eq('user_id', user.id)   // CRITICAL-1: ownership guard on UPDATE
 
     if (updateErr) {
-      console.error('[Upscale] panel_variants update error:', updateErr)
+      console.error('[Upscale] metadata panel_variants update error:', updateErr)
       // Image is uploaded but record not updated — non-fatal, upscaled URL is returned
     }
 

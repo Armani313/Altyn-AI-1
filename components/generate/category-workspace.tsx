@@ -7,16 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Header }         from '@/components/dashboard/header'
 import { UploadZone }     from '@/components/generate/upload-zone'
 import { TemplatePicker } from '@/components/generate/template-picker'
-import { ResultViewer, type GenerationResult } from '@/components/generate/result-viewer'
-import type { PanelVariant } from '@/components/generate/contact-sheet-viewer'
+import { ResultViewer } from '@/components/generate/result-viewer'
 import { createClient }   from '@/lib/supabase/client'
 import type { ProductType } from '@/lib/constants'
-import { isAiFreeLifestyleId } from '@/lib/constants'
+import {
+  getLifestyleGenerationStore,
+  type LifestyleWorkspaceSnapshot,
+} from '@/lib/lifestyle-generation-store'
 
 type AspectRatio = '1:1' | '9:16'
 type MobileStep  = 1 | 2 | 3
 
-const MAX_PARALLEL = 4
+const MAX_SELECTED_TEMPLATES = 4
 
 interface CategoryWorkspaceProps {
   productType: ProductType
@@ -24,6 +26,7 @@ interface CategoryWorkspaceProps {
 
 export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const t = useTranslations('dashboard')
+  const store = getLifestyleGenerationStore(productType)
 
   const MOBILE_STEPS = [
     { id: 1 as MobileStep, label: t('mobileStep1') },
@@ -31,250 +34,114 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
     { id: 3 as MobileStep, label: t('mobileStep3') },
   ]
 
-  const [previewUrl,         setPreviewUrl]         = useState<string | null>(null)
-  const [uploadedFile,       setUploadedFile]       = useState<File | null>(null)
-  const [selectedTemplates,  setSelectedTemplates]  = useState<string[]>([])
-  const [aspectRatio,        setAspectRatio]        = useState<AspectRatio>('1:1')
-  const [generationResults,  setGenerationResults]  = useState<GenerationResult[]>([])
-  const [creditsRemaining,   setCreditsRemaining]   = useState<number | null>(null)
-  const [customModelUrls,    setCustomModelUrls]    = useState<string[]>([])
-  const [mobileStep,         setMobileStep]         = useState<MobileStep>(1)
-  const [userPrompt,         setUserPrompt]         = useState('')
+  const [workspace, setWorkspace] = useState<LifestyleWorkspaceSnapshot>(() => store.snapshot)
+  const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
+  const [customModelUrls, setCustomModelUrls] = useState<string[]>([])
+  const [mobileStep, setMobileStep] = useState<MobileStep>(() => {
+    const snapshot = store.snapshot
+    if (snapshot.results.length > 0 || snapshot.running || snapshot.selectedTemplates.length > 0) return 3
+    if (snapshot.previewUrl) return 2
+    return 1
+  })
+
+  const previewUrl = workspace.previewUrl
+  const selectedTemplates = workspace.selectedTemplates
+  const aspectRatio = workspace.aspectRatio
+  const generationResults = workspace.results
+  const userPrompt = workspace.userPrompt
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase
-        .from('profiles')
-        .select('credits_remaining, custom_model_urls')
-        .eq('id', user.id)
-        .single()
-        .then(({ data }) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const profile = data as any
-          if (profile?.credits_remaining != null) {
-            setCreditsRemaining(profile.credits_remaining as number)
-          }
-          if (Array.isArray(profile?.custom_model_urls)) {
-            setCustomModelUrls(profile.custom_model_urls as string[])
-          }
-        })
+    let cancelled = false
+
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user || cancelled) return
+
+      const [profileResult, modelsResponse] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('credits_remaining')
+          .eq('id', user.id)
+          .single(),
+        fetch('/api/models', { cache: 'no-store', credentials: 'same-origin' }).catch(() => null),
+      ])
+
+      if (cancelled) return
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const profile = profileResult.data as any
+      if (profile?.credits_remaining != null) {
+        setCreditsRemaining(profile.credits_remaining as number)
+      }
+
+      if (modelsResponse?.ok) {
+        const data = await modelsResponse.json()
+        if (!cancelled && Array.isArray(data?.urls)) {
+          setCustomModelUrls(data.urls as string[])
+        }
+      }
     })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  useEffect(() => {
+    return store.subscribe((snapshot, nextCredits) => {
+      setWorkspace({ ...snapshot })
+      if (typeof nextCredits === 'number') {
+        setCreditsRemaining(nextCredits)
+      }
+    })
+  }, [store])
 
   const handleUpload = useCallback(
     (file: File, url: string) => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-      setUploadedFile(file)
-      setPreviewUrl(url)
-      setGenerationResults([])
+      store.setUpload(file, url)
       setMobileStep(2)
     },
-    [previewUrl]
+    [store]
   )
 
   const handleRemove = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setUploadedFile(null)
-    setPreviewUrl(null)
-    setGenerationResults([])
-    setSelectedTemplates([])
-  }, [previewUrl])
+    store.clearUpload()
+    setMobileStep(1)
+  }, [store])
 
-  const handleTemplateSelect = (ids: string[]) => {
-    setSelectedTemplates(ids)
-    if (ids.length > 0 && mobileStep === 2) setMobileStep(3)
-  }
-
-  const handleGenerate = useCallback(async () => {
-    if (!uploadedFile) return
-
-    const templates = selectedTemplates.length > 0 ? selectedTemplates : ['standalone']
-
-    if (creditsRemaining !== null && creditsRemaining < templates.length) {
-      setGenerationResults(
-        templates.flatMap((_, gi) =>
-          [1, 2, 3, 4].map((panelId) => ({
-            modelId:   `g${gi}_p${panelId}`,
-            status:    'error' as const,
-            resultUrl: null,
-            error:     t('errorInsufficientCredits', { needed: templates.length, available: creditsRemaining }),
-          }))
-        )
-      )
+  const handleTemplateSelect = useCallback((ids: string[]) => {
+    store.setSelectedTemplates(ids)
+    if (ids.length > 0) {
       setMobileStep(3)
       return
     }
 
-    setGenerationResults(
-      templates.flatMap((_, gi) =>
-        [1, 2, 3, 4].map((panelId) => ({
-          modelId:   `g${gi}_p${panelId}`,
-          status:    'generating' as const,
-          resultUrl: null,
-          error:     null,
-        }))
-      )
-    )
+    if (previewUrl) {
+      setMobileStep(2)
+    }
+  }, [previewUrl, store])
+
+  const handleGenerate = useCallback(async () => {
     setMobileStep(3)
-
-    await Promise.allSettled(
-      templates.map(async (modelId, gi) => {
-        const prefix = `g${gi}`
-        try {
-          const fd = new FormData()
-          fd.append('image',               uploadedFile)
-          fd.append('product_type',        productType)
-          fd.append('contact_sheet_ratio', aspectRatio)
-          if (isAiFreeLifestyleId(modelId)) {
-            fd.append('generate_mode', 'lifestyle-free')
-          } else {
-            fd.append('generate_mode', 'contact-sheet')
-            if (modelId !== 'standalone') fd.append('model_id', modelId)
-          }
-          if (userPrompt.trim()) fd.append('user_prompt', userPrompt.trim())
-
-          const res  = await fetch('/api/generate', { method: 'POST', body: fd })
-          const data = await res.json() as {
-            success?: boolean
-            panels?: PanelVariant[]
-            creditsRemaining?: number
-            error?: string
-          }
-
-          if (!res.ok || !data.success || !data.panels) {
-            const errMsg = data.error ?? t('errorGeneration')
-            setGenerationResults((prev) =>
-              prev.map((r) => r.modelId.startsWith(prefix)
-                ? { ...r, status: 'error', error: errMsg }
-                : r
-              )
-            )
-            return
-          }
-
-          setGenerationResults((prev) =>
-            prev.map((r) => {
-              if (!r.modelId.startsWith(prefix)) return r
-              const panelId = parseInt(r.modelId.split('_p')[1], 10)
-              const panel   = data.panels!.find((p) => p.id === panelId)
-              return panel ? { ...r, status: 'done', resultUrl: panel.url } : r
-            })
-          )
-          if (typeof data.creditsRemaining === 'number') {
-            setCreditsRemaining(data.creditsRemaining)
-          }
-        } catch {
-          setGenerationResults((prev) =>
-            prev.map((r) => r.modelId.startsWith(prefix)
-              ? { ...r, status: 'error', error: t('errorConnection') }
-              : r
-            )
-          )
-        }
-      })
-    )
-  }, [uploadedFile, selectedTemplates, productType, aspectRatio, userPrompt, creditsRemaining, t])
+    await store.startGeneration(productType, creditsRemaining, {
+      generationError: t('errorGeneration'),
+      connectionError: t('errorConnection'),
+      insufficientCredits: (needed, available) =>
+        t('errorInsufficientCredits', { needed, available }),
+    })
+  }, [creditsRemaining, productType, store, t])
 
   const handleRetryFailed = useCallback(async () => {
-    if (!uploadedFile) return
-
-    const failedPrefixes = Array.from(
-      new Set(
-        generationResults
-          .filter((r) => r.status === 'error')
-          .map((r) => r.modelId.split('_p')[0])
-      )
-    )
-    if (failedPrefixes.length === 0) return
-
-    const templates = selectedTemplates.length > 0 ? selectedTemplates : ['standalone']
-    const retryTemplates = failedPrefixes
-      .map((prefix) => {
-        const gi = parseInt(prefix.slice(1), 10)
-        return templates[gi] ?? null
-      })
-      .filter(Boolean) as string[]
-
-    if (retryTemplates.length === 0) return
-
-    if (creditsRemaining !== null && creditsRemaining < retryTemplates.length) {
-      setGenerationResults((prev) =>
-        prev.map((r) =>
-          failedPrefixes.some((p) => r.modelId.startsWith(p))
-            ? { ...r, error: t('errorInsufficientCredits', { needed: retryTemplates.length, available: creditsRemaining }) }
-            : r
-        )
-      )
-      return
-    }
-
-    setGenerationResults((prev) =>
-      prev.map((r) =>
-        failedPrefixes.some((p) => r.modelId.startsWith(p))
-          ? { ...r, status: 'generating', error: null }
-          : r
-      )
-    )
-
-    await Promise.allSettled(
-      retryTemplates.map(async (modelId, i) => {
-        const prefix = failedPrefixes[i]
-        try {
-          const fd = new FormData()
-          fd.append('image',               uploadedFile)
-          fd.append('product_type',        productType)
-          fd.append('contact_sheet_ratio', aspectRatio)
-          if (isAiFreeLifestyleId(modelId)) {
-            fd.append('generate_mode', 'lifestyle-free')
-          } else {
-            fd.append('generate_mode', 'contact-sheet')
-            if (modelId !== 'standalone') fd.append('model_id', modelId)
-          }
-          if (userPrompt.trim()) fd.append('user_prompt', userPrompt.trim())
-
-          const res  = await fetch('/api/generate', { method: 'POST', body: fd })
-          const data = await res.json() as {
-            success?: boolean
-            panels?: PanelVariant[]
-            creditsRemaining?: number
-            error?: string
-          }
-
-          if (!res.ok || !data.success || !data.panels) {
-            const errMsg = data.error ?? t('errorGeneration')
-            setGenerationResults((prev) =>
-              prev.map((r) => r.modelId.startsWith(prefix) ? { ...r, status: 'error', error: errMsg } : r)
-            )
-            return
-          }
-
-          setGenerationResults((prev) =>
-            prev.map((r) => {
-              if (!r.modelId.startsWith(prefix)) return r
-              const panelId = parseInt(r.modelId.split('_p')[1], 10)
-              const panel   = data.panels!.find((p) => p.id === panelId)
-              return panel ? { ...r, status: 'done', resultUrl: panel.url } : r
-            })
-          )
-          if (typeof data.creditsRemaining === 'number') {
-            setCreditsRemaining(data.creditsRemaining)
-          }
-        } catch {
-          setGenerationResults((prev) =>
-            prev.map((r) => r.modelId.startsWith(prefix)
-              ? { ...r, status: 'error', error: t('errorConnection') }
-              : r
-            )
-          )
-        }
-      })
-    )
-  }, [uploadedFile, generationResults, selectedTemplates, productType, aspectRatio, userPrompt, creditsRemaining, t])
+    await store.retryFailed(productType, creditsRemaining, {
+      generationError: t('errorGeneration'),
+      connectionError: t('errorConnection'),
+      insufficientCredits: (needed, available) =>
+        t('errorInsufficientCredits', { needed, available }),
+    })
+  }, [creditsRemaining, productType, store, t])
 
   const isAnyGenerating = generationResults.some((r) => r.status === 'generating')
-  const canGenerate     = !!uploadedFile && !isAnyGenerating && selectedTemplates.length > 0
+  const canGenerate     = !!previewUrl && !isAnyGenerating && selectedTemplates.length > 0
   const step1Done = !!previewUrl
   const step2Done = selectedTemplates.length > 0
 
@@ -343,7 +210,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
               step="02"
               title={
                 selectedTemplates.length > 0
-                  ? t('chooseModels', { count: selectedTemplates.length, max: MAX_PARALLEL })
+                  ? t('chooseModels', { count: selectedTemplates.length, max: MAX_SELECTED_TEMPLATES })
                   : t('chooseModelsEmpty')
               }
             />
@@ -351,7 +218,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
               <TemplatePicker
                 selectedIds={selectedTemplates}
                 onSelect={handleTemplateSelect}
-                maxSelect={MAX_PARALLEL}
+                maxSelect={MAX_SELECTED_TEMPLATES}
                 disabled={isAnyGenerating}
                 productType={productType}
                 customModelUrls={customModelUrls}
@@ -366,14 +233,14 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
             <ResultViewer
               results={generationResults}
               aspectRatio={aspectRatio}
-              onAspectRatioChange={setAspectRatio}
+              onAspectRatioChange={(ratio) => store.setAspectRatio(ratio)}
               onGenerate={handleGenerate}
               onRetryFailed={handleRetryFailed}
               canGenerate={canGenerate}
               creditsRemaining={creditsRemaining}
               customModelUrls={customModelUrls}
               userPrompt={userPrompt}
-              onUserPromptChange={setUserPrompt}
+              onUserPromptChange={(value) => store.setUserPrompt(value)}
               selectedCount={selectedTemplates.length}
             />
           </div>

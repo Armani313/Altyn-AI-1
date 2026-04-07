@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { X, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Download, Loader2, Sparkles } from 'lucide-react'
 
 export interface LightboxImage {
   url:    string
@@ -10,10 +10,12 @@ export interface LightboxImage {
 }
 
 interface LightboxProps {
-  images:       LightboxImage[]
-  initialIndex: number
-  open:         boolean
-  onClose:      () => void
+  images:              LightboxImage[]
+  initialIndex:        number
+  open:                boolean
+  onClose:             () => void
+  primaryActionLabel?: string
+  onPrimaryAction?:    (image: LightboxImage) => void
 }
 
 async function downloadImage(url: string, name: string) {
@@ -32,7 +34,14 @@ async function downloadImage(url: string, name: string) {
   }
 }
 
-export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps) {
+export function Lightbox({
+  images,
+  initialIndex,
+  open,
+  onClose,
+  primaryActionLabel,
+  onPrimaryAction,
+}: LightboxProps) {
   const t = useTranslations('lightbox')
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -94,18 +103,33 @@ export function Lightbox({ images, initialIndex, open, onClose }: LightboxProps)
       )}
 
       {/* Download */}
-      <button
-        onClick={(e) => { e.stopPropagation(); handleDownload() }}
-        disabled={isDownloading}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
-        aria-label={t('download')}
-      >
-        {isDownloading
-          ? <Loader2 className="w-4 h-4 animate-spin" />
-          : <Download className="w-4 h-4" />
-        }
-        {isDownloading ? t('downloading') : t('download')}
-      </button>
+      <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
+        {onPrimaryAction && primaryActionLabel && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onPrimaryAction(current)
+            }}
+            className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-lg transition-colors hover:bg-rose-gold-50"
+          >
+            <Sparkles className="h-4 w-4 text-rose-gold-600" />
+            {primaryActionLabel}
+          </button>
+        )}
+
+        <button
+          onClick={(e) => { e.stopPropagation(); handleDownload() }}
+          disabled={isDownloading}
+          className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-60"
+          aria-label={t('download')}
+        >
+          {isDownloading
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <Download className="w-4 h-4" />
+          }
+          {isDownloading ? t('downloading') : t('download')}
+        </button>
+      </div>
 
       {/* Prev arrow */}
       {images.length > 1 && (

@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'Luminify — ИИ-фотографии украшений'
+export const alt = 'Luminify — AI jewelry photography'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -89,7 +89,7 @@ export default function OgImage() {
             marginBottom: 20,
           }}
         >
-          ИИ-фотографии украшений
+          AI jewelry photography
         </div>
 
         {/* Subtitle */}
@@ -104,7 +104,7 @@ export default function OgImage() {
             fontFamily: 'sans-serif',
           }}
         >
-          Профессиональный лайфстайл-контент без фотографа
+          Professional lifestyle content without photoshoots
         </div>
 
         {/* Badge */}
@@ -120,7 +120,7 @@ export default function OgImage() {
           }}
         >
           <span style={{ fontSize: 18, color: '#C4834F', fontFamily: 'sans-serif' }}>
-            ✦ Для ювелирных магазинов Казахстана
+            ✦ Built for jewelry stores
           </span>
         </div>
       </div>

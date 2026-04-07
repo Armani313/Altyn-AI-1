@@ -1,7 +1,8 @@
 /**
  * POST /api/models/upload
  *
- * Uploads a user's custom model photo and appends its URL to their profile array.
+ * Uploads a user's custom model photo and appends its private storage reference
+ * to their profile array.
  * Users can keep up to MAX_CUSTOM_MODELS (5) photos simultaneously.
  *
  * Request: multipart/form-data
@@ -19,13 +20,16 @@ import {
   SAFE_IMAGE_EXTENSIONS,
   MAX_CUSTOM_MODELS,
 } from '@/lib/constants'
+import {
+  CUSTOM_MODELS_BUCKET,
+  buildCustomModelPath,
+  buildSignedCustomModelUrls,
+} from '@/lib/custom-models'
 import { assertSafeImageBytes } from '@/lib/utils/security'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 30
 export const runtime     = 'nodejs'
-
-const OUTPUT_BUCKET = 'generated-images'
 
 export async function POST(request: Request) {
   try {
@@ -77,7 +81,7 @@ export async function POST(request: Request) {
     const rawExt  = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
     const safeExt = (SAFE_IMAGE_EXTENSIONS as readonly string[]).includes(rawExt) ? rawExt : 'jpg'
     const filename    = `custom-${Date.now()}.${safeExt}`
-    const storagePath = `user-models/${user.id}/${filename}`
+    const storagePath = buildCustomModelPath(user.id, filename)
 
     const serviceSupabase = createServiceClient()
     const fileBytes = await imageFile.arrayBuffer()
@@ -90,7 +94,7 @@ export async function POST(request: Request) {
     }
 
     const { error: uploadErr } = await serviceSupabase.storage
-      .from(OUTPUT_BUCKET)
+      .from(CUSTOM_MODELS_BUCKET)
       .upload(storagePath, fileBytes, { contentType: imageFile.type, upsert: false })
 
     if (uploadErr) {
@@ -98,11 +102,8 @@ export async function POST(request: Request) {
       return err('Ошибка загрузки файла. Попробуйте снова.', 500)
     }
 
-    const { data: pub } = serviceSupabase.storage.from(OUTPUT_BUCKET).getPublicUrl(storagePath)
-    const publicUrl = pub.publicUrl
-
-    // ── Append URL to profile array ───────────────────────────────────────────
-    const updated = [...current, publicUrl]
+    // ── Append private storage reference to profile array ─────────────────────
+    const updated = [...current, storagePath]
 
     const { error: updateErr } = await supabase
       .from('profiles')
@@ -111,10 +112,13 @@ export async function POST(request: Request) {
 
     if (updateErr) {
       console.error('Profile update error:', updateErr)
-      // Non-fatal: file is uploaded, return URL anyway
+      await serviceSupabase.storage.from(CUSTOM_MODELS_BUCKET).remove([storagePath])
+      return err('Ошибка обновления профиля. Попробуйте снова.', 500)
     }
 
-    return NextResponse.json({ success: true, urls: updated, index: updated.length - 1 })
+    const signedUrls = await buildSignedCustomModelUrls(serviceSupabase, user.id, updated)
+
+    return NextResponse.json({ success: true, urls: signedUrls, index: updated.length - 1 })
   } catch (fatal) {
     console.error('Model upload fatal error:', fatal)
     return err('Внутренняя ошибка сервера. Попробуйте позже.', 500)

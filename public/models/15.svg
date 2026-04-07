@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 640" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="36" y1="22" x2="318" y2="618" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A35FC2"/>
+      <stop offset="1" stop-color="#FFC18C"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="640" fill="url(#bg)"/>
+  <circle cx="82" cy="98" r="78" fill="#FFFFFF" fill-opacity=".09"/>
+  <ellipse cx="180" cy="590" rx="126" ry="26" fill="#000" fill-opacity=".15"/>
+  <path d="M108 516c20-85 58-130 112-130 49 0 84 34 101 96l9 34H108Z" fill="#5F4667"/>
+  <path d="M204 183c46 0 82 38 82 89 0 56-36 95-89 95-39 0-67-28-67-78 0-62 29-106 74-106Z" fill="#E0AE85"/>
+  <path d="M147 250c3-45 33-83 72-92 24-6 47-2 65 11 11 8 19 19 24 32-15-6-30-7-47-4-28 4-49 15-114 53Z" fill="#5A4138"/>
+  <path d="M221 234c24 8 41 30 41 57 0 31-20 57-48 67 17-15 27-35 27-61 0-12-2-24-7-35-4-9-9-18-13-28Z" fill="#5A4138"/>
+  <circle cx="235" cy="292" r="7" fill="#F8E6F2"/>
+  <circle cx="235" cy="292" r="4" fill="#B8DDF4"/>
+  <path d="M169 350h35c16 0 29 13 29 29v13h-93v-13c0-16 13-29 29-29Z" fill="#FFF6EF"/>
+</svg>

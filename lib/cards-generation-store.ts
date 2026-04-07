@@ -7,6 +7,7 @@
  */
 
 import { CUSTOM_CARD_TEMPLATE_ID, AI_FREE_CARD_ID } from './card-templates'
+import { pollGenerateJob } from './generate/poll-generate-job'
 
 export interface CardResult {
   templateId: string
@@ -176,6 +177,10 @@ class CardsGenerationStore {
         const res  = await fetch('/api/generate', { method: 'POST', body: fd })
         const data = await res.json() as {
           error?: string
+          queued?: boolean
+          jobId?: string
+          generationId?: string
+          statusToken?: string
           outputUrl?: string
           creditsRemaining?: number
           isContactSheet?: boolean
@@ -183,7 +188,27 @@ class CardsGenerationStore {
         }
 
         console.log(`[CardsStore] response ok=${res.ok} isContactSheet=${data.isContactSheet} panels=${data.panels?.length ?? 0} outputUrl=${!!data.outputUrl}`)
-        if (!res.ok) {
+        if (res.status === 202 && data.generationId) {
+          const finalData = await pollGenerateJob(data.generationId, data.statusToken)
+          if (finalData.status !== 'completed') {
+            this._setResult(templateId, {
+              status: 'error',
+              error: finalData.error ?? 'Ошибка генерации. Попробуйте снова.',
+            })
+          } else if (finalData.isContactSheet && finalData.panels?.length) {
+            this._setResult(
+              templateId,
+              { status: 'done', panels: finalData.panels, resultUrl: finalData.panels[0]?.url ?? null },
+              typeof finalData.creditsRemaining === 'number' ? finalData.creditsRemaining : undefined
+            )
+          } else {
+            this._setResult(
+              templateId,
+              { status: 'done', resultUrl: finalData.outputUrl ?? null, panels: null },
+              typeof finalData.creditsRemaining === 'number' ? finalData.creditsRemaining : undefined
+            )
+          }
+        } else if (!res.ok) {
           this._setResult(templateId, {
             status: 'error',
             error:  data.error ?? 'Ошибка генерации. Попробуйте снова.',

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useLocale } from 'next-intl'
 import {
   Download, Sparkles, ImageIcon, RefreshCw, Loader2,
   AlertCircle, Zap,
@@ -134,11 +135,17 @@ function DoneCard({
   imageUrl,
   thumbUrl,
   onExpand,
+  imageAlt,
+  downloadLabel,
+  downloadingLabel,
 }: {
   aspectCls: string
   imageUrl:  string
   thumbUrl?: string
   onExpand:  () => void
+  imageAlt: string
+  downloadLabel: string
+  downloadingLabel: string
 }) {
   const [isDownloading, setIsDownloading] = useState(false)
 
@@ -157,7 +164,7 @@ function DoneCard({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={thumbUrl ?? imageUrl}
-        alt="Карточка товара"
+        alt={imageAlt}
         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
       />
 
@@ -174,7 +181,7 @@ function DoneCard({
           ? <Loader2 className="w-3 h-3 text-rose-gold-500 animate-spin flex-shrink-0" />
           : <Download className="w-3 h-3 text-rose-gold-500 flex-shrink-0" />
         }
-        {isDownloading ? 'Загрузка…' : 'Скачать'}
+        {isDownloading ? downloadingLabel : downloadLabel}
       </button>
     </div>
   )
@@ -193,6 +200,42 @@ export function CardResultViewer({
   creditsRemaining,
 }: CardResultViewerProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const locale = useLocale() === 'ru' ? 'ru' : 'en'
+  const copy = locale === 'ru'
+    ? {
+        cardAlt: 'Карточка товара',
+        generatingCards: 'Создаём',
+        cards: 'карточки',
+        insufficientCredits: 'Недостаточно кредитов',
+        chooseTemplate: 'Выберите шаблон',
+        createCards: 'Создать',
+        creditsSuffix: 'кр.',
+        creditsWord: 'кредитов',
+        retryOne: 'Повторить неудачную генерацию',
+        retryMany: (count: number) => `Повторить ${count} неудачных генераций`,
+        resultsHere: 'Здесь появятся карточки',
+        resultsHint: 'Загрузите фото и выберите шаблон',
+        uploadHint: '↑ Загрузите фото продукта для начала',
+        download: 'Скачать',
+        downloading: 'Загрузка…',
+      }
+    : {
+        cardAlt: 'Product card',
+        generatingCards: 'Creating',
+        cards: 'cards',
+        insufficientCredits: 'Insufficient credits',
+        chooseTemplate: 'Choose a template',
+        createCards: 'Create',
+        creditsSuffix: 'cr.',
+        creditsWord: 'credits',
+        retryOne: 'Retry failed generation',
+        retryMany: (count: number) => `Retry ${count} failed generations`,
+        resultsHere: 'Your cards will appear here',
+        resultsHint: 'Upload a photo and choose a template',
+        uploadHint: '↑ Upload a product photo to get started',
+        download: 'Download',
+        downloading: 'Downloading…',
+      }
 
   const isAnyGenerating = results.some((r) => r.status === 'generating')
   const hasResults      = results.length > 0
@@ -211,7 +254,7 @@ export function CardResultViewer({
       return (
         <span className="flex items-center gap-2.5">
           <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-          Создаём {total} карточки…
+          {copy.generatingCards} {total} {copy.cards}…
         </span>
       )
     }
@@ -219,7 +262,7 @@ export function CardResultViewer({
       return (
         <span className="flex items-center gap-2.5">
           <Zap className="w-5 h-5" />
-          Недостаточно кредитов
+          {copy.insufficientCredits}
         </span>
       )
     }
@@ -227,7 +270,7 @@ export function CardResultViewer({
       return (
         <span className="flex items-center gap-2.5">
           <Sparkles className="w-5 h-5" />
-          Выберите шаблон
+          {copy.chooseTemplate}
         </span>
       )
     }
@@ -235,9 +278,9 @@ export function CardResultViewer({
     return (
       <span className="flex items-center gap-2.5">
         <Sparkles className="w-5 h-5" />
-        Создать {total} карточки
+        {copy.createCards} {total} {copy.cards}
         <span className="ml-0.5 text-white/70 text-sm font-normal">
-          ({selectedCount} кр.)
+          ({selectedCount} {copy.creditsSuffix})
         </span>
       </span>
     )
@@ -272,7 +315,7 @@ export function CardResultViewer({
           }`}>
             <Zap className={`w-3.5 h-3.5 ${!enoughCredits && selectedCount > 0 ? 'text-red-500' : 'text-rose-gold-500'}`} />
             <span>
-              <strong className="text-foreground">{creditsRemaining}</strong> кредитов
+              <strong className="text-foreground">{creditsRemaining}</strong> {copy.creditsWord}
             </span>
           </div>
         )}
@@ -299,7 +342,7 @@ export function CardResultViewer({
           onClick={onRetryFailed}
         >
           <RefreshCw className="w-4 h-4 mr-1.5" />
-          Повторить {failedCount === 1 ? 'неудачную' : `${failedCount} неудачных`} генераций
+          {failedCount === 1 ? copy.retryOne : copy.retryMany(failedCount)}
         </Button>
       )}
 
@@ -322,6 +365,9 @@ export function CardResultViewer({
                 imageUrl={item.imageUrl}
                 thumbUrl={item.thumbUrl}
                 onExpand={() => setLightboxIndex(lbIdx)}
+                imageAlt={copy.cardAlt}
+                downloadLabel={copy.download}
+                downloadingLabel={copy.downloading}
               />
             )
           })}
@@ -337,10 +383,10 @@ export function CardResultViewer({
               </div>
               <div>
                 <p className="font-medium text-foreground/70 text-sm mb-0.5">
-                  Здесь появятся карточки
+                  {copy.resultsHere}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Загрузите фото и выберите шаблон
+                  {copy.resultsHint}
                 </p>
               </div>
             </div>
@@ -350,7 +396,7 @@ export function CardResultViewer({
 
       {!isAnyGenerating && !canGenerate && selectedCount > 0 && (
         <p className="text-center text-xs text-muted-foreground">
-          ↑ Загрузите фото продукта для начала
+          {copy.uploadHint}
         </p>
       )}
 

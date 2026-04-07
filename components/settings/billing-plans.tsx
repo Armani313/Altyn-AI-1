@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { Check, Zap, Crown, Sparkles, AlertCircle, ExternalLink, Building2, ShieldCheck, Lock } from 'lucide-react'
+import { Check, Zap, Crown, Sparkles, AlertCircle, ExternalLink, Building2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PolarEmbedCheckout } from '@polar-sh/checkout/embed'
 import type { Plan } from '@/types/database.types'
@@ -137,13 +137,14 @@ export function BillingPlans({ currentPlan, expiresAt, creditsLeft }: BillingPla
               </p>
             )}
             {currentPlan !== 'free' && (
-              <a
-                href="/api/portal"
+              <button
+                type="button"
+                onClick={() => window.location.assign('/api/portal')}
                 className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline underline-offset-2 mt-2"
               >
                 {t('manageSubscription')}
                 <ExternalLink className="w-3 h-3" />
-              </a>
+              </button>
             )}
           </div>
           <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 border border-cream-200 shadow-soft">

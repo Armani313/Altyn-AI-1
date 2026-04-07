@@ -115,6 +115,7 @@ class QueueManager {
       priority:    opts.priority    ?? 0,
       status:      'queued',
       params:      opts.params,
+      meta:        opts.meta,
       createdAt:   Date.now(),
       attempts:    0,
       maxAttempts: opts.maxAttempts ?? 3,

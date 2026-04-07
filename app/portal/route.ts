@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { polar } from '@/lib/payments/polar'
+import { polar, getPolarServerConfigError } from '@/lib/payments/polar'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +17,12 @@ export async function GET(request: Request) {
 
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  const polarConfigError = getPolarServerConfigError()
+  if (polarConfigError) {
+    console.error(polarConfigError)
+    return NextResponse.redirect(new URL('/settings/billing', request.url))
   }
 
   try {

@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap, Home } from 'lucide-react'
+import { Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap, Home, Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/supabase/actions'
 import type { Profile } from '@/types/database.types'
@@ -19,20 +20,35 @@ export function Sidebar({ profile }: SidebarProps) {
   const plan     = profile?.plan ?? 'free'
   const credits  = profile?.credits_remaining ?? 0
   const planMeta = PLAN_META[plan]
+  const [editorMode, setEditorMode] = useState<'remove-bg' | 'photo-editor' | null>(null)
+
+  useEffect(() => {
+    if (pathname !== '/editor') {
+      setEditorMode(null)
+      return
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const photoMode = params.get('mode') === 'photo-editor' || params.get('direct') === '1'
+    setEditorMode(photoMode ? 'photo-editor' : 'remove-bg')
+  }, [pathname])
 
   // Hard navigation required for /editor: needs 'unsafe-eval' CSP for ONNX Runtime.
   // Next.js SPA navigation reuses the CSP from the initial page load, which lacks it.
   const editorHref = locale === 'en' ? '/editor' : `/${locale}/editor`
+  const photoEditorHref = `${editorHref}?mode=photo-editor`
 
   const CREATE_ITEMS = [
     { href: '/dashboard',  icon: Wand2,       label: t('lifestyle'),  hardNav: false },
     { href: '/cards',      icon: LayoutGrid,  label: t('cards'),      hardNav: false },
-    { href: editorHref,    icon: PenTool,     label: t('editor'),     hardNav: true  },
+    { href: editorHref,    icon: Scissors,    label: t('removeBg'),   hardNav: true  },
+    { href: photoEditorHref, icon: PenTool,   label: t('editor'),     hardNav: true  },
   ]
 
   const isNavActive = (href: string) =>
     pathname === href ||
-    (href === editorHref && pathname === '/editor') ||
+    (href === editorHref && editorMode === 'remove-bg') ||
+    (href === photoEditorHref && editorMode === 'photo-editor') ||
     (href === '/dashboard' && pathname.startsWith('/dashboard/'))
 
   const navLinkCls = (href: string) =>
@@ -41,6 +57,10 @@ export function Sidebar({ profile }: SidebarProps) {
         ? 'bg-rose-gold-50 text-rose-gold-700 border border-rose-gold-100'
         : 'text-muted-foreground hover:bg-cream-100 hover:text-foreground'
     }`
+
+  const hardNavigate = (href: string) => {
+    window.location.assign(href)
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[240px] bg-white border-r border-cream-200 hidden lg:flex flex-col z-40">
@@ -65,10 +85,15 @@ export function Sidebar({ profile }: SidebarProps) {
         </p>
         {CREATE_ITEMS.map(({ href, icon: Icon, label, hardNav }) =>
           hardNav ? (
-            <a key={href} href={href} className={navLinkCls(href)}>
-              <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === '/editor' ? 'text-rose-gold-600' : ''}`} />
+            <button
+              key={href}
+              type="button"
+              onClick={() => hardNavigate(href)}
+              className={`${navLinkCls(href)} w-full text-left`}
+            >
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isNavActive(href) ? 'text-rose-gold-600' : ''}`} />
               {label}
-            </a>
+            </button>
           ) : (
             <Link key={href} href={href} className={navLinkCls(href)}>
               <Icon className={`w-4 h-4 flex-shrink-0 ${isNavActive(href) ? 'text-rose-gold-600' : ''}`} />

@@ -5,7 +5,9 @@ import { useTranslations } from 'next-intl'
 import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2, ChevronDown, Wand2, ScanLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
+import { useRouter } from '@/i18n/navigation'
 import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex, isMacroShotId } from '@/lib/constants'
+import { saveUpscaleSourceImage } from '@/lib/tools/upscale-transfer'
 
 type AspectRatio = '1:1' | '9:16'
 
@@ -181,6 +183,8 @@ export function ResultViewer({
   selectedCount = 0,
 }: ResultViewerProps) {
   const t = useTranslations('resultViewer')
+  const tLightbox = useTranslations('lightbox')
+  const router = useRouter()
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [promptOpen,    setPromptOpen]    = useState(false)
 
@@ -202,6 +206,12 @@ export function ResultViewer({
 
   function doneIndexOf(result: GenerationResult): number {
     return lightboxImages.findIndex((img) => img.url === result.resultUrl)
+  }
+
+  const handleEnhanceImage = (image: LightboxImage) => {
+    setLightboxIndex(null)
+    saveUpscaleSourceImage(image.url)
+    router.push(`/tools/photo-enhancer?image=${encodeURIComponent(image.url)}`)
   }
 
   const genLabel = () => {
@@ -392,6 +402,8 @@ export function ResultViewer({
         initialIndex={lightboxIndex ?? 0}
         open={lightboxIndex !== null}
         onClose={() => setLightboxIndex(null)}
+        primaryActionLabel={tLightbox('enhance')}
+        onPrimaryAction={handleEnhanceImage}
       />
     </div>
   )

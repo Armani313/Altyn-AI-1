@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type ChangeEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   Undo2, Redo2, Download, FlipHorizontal2, FlipVertical2,
@@ -19,7 +19,7 @@ import { BackgroundPanel, DEFAULT_BG_CONFIG, type BgConfig } from './background-
 type SidePanel = 'background' | 'adjust' | 'text' | 'graphics' | 'layers' | null
 
 interface EditorProps {
-  productBlobUrl: string
+  productBlobUrl?: string | null
   onBack?: () => void
 }
 
@@ -89,12 +89,17 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
 
   // Fabric.js refs
   const canvasElRef = useRef<HTMLCanvasElement>(null)
+  const productInputRef = useRef<HTMLInputElement>(null)
   const fabricRef = useRef<import('fabric').Canvas | null>(null)
   const productObjRef = useRef<import('fabric').FabricImage | null>(null)
+  const blobProductUrlRef = useRef<string | null>(null)
 
   // State
   const [ratio, setRatio] = useState<(typeof RATIOS)[number]>(RATIOS[0])
   const [panel, setPanel] = useState<SidePanel>(null)
+  const [currentProductUrl, setCurrentProductUrl] = useState<string | null>(productBlobUrl ?? null)
+  const [hasProduct, setHasProduct] = useState(Boolean(productBlobUrl))
+  const [canvasReady, setCanvasReady] = useState(false)
 
   // Background config
   const [bgConfig, setBgConfig] = useState<BgConfig>(DEFAULT_BG_CONFIG)
@@ -121,22 +126,69 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   const [showMobileActions, setShowMobileActions] = useState(false)
 
   // History
-  const history = useEditorHistory()
-  const [historyTick, setHistoryTick] = useState(0)
+  const {
+    save: saveToHistory,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useEditorHistory()
+  const [, setHistoryTick] = useState(0)
 
-  const saveHistory = useCallback(() => {
+  const saveHistory = useCallback((notify = true) => {
     if (fabricRef.current) {
-      history.save(fabricRef.current)
-      setHistoryTick((n) => n + 1)
+      saveToHistory(fabricRef.current)
+      if (notify) {
+        setHistoryTick((n) => n + 1)
+      }
     }
-  }, [history])
+  }, [saveToHistory])
 
   // ── Canvas dimensions ─────────────────────────────────────────────────────
   const { cw, ch } = getDims(ratio.w, ratio.h)
 
+  const loadProductToCanvas = useCallback(async (sourceUrl: string) => {
+    const canvas = fabricRef.current
+    if (!canvas || !sourceUrl) return
+
+    const fabric = await import('fabric')
+
+    if (productObjRef.current) {
+      canvas.remove(productObjRef.current)
+      productObjRef.current = null
+    }
+
+    const prodImg = await fabric.FabricImage.fromURL(sourceUrl, { crossOrigin: 'anonymous' })
+    const maxDim = Math.min(cw, ch) * 0.6
+    const scale = maxDim / Math.max(prodImg.width ?? 1, prodImg.height ?? 1)
+    prodImg.set({
+      scaleX: scale,
+      scaleY: scale,
+      left: cw / 2,
+      top: ch / 2,
+      originX: 'center',
+      originY: 'center',
+      name: PREFIX.product,
+    })
+    prodImg.setControlsVisibility({ mtr: true })
+    canvas.add(prodImg)
+    canvas.setActiveObject(prodImg)
+    productObjRef.current = prodImg
+    setHasProduct(true)
+    canvas.requestRenderAll()
+    saveHistory()
+    rerender()
+  }, [ch, cw, rerender, saveHistory])
+
   // ── Initialize Fabric canvas ──────────────────────────────────────────────
   useEffect(() => {
+    setCurrentProductUrl(productBlobUrl ?? null)
+    setHasProduct(Boolean(productBlobUrl))
+  }, [productBlobUrl])
+
+  useEffect(() => {
     let mounted = true
+    setCanvasReady(false)
     const init = async () => {
       const fabric = await import('fabric')
       if (!mounted || !canvasElRef.current) return
@@ -165,38 +217,42 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       canvas.on('selection:created', rerender)
       canvas.on('selection:updated', rerender)
       canvas.on('selection:cleared', rerender)
-      canvas.on('object:modified', saveHistory)
-
-      // Load product
-      if (productBlobUrl) {
-        const prodImg = await fabric.FabricImage.fromURL(productBlobUrl, { crossOrigin: 'anonymous' })
-        const maxDim = Math.min(cw, ch) * 0.6
-        const scale = maxDim / Math.max(prodImg.width ?? 1, prodImg.height ?? 1)
-        prodImg.set({
-          scaleX: scale,
-          scaleY: scale,
-          left: cw / 2,
-          top: ch / 2,
-          originX: 'center',
-          originY: 'center',
-          name: PREFIX.product,
-        })
-        prodImg.setControlsVisibility({ mtr: true })
-        canvas.add(prodImg)
-        canvas.setActiveObject(prodImg)
-        productObjRef.current = prodImg
-      }
+      canvas.on('object:modified', () => saveHistory())
 
       canvas.requestRenderAll()
-      saveHistory()
+      saveHistory(false)
+      setCanvasReady(true)
     }
     init()
 
     return () => {
       mounted = false
+      setCanvasReady(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cw, ch, productBlobUrl])
+  }, [cw, ch, saveHistory, rerender])
+
+  useEffect(() => {
+    if (!canvasReady) return
+
+    if (!currentProductUrl) {
+      if (productObjRef.current && fabricRef.current) {
+        fabricRef.current.remove(productObjRef.current)
+        productObjRef.current = null
+        fabricRef.current.requestRenderAll()
+      }
+      setHasProduct(false)
+      return
+    }
+
+    loadProductToCanvas(currentProductUrl)
+  }, [canvasReady, currentProductUrl, loadProductToCanvas])
+
+  useEffect(() => () => {
+    if (blobProductUrlRef.current) {
+      URL.revokeObjectURL(blobProductUrlRef.current)
+    }
+  }, [])
 
   // ── Keep Fabric pointer offset in sync with CSS-scaled canvas ─────────────
   useEffect(() => {
@@ -405,11 +461,35 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
     const canvas = fabricRef.current
     const obj = canvas?.getActiveObject()
     if (!obj || getLayerType(obj) === 'background') return
+    const deletedType = getLayerType(obj)
     canvas!.remove(obj)
     canvas!.discardActiveObject()
     canvas!.requestRenderAll()
+    if (deletedType === 'product') {
+      productObjRef.current = null
+      setCurrentProductUrl(null)
+      setHasProduct(false)
+    }
     saveHistory()
     rerender()
+  }
+
+  const openProductPicker = () => {
+    productInputRef.current?.click()
+  }
+
+  const handleProductFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !file.type.startsWith('image/')) return
+
+    if (blobProductUrlRef.current) {
+      URL.revokeObjectURL(blobProductUrlRef.current)
+    }
+
+    const nextUrl = URL.createObjectURL(file)
+    blobProductUrlRef.current = nextUrl
+    setCurrentProductUrl(nextUrl)
+    event.target.value = ''
   }
 
   const handleAddText = async () => {
@@ -482,7 +562,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       subTargetCheck: true,
       interactive: true,
     })
-    ;(group as any).name = `${PREFIX.badge}${badge.id}`
+    group.set('name', `${PREFIX.badge}${badge.id}`)
 
     canvas.add(group)
     canvas.setActiveObject(group)
@@ -493,7 +573,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
 
   const handleUndo = async () => {
     if (fabricRef.current) {
-      await history.undo(fabricRef.current)
+      await undo(fabricRef.current)
       setHistoryTick((n) => n + 1)
       rerender()
     }
@@ -501,7 +581,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
 
   const handleRedo = async () => {
     if (fabricRef.current) {
-      await history.redo(fabricRef.current)
+      await redo(fabricRef.current)
       setHistoryTick((n) => n + 1)
       rerender()
     }
@@ -839,6 +919,14 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
 
   return (
     <div className="flex flex-col h-full">
+      <input
+        ref={productInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleProductFileChange}
+      />
+
       {/* ── Top toolbar ── */}
       <div className="shrink-0 border-b border-cream-200 bg-white"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
@@ -855,12 +943,22 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
                 <div className="w-px h-5 bg-cream-200 mx-0.5 shrink-0" />
               </>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 shrink-0 gap-1.5 px-2 text-xs"
+              onClick={openProductPicker}
+            >
+              <Palette className="w-3.5 h-3.5" />
+              {hasProduct ? t('replaceInEditor') : t('uploadToEditor')}
+            </Button>
+            <div className="w-px h-5 bg-cream-200 mx-0.5 shrink-0" />
             <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-              onClick={handleUndo} disabled={!history.canUndo()}>
+              onClick={handleUndo} disabled={!canUndo()}>
               <Undo2 className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-              onClick={handleRedo} disabled={!history.canRedo()}>
+              onClick={handleRedo} disabled={!canRedo()}>
               <Redo2 className="w-4 h-4" />
             </Button>
 
@@ -992,6 +1090,24 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
                 maxHeight: 'calc(100dvh - 120px)',
               }}
             />
+            {!hasProduct && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-cream-300 bg-white/78 backdrop-blur-sm">
+                <div className="max-w-[280px] px-6 text-center">
+                  <p className="text-base font-semibold text-foreground">
+                    {t('emptyEditorTitle')}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {t('emptyEditorSubtitle')}
+                  </p>
+                  <Button
+                    onClick={openProductPicker}
+                    className="mt-4 gradient-rose-gold text-white rounded-xl h-10 px-5"
+                  >
+                    {t('uploadToEditor')}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

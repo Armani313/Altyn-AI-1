@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Download, Maximize2, Calendar, ImageIcon } from 'lucide-react'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
-import type { Generation } from '@/types/database.types'
+import { useRouter } from '@/i18n/navigation'
+import { saveUpscaleSourceImage } from '@/lib/tools/upscale-transfer'
+import type { LibraryDisplayCard } from '@/lib/library/display-items'
 
-const STATUS_CLASSES: Record<Generation['status'], string> = {
+const STATUS_CLASSES: Record<LibraryDisplayCard['status'], string> = {
   pending:    'bg-amber-50 text-amber-600 border-amber-200',
   processing: 'bg-blue-50 text-blue-600 border-blue-200',
   completed:  'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -30,63 +32,84 @@ async function downloadImage(url: string, name: string) {
 }
 
 interface LibraryGridProps {
-  generations: Generation[]
+  items: LibraryDisplayCard[]
 }
 
-export function LibraryGrid({ generations }: LibraryGridProps) {
+export function LibraryGrid({ items }: LibraryGridProps) {
   const t = useTranslations('libraryGrid')
+  const tLightbox = useTranslations('lightbox')
+  const router = useRouter()
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
-  const STATUS_MAP: Record<Generation['status'], { label: string; class: string }> = {
+  const STATUS_MAP: Record<LibraryDisplayCard['status'], { label: string; class: string }> = {
     pending:    { label: t('statusPending'),    class: STATUS_CLASSES.pending    },
     processing: { label: t('statusProcessing'), class: STATUS_CLASSES.processing },
     completed:  { label: t('statusCompleted'),  class: STATUS_CLASSES.completed  },
     failed:     { label: t('statusFailed'),     class: STATUS_CLASSES.failed     },
   }
 
-  // Build lightbox image list from completed generations only
-  const lightboxImages: LightboxImage[] = generations
-    .filter((g) => g.status === 'completed' && g.output_image_url)
-    .map((g) => ({
-      url:   g.output_image_url!,
-      label: new Date(g.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }),
+  const lightboxImages: LightboxImage[] = items
+    .filter((item) => item.status === 'completed' && item.imageUrl)
+    .map((item) => ({
+      url: item.imageUrl!,
+      label: item.lightboxLabel,
     }))
 
-  // Map a generation's index in the full list to its index in lightboxImages
-  function toLightboxIndex(gen: Generation): number {
-    return lightboxImages.findIndex((img) => img.url === gen.output_image_url)
+  function toLightboxIndex(url: string | null): number {
+    return url ? lightboxImages.findIndex((img) => img.url === url) : -1
+  }
+
+  const handleEnhanceImage = (image: LightboxImage) => {
+    setLightboxIndex(null)
+    saveUpscaleSourceImage(image.url)
+    router.push(`/tools/photo-enhancer?image=${encodeURIComponent(image.url)}`)
   }
 
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-        {generations.map((gen) => {
-          const status    = STATUS_MAP[gen.status]
-          const date      = new Date(gen.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
-          const lbIndex   = gen.output_image_url ? toLightboxIndex(gen) : -1
-          const canExpand = gen.status === 'completed' && gen.output_image_url && lbIndex >= 0
+        {items.map((item) => {
+          const status = STATUS_MAP[item.status]
+          const lbIndex = toLightboxIndex(item.imageUrl)
+          const canExpand = item.status === 'completed' && item.imageUrl && lbIndex >= 0
 
           return (
             <div
-              key={gen.id}
+              key={item.id}
               className="bg-white rounded-2xl border border-cream-200 overflow-hidden shadow-soft hover:shadow-card hover:border-rose-gold-100 transition-all duration-300"
             >
               {/* Image area */}
               <div className="aspect-square bg-gradient-to-br from-cream-100 to-rose-gold-50 flex items-center justify-center relative overflow-hidden">
-                {gen.output_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={gen.output_image_url}
-                    alt={t('imageAlt')}
-                    className="w-full h-full object-cover"
-                  />
+                {item.previewUrl ? (
+                  canExpand ? (
+                    <button
+                      type="button"
+                      onClick={() => setLightboxIndex(lbIndex)}
+                      className="group h-full w-full text-left"
+                      aria-label={t('expandFullscreen')}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.previewUrl}
+                        alt={t('imageAlt')}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
+                    </button>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.previewUrl}
+                      alt={t('imageAlt')}
+                      className="w-full h-full object-cover"
+                    />
+                  )
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-center px-3">
                     <div className="w-10 h-10 rounded-xl bg-cream-200 flex items-center justify-center">
                       <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      {gen.status === 'processing' ? t('generating') : t('noImage')}
+                      {item.status === 'processing' ? t('generating') : t('noImage')}
                     </span>
                   </div>
                 )}
@@ -100,15 +123,17 @@ export function LibraryGrid({ generations }: LibraryGridProps) {
                   </span>
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Calendar className="w-3 h-3" />
-                    <span className="text-[10px]">{date}</span>
+                    <span className="text-[10px]">{item.dateShort}</span>
                   </div>
                 </div>
 
                 {/* Action buttons — always visible */}
-                {gen.output_image_url && (
+                {item.imageUrl && (
                   <div className="flex gap-1.5">
                     <button
-                      onClick={() => downloadImage(gen.output_image_url!, `luminify-${gen.id.slice(0, 8)}`)}
+                      onClick={() => downloadImage(item.imageUrl!, item.panelId
+                        ? `luminify-${item.generationId.slice(0, 8)}-panel-${item.panelId}`
+                        : `luminify-${item.generationId.slice(0, 8)}`)}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 text-[10px] font-semibold py-3 rounded-lg transition-colors touch-manipulation min-h-[40px]"
                       aria-label={t('download')}
                     >
@@ -138,6 +163,8 @@ export function LibraryGrid({ generations }: LibraryGridProps) {
         initialIndex={lightboxIndex ?? 0}
         open={lightboxIndex !== null}
         onClose={() => setLightboxIndex(null)}
+        primaryActionLabel={tLightbox('enhance')}
+        onPrimaryAction={handleEnhanceImage}
       />
     </>
   )

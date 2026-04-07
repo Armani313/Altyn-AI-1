@@ -1,69 +1,81 @@
 import type { Metadata, Viewport } from 'next'
-import { Playfair_Display, Inter } from 'next/font/google'
+import Script from 'next/script'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
-import '../globals.css'
-
-const playfair = Playfair_Display({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-playfair',
-  display: 'swap',
-})
-
-const inter = Inter({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-inter',
-  display: 'swap',
-})
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://luminify.app'
 
-export const metadata: Metadata = {
-  metadataBase: new URL(APP_URL),
-  title: {
-    default: 'Luminify — ИИ-фотографии украшений',
-    template: '%s | Luminify',
-  },
-  description:
-    'Генерируйте профессиональные лайфстайл-фотографии украшений с помощью ИИ. Загрузите фото украшения и получите готовый контент за секунды.',
-  authors: [{ name: 'Luminify' }],
-  creator: 'Luminify',
-  publisher: 'Luminify',
-  alternates: {
-    canonical: APP_URL,
-    languages: {
-      'en': APP_URL,
-      'ru': `${APP_URL}/ru`,
-      'x-default': APP_URL,
+interface MetadataCopy {
+  defaultTitle: string
+  titleTemplate: string
+  description: string
+}
+
+async function loadMetadataCopy(locale: 'ru' | 'en'): Promise<MetadataCopy> {
+  if (locale === 'ru') {
+    return (await import('@/messages/ru.json')).default.metadata as MetadataCopy
+  }
+
+  return (await import('@/messages/en.json')).default.metadata as MetadataCopy
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const currentLocale = locale === 'ru' ? 'ru' : 'en'
+  const copy = await loadMetadataCopy(currentLocale)
+
+  return {
+    metadataBase: new URL(APP_URL),
+    title: {
+      default: copy.defaultTitle,
+      template: copy.titleTemplate,
     },
-  },
-  openGraph: {
-    type: 'website',
-    siteName: 'Luminify',
-    locale: 'ru_RU',
-    alternateLocale: 'en_US',
-    images: [
-      {
-        url: '/opengraph-image',
-        width: 1200,
-        height: 630,
-        alt: 'Luminify — ИИ-фотографии украшений',
+    description: copy.description,
+    authors: [{ name: 'Luminify' }],
+    creator: 'Luminify',
+    publisher: 'Luminify',
+    alternates: {
+      canonical: currentLocale === 'ru' ? `${APP_URL}/ru` : APP_URL,
+      languages: {
+        en: APP_URL,
+        ru: `${APP_URL}/ru`,
+        'x-default': APP_URL,
       },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Luminify — ИИ-фотографии украшений',
-    description: 'Генерируйте профессиональные лайфстайл-фотографии украшений с помощью ИИ.',
-    images: ['/opengraph-image'],
-  },
-  icons: {
-    icon:  [{ url: new URL('/icon', APP_URL).toString(),       type: 'image/png', sizes: '32x32'  }],
-    apple: [{ url: new URL('/apple-icon', APP_URL).toString(), type: 'image/png', sizes: '180x180' }],
-  },
-  manifest: '/manifest.webmanifest',
+    },
+    openGraph: {
+      type: 'website',
+      siteName: 'Luminify',
+      locale: currentLocale === 'ru' ? 'ru_RU' : 'en_US',
+      alternateLocale: currentLocale === 'ru' ? 'en_US' : 'ru_RU',
+      title: copy.defaultTitle,
+      description: copy.description,
+      images: [
+        {
+          url: '/opengraph-image',
+          width: 1200,
+          height: 630,
+          alt: copy.defaultTitle,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: copy.defaultTitle,
+      description: copy.description,
+      images: ['/opengraph-image'],
+    },
+    icons: {
+      icon: [{ url: new URL('/icon', APP_URL).toString(), type: 'image/png', sizes: '32x32' }],
+      apple: [{ url: new URL('/apple-icon', APP_URL).toString(), type: 'image/png', sizes: '180x180' }],
+    },
+    manifest: '/manifest.webmanifest',
+  }
 }
 
 export const viewport: Viewport = {
@@ -90,13 +102,13 @@ const jsonLd = {
       logo: { '@type': 'ImageObject', url: `${APP_URL}/icon` },
       contactPoint: {
         '@type': 'ContactPoint',
-        email: 'support@luminify.app',
+        email: 'arman@luminify.app',
         contactType: 'customer support',
         availableLanguage: ['Russian', 'English', 'Kazakh'],
       },
       address: {
         '@type': 'PostalAddress',
-        addressLocality: 'Almaty',
+        addressLocality: 'Astana',
         addressCountry: 'KZ',
       },
     },
@@ -142,23 +154,18 @@ export default async function LocaleLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale} data-scroll-behavior="smooth" className={`${playfair.variable} ${inter.variable}`}>
-      <head>
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </head>
-      <body className="antialiased">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
-        </NextIntlClientProvider>
-      </body>
+    <>
+      <Script
+        id="luminify-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        {children}
+      </NextIntlClientProvider>
       {process.env.NEXT_PUBLIC_GA_ID && (
         <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
       )}
-    </html>
+    </>
   )
 }

@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { polar, POLAR_PLANS, isPolarPlanKey } from '@/lib/payments/polar'
+import { polar, POLAR_PLANS, isPolarPlanKey, getPolarServerConfigError } from '@/lib/payments/polar'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
@@ -50,6 +50,15 @@ export async function POST(request: Request) {
 
   const plan   = POLAR_PLANS[planKey]
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const polarConfigError = getPolarServerConfigError()
+
+  if (polarConfigError) {
+    console.error(polarConfigError)
+    return NextResponse.json(
+      { error: 'Payment service not configured.' },
+      { status: 503 }
+    )
+  }
 
   if (!plan.productId) {
     console.error(`POLAR_PRODUCT_ID_${planKey.toUpperCase()} is not configured`)

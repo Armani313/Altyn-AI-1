@@ -19,6 +19,8 @@ export const SAFE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'hei
 // API routes look up files via MODEL_PHOTO_MAP[validatedId].filename.
 
 export type ModelCategory = 'necklaces' | 'earrings' | 'rings'
+export type ModelSubjectType = 'women' | 'men' | 'kids' | 'mannequins'
+export type ModelRenderMode = 'reference-image' | 'prompt-only'
 
 // ── Custom user models (up to 5 per user) ─────────────────────────────────────
 export const CUSTOM_MODEL_ID_PREFIX = 'user-custom-' as const
@@ -63,20 +65,182 @@ export interface ModelPhoto {
   filename:  string
   name:      string
   category:  ModelCategory
+  subjectType: ModelSubjectType
+  pose:      string
+  promptHint?: string
+  renderMode?: ModelRenderMode
   label?:    string
   premium?:  boolean
 }
 
 export const MODEL_PHOTOS: ModelPhoto[] = [
-  { id: 'model-1', filename: '1.jpeg', name: 'Элегантное декольте',  category: 'necklaces', label: 'Хит'   },
-  { id: 'model-2', filename: '2.png',  name: 'Классический профиль', category: 'earrings'                  },
-  { id: 'model-3', filename: '3.jpeg', name: 'Нежный жест',          category: 'earrings',  label: 'Новый' },
-  { id: 'model-4', filename: '4.jpeg', name: 'Тёплая улыбка',        category: 'earrings'                  },
-  { id: 'model-5', filename: '5.jpeg', name: 'Деловой стиль',        category: 'rings'                     },
-  { id: 'model-6', filename: '6.png',  name: 'Драматика',            category: 'rings',     premium: true  },
-  { id: 'model-7', filename: '7.jpeg', name: 'Праздничный вечер',    category: 'necklaces'                 },
-  { id: 'model-8', filename: '8.png',  name: 'Гламур',               category: 'earrings',  premium: true  },
-  { id: 'model-9', filename: '9.jpeg', name: 'Утончённость',         category: 'necklaces', label: 'Хит'   },
+  {
+    id: 'model-1',
+    filename: '1.jpeg',
+    name: 'Элегантное декольте',
+    category: 'necklaces',
+    subjectType: 'women',
+    pose: 'Мягкий фронтальный ракурс',
+    label: 'Хит',
+  },
+  {
+    id: 'model-2',
+    filename: '2.png',
+    name: 'Классический профиль',
+    category: 'earrings',
+    subjectType: 'women',
+    pose: 'Профиль',
+  },
+  {
+    id: 'model-3',
+    filename: '3.jpeg',
+    name: 'Нежный жест',
+    category: 'earrings',
+    subjectType: 'women',
+    pose: 'Лёгкий поворот головы',
+    label: 'Новый',
+  },
+  {
+    id: 'model-4',
+    filename: '4.jpeg',
+    name: 'Тёплая улыбка',
+    category: 'earrings',
+    subjectType: 'women',
+    pose: 'Живой портрет',
+  },
+  {
+    id: 'model-5',
+    filename: '5.jpeg',
+    name: 'Деловой стиль',
+    category: 'rings',
+    subjectType: 'women',
+    pose: 'Акцент на кисти',
+  },
+  {
+    id: 'model-6',
+    filename: '6.png',
+    name: 'Драматика',
+    category: 'rings',
+    subjectType: 'women',
+    pose: 'Контрастный editorial',
+    premium: true,
+  },
+  {
+    id: 'model-7',
+    filename: '7.jpeg',
+    name: 'Праздничный вечер',
+    category: 'necklaces',
+    subjectType: 'women',
+    pose: 'Вечерний портрет',
+  },
+  {
+    id: 'model-8',
+    filename: '8.png',
+    name: 'Гламур',
+    category: 'earrings',
+    subjectType: 'women',
+    pose: 'Бьюти-ракурс',
+    premium: true,
+  },
+  {
+    id: 'model-9',
+    filename: '9.jpeg',
+    name: 'Утончённость',
+    category: 'necklaces',
+    subjectType: 'women',
+    pose: 'Чистый студийный ракурс',
+    label: 'Хит',
+  },
+  {
+    id: 'model-10',
+    filename: '10.svg',
+    name: 'Мужской профиль',
+    category: 'necklaces',
+    subjectType: 'men',
+    pose: 'Профиль и линия шеи',
+    promptHint: 'adult male model, elegant side profile, visible neck and collarbone, premium editorial styling',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-11',
+    filename: '11.svg',
+    name: 'Мужской акцент на руке',
+    category: 'rings',
+    subjectType: 'men',
+    pose: 'Крупный план кисти',
+    promptHint: 'adult male model, close-up of masculine hand and fingers, clean studio lighting, product-forward composition',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-12',
+    filename: '12.svg',
+    name: 'Мужской ракурс 3/4',
+    category: 'earrings',
+    subjectType: 'men',
+    pose: 'Ракурс 3/4',
+    promptHint: 'adult male model, three-quarter portrait, visible ear and jawline, sharp premium fashion look',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-13',
+    filename: '13.svg',
+    name: 'Детский портрет',
+    category: 'necklaces',
+    subjectType: 'kids',
+    pose: 'Фронтальный портрет',
+    promptHint: 'child model, age-appropriate studio portrait, soft friendly expression, respectful premium catalog styling',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-14',
+    filename: '14.svg',
+    name: 'Детский playful',
+    category: 'rings',
+    subjectType: 'kids',
+    pose: 'Лёгкая динамика',
+    promptHint: 'child model, playful natural pose, hands visible, age-appropriate editorial styling, soft clean lighting',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-15',
+    filename: '15.svg',
+    name: 'Детский профиль',
+    category: 'earrings',
+    subjectType: 'kids',
+    pose: 'Мягкий профиль',
+    promptHint: 'child model, soft side profile, visible ear, respectful catalog styling, gentle studio light',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-16',
+    filename: '16.svg',
+    name: 'Манекен-бюст',
+    category: 'necklaces',
+    subjectType: 'mannequins',
+    pose: 'Бюстовая подача',
+    promptHint: 'clean studio mannequin bust, premium retail display, no live human features, elegant neutral background',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-17',
+    filename: '17.svg',
+    name: 'Манекен-рука',
+    category: 'rings',
+    subjectType: 'mannequins',
+    pose: 'Дисплей кисти',
+    promptHint: 'clean mannequin hand display, premium studio retail presentation, focus on the product, elegant minimal styling',
+    renderMode: 'prompt-only',
+  },
+  {
+    id: 'model-18',
+    filename: '18.svg',
+    name: 'Манекен-профиль',
+    category: 'earrings',
+    subjectType: 'mannequins',
+    pose: 'Профильный дисплей',
+    promptHint: 'studio mannequin head or ear display, premium jewelry retail presentation, minimal clean luxury setup',
+    renderMode: 'prompt-only',
+  },
 ]
 
 /** Safe lookup: validated model_id → ModelPhoto. Never build paths from raw user input. */

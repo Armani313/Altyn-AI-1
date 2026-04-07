@@ -105,7 +105,7 @@ export default async function BillingPage({
           <p className="text-xs text-muted-foreground text-center mt-5">
             {t('invoiceNote')}{' '}
             <a
-              href="mailto:support@luminify.app"
+              href="mailto:arman@luminify.app"
               className="text-primary hover:underline underline-offset-2"
             >
               {t('invoiceContact')}

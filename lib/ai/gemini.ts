@@ -13,12 +13,13 @@
  *   GEMINI_MODEL     — optional override (default: gemini-3.1-flash-image-preview)
  */
 
-import type { ProductType } from '@/lib/constants'
+import type { ProductType, ModelSubjectType } from '@/lib/constants'
 import { buildUserPromptSuffix } from '@/lib/ai/moderation'
 import { buildContactSheetPrompt } from '@/lib/ai/contact-sheet'
 
 const DEFAULT_MODEL   = 'gemini-3.1-flash-image-preview'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
+const GEMINI_REQUEST_TIMEOUT_MS = 180_000
 
 // ── Jewelry ───────────────────────────────────────────────────────────────────
 
@@ -56,11 +57,11 @@ const STANDALONE_PROMPT =
   'Examine this product photo and identify every piece of jewelry shown. Memorize ' +
   'their exact design: shape, stones, metal, finish, and proportions.\n\n' +
 
-  'Generate a professional lifestyle photograph showing this exact jewelry being worn:\n' +
-  '  • Ring → close-up of a female hand/fingers\n' +
-  '  • Earrings → elegant close-up of a female ear\n' +
-  '  • Necklace → female neck and décolletage\n' +
-  '  • Bracelet → female wrist\n' +
+  'Generate a professional lifestyle photograph showing this exact jewelry being worn or presented:\n' +
+  '  • Ring → close-up of a hand/fingers or premium display hand\n' +
+  '  • Earrings → elegant close-up of an ear or refined display bust\n' +
+  '  • Necklace → neck and décolletage or clean bust presentation\n' +
+  '  • Bracelet → wrist or refined product-forward display\n' +
   '  • Set → compose to best showcase all pieces together\n\n' +
 
   'Style: soft warm studio lighting, cream and ivory background, high-end jewelry ' +
@@ -151,10 +152,10 @@ const HEADWEAR_STANDALONE_PROMPT =
   'color, material, and every decorative detail.\n\n' +
 
   'Generate a professional lifestyle fashion photograph:\n' +
-  '  • Sunglasses/eyeglasses → worn by a stylish female model, face slightly turned ' +
+  '  • Sunglasses/eyeglasses → worn by a stylish model, face slightly turned ' +
   'to showcase both frames and lenses\n' +
-  '  • Headband → worn in hair of a female model, hair styled naturally\n' +
-  '  • Hair clip/barrette → securing hair elegantly on a female model\n' +
+  '  • Headband → worn in hair of a model, hair styled naturally\n' +
+  '  • Hair clip/barrette → securing hair elegantly on a model\n' +
   '  • Hat/beret → worn at a fashionable angle\n\n' +
 
   'Style: soft warm studio lighting, neutral background, high-end fashion editorial, ' +
@@ -198,7 +199,7 @@ const OUTERWEAR_STANDALONE_PROMPT =
   'texture, and every design detail.\n\n' +
 
   'Generate a professional lifestyle fashion photograph:\n' +
-  '  • Show a stylish female model wearing this exact garment\n' +
+  '  • Show a stylish model wearing this exact garment\n' +
   '  • Natural confident pose that best showcases the garment\'s cut and details\n' +
   '  • If the garment has a distinctive print or pattern, choose a pose that ' +
   'displays it prominently\n\n' +
@@ -248,7 +249,7 @@ const BOTTOMWEAR_STANDALONE_PROMPT =
   'fabric, and all design details.\n\n' +
 
   'Generate a professional lifestyle fashion photograph:\n' +
-  '  • Show a stylish female model wearing this exact garment\n' +
+  '  • Show a stylish model wearing this exact garment\n' +
   '  • Full-length or 3/4 shot that showcases the garment\'s silhouette and length\n' +
   '  • Natural elegant pose with complementary neutral top\n\n' +
 
@@ -297,9 +298,9 @@ const WATCHES_STANDALONE_PROMPT =
   'and every detail.\n\n' +
 
   'Generate a professional lifestyle photograph:\n' +
-  '  • Watch/bracelet → elegant close-up on a female wrist, watch face prominently ' +
+  '  • Watch/bracelet → elegant close-up on a wrist or refined display, watch face prominently ' +
   'visible, natural hand/wrist pose\n' +
-  '  • Ring → graceful close-up of a female hand/fingers wearing the ring\n' +
+  '  • Ring → graceful close-up of a hand/fingers or display hand wearing the ring\n' +
   '  • Cuff bracelet → wrist shown at a flattering angle\n\n' +
 
   'Style: soft warm studio lighting, clean neutral background, high-end luxury ' +
@@ -346,9 +347,9 @@ const BAGS_STANDALONE_PROMPT =
   'and every design detail.\n\n' +
 
   'Generate a professional lifestyle photograph:\n' +
-  '  • Clutch → held elegantly in a female hand against a stylish background, or ' +
+  '  • Clutch → held elegantly in a hand against a stylish background, or ' +
   'placed on a luxurious surface (marble, velvet, etc.)\n' +
-  '  • Handbag/shoulder bag → carried by a stylish female model or placed on a ' +
+  '  • Handbag/shoulder bag → carried by a stylish model or placed on a ' +
   'pedestal/surface in a fashion setting\n' +
   '  • Showcase the bag\'s shape, hardware, and texture prominently\n\n' +
 
@@ -566,6 +567,14 @@ export interface GenerationParams {
   modelMimeType?:    string
   /** Product type — determines which prompts to use (default: 'jewelry') */
   productType?:      ProductType
+  /** Optional target subject type for prompt-driven templates */
+  modelSubjectType?: ModelSubjectType
+  /** Optional pose / framing hint for prompt-driven templates */
+  modelPose?:        string
+  /** Optional explicit subject instruction for prompt-driven templates */
+  modelPromptHint?:  string
+  /** True when the selected template intentionally has no reference model image */
+  isPromptOnlyTemplate?: boolean
   /** Optional sanitized user style hint (already passed through moderation) */
   userPrompt?:       string
   /** When true, generates a macro/close-up product shot instead of lifestyle */
@@ -608,6 +617,32 @@ interface GeminiResponse {
   error?:      { message?: string; code?: number }
 }
 
+function buildModelSubjectInstruction(
+  subjectType?: ModelSubjectType,
+  pose?: string,
+  promptHint?: string,
+): string {
+  if (!subjectType && !pose && !promptHint) return ''
+
+  const subjectLine =
+    subjectType === 'men'
+      ? 'Use an adult male subject for wearable or portrait-style panels.'
+      : subjectType === 'kids'
+      ? 'Use a child subject with age-appropriate, respectful styling and natural expressions. Do not sexualize the child.'
+      : subjectType === 'mannequins'
+      ? 'Use a clean retail mannequin, display bust, or mannequin hand instead of a live person whenever it fits the composition.'
+      : 'Use an adult female subject when a live model is needed.'
+
+  const poseLine = pose ? `Preferred pose or framing: ${pose}.` : null
+  const hintLine = promptHint ? `Template direction: ${promptHint}.` : null
+
+  return '\n\nSUBJECT DIRECTION:\n' +
+    [subjectLine, poseLine, hintLine]
+      .filter(Boolean)
+      .map((line) => `• ${line}`)
+      .join('\n')
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export async function generateJewelryPhoto(
@@ -638,6 +673,11 @@ export async function generateJewelryPhoto(
   let parts: object[]
 
   const promptSuffix = params.userPrompt ? buildUserPromptSuffix(params.userPrompt) : ''
+  const subjectInstruction = buildModelSubjectInstruction(
+    params.modelSubjectType,
+    params.modelPose,
+    params.modelPromptHint,
+  )
 
   if (params.isContactSheet) {
     // Contact sheet: 2×2 grid — sub-mode depends on inputs
@@ -646,6 +686,7 @@ export async function generateJewelryPhoto(
       buildCardTemplateContactSheetPrompt,
       buildCardFreeContactSheetPrompt,
       buildFreeLifestyleContactSheetPrompt,
+      buildPromptOnlyTemplateContactSheetPrompt,
     } = await import('@/lib/ai/contact-sheet')
 
     const hasModel   = !!(params.modelImageBuffer && params.modelMimeType)
@@ -682,16 +723,30 @@ export async function generateJewelryPhoto(
         { inlineData: { mimeType: productMimeType, data: productBase64 } },
         { text: csPrompt },
       ]
+    } else if (params.isPromptOnlyTemplate) {
+      const csPrompt = buildPromptOnlyTemplateContactSheetPrompt(
+        productType,
+        {
+          subjectType: params.modelSubjectType,
+          pose: params.modelPose,
+          promptHint: params.modelPromptHint,
+        },
+        params.userPrompt,
+      )
+      parts = [
+        { inlineData: { mimeType: productMimeType, data: productBase64 } },
+        { text: csPrompt },
+      ]
     } else if (hasModel) {
       const modelBase64 = params.modelImageBuffer!.toString('base64')
-      const csPrompt = buildCompositeContactSheetPrompt(productType, params.userPrompt)
+      const csPrompt = buildCompositeContactSheetPrompt(productType, params.userPrompt, subjectInstruction)
       parts = [
         { inlineData: { mimeType: params.modelMimeType!, data: modelBase64 } },
         { inlineData: { mimeType: productMimeType,       data: productBase64 } },
         { text: csPrompt },
       ]
     } else {
-      const csPrompt = buildContactSheetPrompt(productType, params.userPrompt)
+      const csPrompt = buildContactSheetPrompt(productType, params.userPrompt, subjectInstruction)
       parts = [
         { inlineData: { mimeType: productMimeType, data: productBase64 } },
         { text: csPrompt },
@@ -708,7 +763,7 @@ export async function generateJewelryPhoto(
     parts = [
       { inlineData: { mimeType: params.cardTemplateMime, data: templateBase64 } },
       { inlineData: { mimeType: productMimeType,         data: productBase64 } },
-      { text: cardPrompt + promptSuffix },
+      { text: cardPrompt + subjectInstruction + promptSuffix },
     ]
   } else if (params.isCardFree) {
     // Card-free mode: AI creates a full product card from scratch
@@ -719,25 +774,25 @@ export async function generateJewelryPhoto(
     )
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },
-      { text: cardPrompt + promptSuffix },
+      { text: cardPrompt + subjectInstruction + promptSuffix },
     ]
   } else if (params.isMacroShot) {
     // Macro mode: standalone close-up product shot, never uses a model image
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },
-      { text: MACRO_PROMPT + promptSuffix },
+      { text: MACRO_PROMPT + subjectInstruction + promptSuffix },
     ]
   } else if (params.modelImageBuffer && params.modelMimeType) {
     const modelBase64 = params.modelImageBuffer.toString('base64')
     parts = [
       { inlineData: { mimeType: params.modelMimeType, data: modelBase64 } },
       { inlineData: { mimeType: productMimeType,      data: productBase64 } },
-      { text: COMPOSITE_PROMPTS[productType] + promptSuffix },
+      { text: COMPOSITE_PROMPTS[productType] + subjectInstruction + promptSuffix },
     ]
   } else {
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },
-      { text: STANDALONE_PROMPTS[productType] + promptSuffix },
+      { text: STANDALONE_PROMPTS[productType] + subjectInstruction + promptSuffix },
     ]
   }
 
@@ -750,18 +805,34 @@ export async function generateJewelryPhoto(
     contents: [{ parts }],
     generationConfig: {
       responseModalities: isCardMode ? ['IMAGE'] : ['IMAGE', 'TEXT'],
+      ...(params.contactSheetRatio
+        ? {
+            imageConfig: {
+              aspectRatio: params.contactSheetRatio,
+            },
+          }
+        : {}),
     },
   })
 
-  const res = await fetch(
-    `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
-    {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      signal:  AbortSignal.timeout(90_000),
+  let res: Response
+  try {
+    res = await fetch(
+      `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal:  AbortSignal.timeout(GEMINI_REQUEST_TIMEOUT_MS),
+      }
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (message.toLowerCase().includes('aborted due to timeout')) {
+      throw new Error('Генерация заняла слишком много времени. Попробуйте ещё раз или выберите другой шаблон.')
     }
-  )
+    throw error
+  }
 
   const rawText = await res.text()
   let data: GeminiResponse = {}

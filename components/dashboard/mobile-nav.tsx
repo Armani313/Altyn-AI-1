@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { Menu, Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap } from 'lucide-react'
+import { Menu, Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap, Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { logout } from '@/lib/supabase/actions'
@@ -22,22 +22,43 @@ export function MobileNav({ profile }: MobileNavProps) {
   const plan     = profile?.plan ?? 'free'
   const credits  = profile?.credits_remaining ?? 0
   const planMeta = PLAN_META[plan]
+  const [editorMode, setEditorMode] = useState<'remove-bg' | 'photo-editor' | null>(null)
+
+  useEffect(() => {
+    if (pathname !== '/editor') {
+      setEditorMode(null)
+      return
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const photoMode = params.get('mode') === 'photo-editor' || params.get('direct') === '1'
+    setEditorMode(photoMode ? 'photo-editor' : 'remove-bg')
+  }, [pathname])
 
   // Hard navigation required for /editor: needs 'unsafe-eval' CSP for ONNX Runtime.
   const editorHref = locale === 'en' ? '/editor' : `/${locale}/editor`
+  const photoEditorHref = `${editorHref}?mode=photo-editor`
 
   const CREATE_ITEMS = [
     { href: '/dashboard',  icon: Wand2,       label: t('lifestyle'),  hardNav: false },
     { href: '/cards',      icon: LayoutGrid,  label: t('cards'),      hardNav: false },
-    { href: editorHref,    icon: PenTool,     label: t('editor'),     hardNav: true  },
+    { href: editorHref,    icon: Scissors,    label: t('removeBg'),   hardNav: true  },
+    { href: photoEditorHref, icon: PenTool,   label: t('editor'),     hardNav: true  },
   ]
 
   const navLinkCls = (href: string) =>
     `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-      pathname === href || (href === editorHref && pathname === '/editor')
+      pathname === href ||
+      (href === editorHref && editorMode === 'remove-bg') ||
+      (href === photoEditorHref && editorMode === 'photo-editor')
         ? 'bg-rose-gold-50 text-rose-gold-700 border border-rose-gold-100'
         : 'text-muted-foreground hover:bg-cream-100 hover:text-foreground'
     }`
+
+  const hardNavigate = (href: string) => {
+    setOpen(false)
+    window.location.assign(href)
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -78,10 +99,19 @@ export function MobileNav({ profile }: MobileNavProps) {
           </p>
           {CREATE_ITEMS.map(({ href, icon: Icon, label, hardNav }) =>
             hardNav ? (
-              <a key={href} href={href} className={navLinkCls(href)}>
-                <Icon className={`w-4 h-4 flex-shrink-0 ${pathname === '/editor' ? 'text-rose-gold-600' : ''}`} />
+              <button
+                key={href}
+                type="button"
+                onClick={() => hardNavigate(href)}
+                className={`${navLinkCls(href)} w-full text-left`}
+              >
+                <Icon className={`w-4 h-4 flex-shrink-0 ${(
+                  pathname === href ||
+                  (href === editorHref && editorMode === 'remove-bg') ||
+                  (href === photoEditorHref && editorMode === 'photo-editor')
+                ) ? 'text-rose-gold-600' : ''}`} />
                 {label}
-              </a>
+              </button>
             ) : (
               <Link
                 key={href}

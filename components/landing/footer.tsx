@@ -21,9 +21,11 @@ export function Footer() {
   ]
 
   const companyLinks = [
-    { label: t('about'), href: '#' },
+    { label: t('about'), href: '/about' },
+    { label: t('faq'), href: '/faq' },
     { label: t('pricing'), href: '#pricing' },
-    { label: t('contact'), href: 'mailto:support@luminify.app' },
+    { label: t('contact'), href: '/contacts' },
+    { label: t('privacy'), href: '/privacy' },
     { label: t('terms'), href: '/terms' },
   ]
 
@@ -95,12 +97,12 @@ export function Footer() {
             <ul className="space-y-2.5">
               {companyLinks.map((link) => (
                 <li key={link.label}>
-                  <a
+                  <Link
                     href={link.href}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

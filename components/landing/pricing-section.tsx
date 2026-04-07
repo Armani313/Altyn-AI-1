@@ -1,91 +1,235 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { motion } from 'framer-motion'
-import { Check, Sparkles, ArrowRight } from 'lucide-react'
+import {
+  ArrowRight,
+  Building2,
+  Check,
+  Crown,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EASE } from '@/lib/motion'
+import { PLAN_META } from '@/lib/config/plans'
+import type { Plan } from '@/types/database.types'
+
+const PLAN_ORDER: Plan[] = ['free', 'starter', 'pro', 'business']
+
+const PLAN_ICONS = {
+  free: Sparkles,
+  starter: Zap,
+  pro: Crown,
+  business: Building2,
+} as const
 
 export function PricingSection() {
-  const t = useTranslations('pricing')
+  const tPricing = useTranslations('pricing')
+  const tBilling = useTranslations('billingPlans')
+  const locale = useLocale() === 'ru' ? 'ru' : 'en'
+
+  const bannerCopy = locale === 'ru'
+    ? {
+        eyebrow: 'Актуальные тарифы',
+        title: 'Тарифы на лендинге теперь совпадают с оплатой',
+        body: 'Начните с 5 бесплатных генераций, а затем выберите объём под свой магазин: 20, 150 или 500 генераций в месяц.',
+        note: 'Все цены и лимиты соответствуют текущим тарифам в оплате.',
+      }
+    : {
+        eyebrow: 'Live plans',
+        title: 'The landing pricing now matches checkout',
+        body: 'Start with 5 free generations, then scale to 20, 150, or 500 generations per month based on your store volume.',
+        note: 'All prices and limits match the current plans in checkout.',
+      }
 
   const plans = [
     {
-      id: 'start',
-      name: t('startName'),
-      price: '$1',
-      period: t('per'),
-      description: t('startDesc'),
-      badge: null,
-      credits: t('startCredits'),
-      features: [t('startFeature1'), t('startFeature2'), t('startFeature3')],
-      notIncluded: [t('startNotIncluded1'), t('startNotIncluded2')],
-      cta: t('startCta'),
+      key: 'free' as const,
+      label: tBilling('freeName'),
+      description: locale === 'ru'
+        ? 'Чтобы попробовать сервис без оплаты и быстро проверить качество результата.'
+        : 'To try the service first and validate the output before paying.',
+      credits: PLAN_META.free.credits,
+      price: PLAN_META.free.monthlyPriceUsd,
+      priceNote: tBilling('freeForever'),
+      features: [tBilling('freeFeature1'), tBilling('freeFeature2'), tBilling('freeFeature3')],
+      cta: locale === 'ru' ? 'Начать бесплатно' : 'Start free',
+      badge: locale === 'ru' ? 'Без риска' : 'Risk-free',
       highlighted: false,
     },
     {
-      id: 'brand',
-      name: t('proName'),
-      price: '$20',
-      period: t('per'),
-      description: t('proDesc'),
-      badge: t('proBadge'),
-      credits: t('proCredits'),
-      features: [t('proFeature1'), t('proFeature2'), t('proFeature3'), t('proFeature4'), t('proFeature5')],
-      notIncluded: [] as string[],
-      cta: t('proCta'),
+      key: 'starter' as const,
+      label: tBilling('starterName'),
+      description: locale === 'ru'
+        ? 'Для небольшого каталога и первых регулярных генераций.'
+        : 'For a smaller catalog and your first recurring generation workflow.',
+      credits: PLAN_META.starter.credits,
+      price: PLAN_META.starter.monthlyPriceUsd,
+      priceNote: tBilling('perMonth'),
+      features: [tBilling('starterFeature1'), tBilling('starterFeature2'), tBilling('starterFeature3'), tBilling('starterFeature4')],
+      cta: locale === 'ru' ? 'Выбрать Старт' : 'Choose Starter',
+      badge: null,
+      highlighted: false,
+    },
+    {
+      key: 'pro' as const,
+      label: tBilling('proName'),
+      description: locale === 'ru'
+        ? 'Лучший баланс цены и объёма для активного магазина.'
+        : 'The best balance of price and volume for an active store.',
+      credits: PLAN_META.pro.credits,
+      price: PLAN_META.pro.monthlyPriceUsd,
+      priceNote: tBilling('perMonth'),
+      features: [tBilling('proFeature1'), tBilling('proFeature2'), tBilling('proFeature3'), tBilling('proFeature4'), tBilling('proFeature5')],
+      cta: locale === 'ru' ? 'Выбрать Про' : 'Choose Pro',
+      badge: tBilling('popular'),
       highlighted: true,
+    },
+    {
+      key: 'business' as const,
+      label: tBilling('businessName'),
+      description: locale === 'ru'
+        ? 'Для команд и брендов, которым нужен большой месячный объём.'
+        : 'For teams and brands that need a larger monthly content volume.',
+      credits: PLAN_META.business.credits,
+      price: PLAN_META.business.monthlyPriceUsd,
+      priceNote: tBilling('perMonth'),
+      features: [tBilling('businessFeature1'), tBilling('businessFeature2'), tBilling('businessFeature3'), tBilling('businessFeature4'), tBilling('businessFeature5')],
+      cta: locale === 'ru' ? 'Выбрать Бизнес' : 'Choose Business',
+      badge: locale === 'ru' ? 'Для команды' : 'For teams',
+      highlighted: false,
     },
   ]
 
   return (
-    <section id="pricing" className="py-28 px-6 scroll-mt-20 bg-gradient-to-b from-cream-200/30 to-[#FAF9F6]">
-      <div className="max-w-4xl mx-auto">
-
-        {/* Header */}
+    <section id="pricing" className="scroll-mt-20 bg-gradient-to-b from-cream-200/30 to-[#FAF9F6] px-6 py-28">
+      <div className="mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.65, ease: EASE }}
-          className="text-center mb-14"
+          className="mb-14 text-center"
         >
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500 mb-3">
-            {t('overline')}
+          <span className="mb-3 inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500">
+            {tPricing('overline')}
           </span>
-          <h2 className="font-serif text-[clamp(1.75rem,4vw,2.5rem)] font-medium text-foreground mb-4 tracking-tight">
-            {t('title')}
+          <h2 className="mb-4 font-serif text-[clamp(1.75rem,4vw,2.75rem)] font-medium tracking-tight text-foreground">
+            {tPricing('title')}
           </h2>
-          <p className="text-muted-foreground text-lg">
-            {t('sub')}
+          <p className="text-lg text-muted-foreground">
+            {tPricing('sub')}
           </p>
         </motion.div>
 
-        {/* Plans grid */}
-        <div className="grid md:grid-cols-2 gap-5 items-start">
-          {plans.map((plan, i) => (
+        <motion.div
+          initial={{ opacity: 0, y: 26 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.7, ease: EASE }}
+          className="relative mb-8 overflow-hidden rounded-[2rem] border border-cream-200 bg-white p-6 shadow-card sm:p-8"
+        >
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-10 top-0 h-48 w-48 rounded-full bg-rose-gold-100/70 blur-3xl" />
+            <div className="absolute bottom-0 right-0 h-56 w-56 rounded-full bg-cream-200/70 blur-3xl" />
+          </div>
+
+          <div className="relative grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-rose-gold-200 bg-rose-gold-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-gold-700">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {bannerCopy.eyebrow}
+              </span>
+              <h3 className="mt-5 max-w-xl font-serif text-[clamp(1.65rem,3vw,2.35rem)] font-medium leading-tight tracking-tight text-foreground">
+                {bannerCopy.title}
+              </h3>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+                {bannerCopy.body}
+              </p>
+              <p className="mt-4 text-sm font-medium text-foreground/80">
+                {bannerCopy.note}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {PLAN_ORDER.map((planKey) => {
+                const Icon = PLAN_ICONS[planKey]
+                const meta = PLAN_META[planKey]
+                const label = planKey === 'free'
+                  ? tBilling('freeName')
+                  : planKey === 'starter'
+                    ? tBilling('starterName')
+                    : planKey === 'pro'
+                      ? tBilling('proName')
+                      : tBilling('businessName')
+
+                return (
+                  <div
+                    key={planKey}
+                    className={`rounded-2xl border p-4 ${
+                      planKey === 'pro'
+                        ? 'border-rose-gold-300 bg-gradient-to-br from-rose-gold-500 to-rose-gold-600 text-white shadow-glow'
+                        : 'border-cream-200 bg-white/85'
+                    }`}
+                  >
+                    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${
+                      planKey === 'pro' ? 'bg-white/20' : 'bg-rose-gold-100'
+                    }`}>
+                      <Icon className={`h-4.5 w-4.5 ${planKey === 'pro' ? 'text-white' : 'text-rose-gold-700'}`} />
+                    </div>
+                    <p className={`text-sm font-semibold ${planKey === 'pro' ? 'text-white' : 'text-foreground'}`}>
+                      {label}
+                    </p>
+                    <p className={`mt-1 font-serif text-2xl font-bold ${planKey === 'pro' ? 'text-white' : 'text-foreground'}`}>
+                      ${meta.monthlyPriceUsd}
+                    </p>
+                    <p className={`mt-1 text-xs ${planKey === 'pro' ? 'text-white/80' : 'text-muted-foreground'}`}>
+                      {planKey === 'free'
+                        ? tBilling('freeForever')
+                        : `${meta.credits} ${locale === 'ru' ? 'генераций / мес' : 'generations / mo'}`}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {plans.map((plan, index) => (
             <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 32 }}
+              key={plan.key}
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.65, delay: i * 0.12, ease: EASE }}
+              transition={{ duration: 0.62, delay: index * 0.08, ease: EASE }}
             >
-              <PlanCard {...plan} />
+              <PlanCard
+                name={plan.label}
+                price={`$${plan.price}`}
+                period={plan.priceNote}
+                description={plan.description}
+                badge={plan.badge}
+                credits={tBilling('generations', { n: plan.credits })}
+                features={plan.features}
+                cta={plan.cta}
+                highlighted={plan.highlighted}
+              />
             </motion.div>
           ))}
         </div>
 
-        {/* Footer note */}
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-          className="text-center mt-10 text-sm text-muted-foreground"
+          transition={{ delay: 0.35 }}
+          className="mt-10 text-center text-sm text-muted-foreground"
         >
-          <strong className="text-foreground">{t('freeTrial')}</strong>{t('freeTrialSub')}
+          <strong className="text-foreground">{tPricing('freeTrial')}</strong>{tPricing('freeTrialSub')}
         </motion.p>
       </div>
     </section>
@@ -100,7 +244,6 @@ function PlanCard({
   badge,
   credits,
   features,
-  notIncluded,
   cta,
   highlighted,
 }: {
@@ -111,31 +254,30 @@ function PlanCard({
   badge: string | null
   credits: string
   features: string[]
-  notIncluded: string[]
   cta: string
   highlighted: boolean
 }) {
   return (
     <div className="relative pt-4">
       {badge && (
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 px-4 py-1 bg-white rounded-b-full shadow-soft whitespace-nowrap">
+        <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-b-full bg-white px-4 py-1 shadow-soft">
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-gold-600">
-            <Sparkles className="w-3 h-3" />
+            <Sparkles className="h-3 w-3" />
             {badge}
           </span>
         </div>
       )}
 
       <div
-        className={`relative flex flex-col rounded-2xl transition-all duration-300 ${
+        className={`relative flex h-full flex-col rounded-2xl transition-all duration-300 ${
           highlighted
             ? 'bg-gradient-to-br from-rose-gold-500 via-rose-gold-500 to-rose-gold-600 text-white shadow-glow ring-1 ring-rose-gold-400'
-            : 'bg-white border border-cream-200 hover:shadow-card hover:border-rose-gold-200'
+            : 'border border-cream-200 bg-white hover:border-rose-gold-200 hover:shadow-card'
         }`}
       >
-        <div className="p-7 flex flex-col flex-1">
+        <div className="flex flex-1 flex-col p-7">
           <div className="mb-5">
-            <h3 className={`font-serif text-2xl font-medium mb-1.5 ${highlighted ? 'text-white' : 'text-foreground'}`}>
+            <h3 className={`mb-1.5 font-serif text-2xl font-medium ${highlighted ? 'text-white' : 'text-foreground'}`}>
               {name}
             </h3>
             <p className={`text-sm leading-relaxed ${highlighted ? 'text-white/75' : 'text-muted-foreground'}`}>
@@ -143,38 +285,32 @@ function PlanCard({
             </p>
           </div>
 
-          <div className="flex items-baseline gap-1.5 mb-3">
+          <div className="mb-3 flex items-baseline gap-1.5">
             <span className={`font-serif text-[2.5rem] font-bold leading-none tracking-tight ${highlighted ? 'text-white' : 'text-foreground'}`}>
               {price}
             </span>
-            <span className={`text-sm ${highlighted ? 'text-white/60' : 'text-muted-foreground'}`}>
-              /{period}
+            <span className={`text-sm ${highlighted ? 'text-white/65' : 'text-muted-foreground'}`}>
+              {period === 'forever' || period === 'навсегда' ? period : `/${period}`}
             </span>
           </div>
 
-          <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full mb-6 self-start ${
+          <span className={`mb-6 inline-block self-start rounded-full px-3 py-1 text-xs font-semibold ${
             highlighted ? 'bg-white/20 text-white' : 'bg-rose-gold-50 text-rose-gold-700'
           }`}>
             {credits}
           </span>
 
-          <ul className="space-y-3 flex-1 mb-7">
-            {features.map((f) => (
-              <li key={f} className="flex items-start gap-3">
-                <span className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${highlighted ? 'bg-white/20' : 'bg-rose-gold-100'}`}>
-                  <Check className={`w-3 h-3 ${highlighted ? 'text-white' : 'text-rose-gold-600'}`} />
+          <ul className="mb-7 flex-1 space-y-3">
+            {features.map((feature) => (
+              <li key={feature} className="flex items-start gap-3">
+                <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${
+                  highlighted ? 'bg-white/20' : 'bg-rose-gold-100'
+                }`}>
+                  <Check className={`h-3 w-3 ${highlighted ? 'text-white' : 'text-rose-gold-600'}`} />
                 </span>
                 <span className={`text-sm leading-relaxed ${highlighted ? 'text-white/90' : 'text-muted-foreground'}`}>
-                  {f}
+                  {feature}
                 </span>
-              </li>
-            ))}
-            {notIncluded.map((f) => (
-              <li key={f} className="flex items-start gap-3 opacity-40">
-                <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-muted">
-                  <span className="text-muted-foreground text-xs leading-none">—</span>
-                </span>
-                <span className="text-sm text-muted-foreground line-through">{f}</span>
               </li>
             ))}
           </ul>
@@ -182,14 +318,14 @@ function PlanCard({
           <Link href="/register" className="block">
             <Button
               size="lg"
-              className={`w-full h-11 group transition-all duration-200 ${
+              className={`group h-11 w-full transition-all duration-200 ${
                 highlighted
-                  ? 'bg-white text-rose-gold-600 hover:bg-white/90 font-semibold'
-                  : 'bg-primary hover:bg-rose-gold-600 text-white hover:shadow-soft'
+                  ? 'bg-white font-semibold text-rose-gold-600 hover:bg-white/90'
+                  : 'bg-primary text-white hover:bg-rose-gold-600 hover:shadow-soft'
               }`}
             >
               {cta}
-              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Button>
           </Link>
         </div>

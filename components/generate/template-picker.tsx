@@ -3,13 +3,15 @@
 import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Sparkles, Lock, Check, Upload, Loader2, User, X, ScanLine } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import {
-  MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelCategory, type ProductType,
+  MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelCategory, type ModelSubjectType, type ProductType,
   MAX_CUSTOM_MODELS, makeCustomModelId, isCustomModelId,
   MACRO_SHOT_ID, AI_FREE_LIFESTYLE_ID,
 } from '@/lib/constants'
 
 type TabCategory = 'all' | ModelCategory
+type SubjectFilter = 'all' | ModelSubjectType
 
 /** Maps model_id → jewelry category. Used by dashboard page. */
 export const TEMPLATE_CATEGORY_MAP: Record<string, string> = Object.fromEntries(
@@ -36,7 +38,12 @@ export function TemplatePicker({
   onCustomModelUrlsChange,
 }: TemplatePickerProps) {
   const t = useTranslations('templatePicker')
+  const getSubjectLabel = (
+    key: 'subjectAll' | 'subjectWomen' | 'subjectMen' | 'subjectKids' | 'subjectMannequins',
+    fallback: string,
+  ) => (t.has(key) ? t(key) : fallback)
   const [activeTab,    setActiveTab]    = useState<TabCategory>('all')
+  const [activeSubject, setActiveSubject] = useState<SubjectFilter>('all')
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const [deletingIdx,  setDeletingIdx]  = useState<number | null>(null)
   const [uploadError,  setUploadError]  = useState<string | null>(null)
@@ -50,14 +57,26 @@ export function TemplatePicker({
     { id: 'rings',     label: t('tabRings')     },
   ]
 
+  const SUBJECTS: { id: SubjectFilter; label: string }[] = [
+    { id: 'all',        label: getSubjectLabel('subjectAll', 'All types') },
+    { id: 'women',      label: getSubjectLabel('subjectWomen', 'Women') },
+    { id: 'men',        label: getSubjectLabel('subjectMen', 'Men') },
+    { id: 'kids',       label: getSubjectLabel('subjectKids', 'Kids') },
+    { id: 'mannequins', label: getSubjectLabel('subjectMannequins', 'Mannequins') },
+  ]
+
   const isScarves = productType === 'scarves'
   const atMax     = selectedIds.length >= maxSelect
 
-  const filtered = isScarves
+  const categoryFiltered = isScarves
     ? MODEL_PHOTOS
     : activeTab === 'all'
       ? MODEL_PHOTOS
       : MODEL_PHOTOS.filter((m) => m.category === activeTab)
+
+  const filtered = activeSubject === 'all'
+    ? categoryFiltered
+    : categoryFiltered.filter((model) => model.subjectType === activeSubject)
 
   const toggle = (id: string) => {
     if (disabled) return
@@ -70,7 +89,7 @@ export function TemplatePicker({
 
   const handleAIPick = () => {
     if (disabled) return
-    const pool = MODEL_PHOTOS.filter((m) => !m.premium)
+    const pool = (filtered.length > 0 ? filtered : MODEL_PHOTOS).filter((m) => !m.premium)
     const shuffled = [...pool].sort(() => Math.random() - 0.5)
     const picks = shuffled.slice(0, Math.min(3, maxSelect)).map((m) => m.id)
     onSelect(picks)
@@ -226,6 +245,22 @@ export function TemplatePicker({
           ))}
         </div>
       )}
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {SUBJECTS.map((subject) => (
+          <button
+            key={subject.id}
+            onClick={() => setActiveSubject(subject.id)}
+            className={`px-3 py-2 min-h-[40px] rounded-full text-xs font-semibold transition-all duration-200 touch-feedback ${
+              activeSubject === subject.id
+                ? 'bg-rose-gold-600 text-white shadow-soft'
+                : 'bg-white border border-cream-200 text-muted-foreground hover:text-foreground hover:border-rose-gold-200'
+            }`}
+          >
+            {subject.label}
+          </button>
+        ))}
+      </div>
 
       {/* Scarves hint */}
       {isScarves && (
@@ -542,6 +577,9 @@ export function TemplatePicker({
                 <p className="text-[9px] font-medium text-white text-center leading-tight truncate">
                   {model.name}
                 </p>
+                <p className="text-[8px] text-white/80 text-center leading-tight truncate mt-0.5">
+                  {model.pose}
+                </p>
               </div>
             </button>
           )
@@ -553,9 +591,9 @@ export function TemplatePicker({
         <p className="text-[11px] text-muted-foreground">
           <Lock className="w-3 h-3 inline mr-1" />
           {t('premiumNote')}{' '}
-          <a href="/settings/billing" className="text-primary underline-offset-2 hover:underline">
+          <Link href="/settings/billing" className="text-primary underline-offset-2 hover:underline">
             {t('premiumPlan')}
-          </a>
+          </Link>
         </p>
         {selectedIds.length > 0 && (
           <button

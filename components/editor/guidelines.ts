@@ -1,4 +1,4 @@
-import type { Canvas, Line } from 'fabric'
+import { Line as FabricLine, type Canvas, type Line } from 'fabric'
 
 const SNAP_THRESHOLD = 8
 const LINE_COLOR = '#C4834F'
@@ -7,8 +7,6 @@ let vLine: Line | null = null
 let hLine: Line | null = null
 
 export function initGuidelines(canvas: Canvas) {
-  const { Line: FabricLine } = require('fabric') as typeof import('fabric')
-
   const makeLine = (points: [number, number, number, number]) =>
     new FabricLine(points, {
       stroke: LINE_COLOR,

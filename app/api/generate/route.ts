@@ -27,13 +27,14 @@
  *   11. Return result
  */
 
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { aiQueue } from '@/lib/queue'
 import type { GenerationParams } from '@/lib/ai/gemini'
+import { finalizeGenerateJob, type FinalizeGenerateJobMeta } from '@/lib/generate/finalize-generate-job'
 import {
   ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS,
   MODEL_PHOTO_MAP, VALID_MODEL_IDS, VALID_PRODUCT_TYPES,
@@ -44,19 +45,18 @@ import {
 } from '@/lib/constants'
 import { CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
 import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
-import { assertSafeStorageUrl, assertSafeImageBytes } from '@/lib/utils/security'
+import { assertSafeImageBytes } from '@/lib/utils/security'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { splitContactSheet } from '@/lib/ai/split-grid'
 import { refundWithRetry } from '@/lib/utils/refund'
+import { downloadCustomModel } from '@/lib/custom-models'
 
-export const maxDuration = 60
+export const maxDuration = 240
 export const runtime = 'nodejs'
 
 const INPUT_BUCKET  = 'jewelry-uploads'
-const OUTPUT_BUCKET = 'generated-images'
-
 const VALID_CATEGORIES = ['rings', 'necklaces', 'earrings', 'bracelets', 'universal'] as const
 const VALID_RATIOS     = ['1:1', '9:16', '4:5'] as const
+const ASYNC_GENERATION_TIMEOUT_MS = 7 * 60 * 1000
 
 export async function POST(request: Request) {
   try {
@@ -69,7 +69,9 @@ export async function POST(request: Request) {
     }
 
     // ── 2. Rate limit (HIGH-NEW-4) ────────────────────────────────────────────
-    const rl = await checkRateLimit('generate', user.id, 10, 60_000)
+    // Queue-backed flow can safely absorb larger client bursts.
+    // Allow a full batch of enqueues, then let the shared Gemini queue smooth execution.
+    const rl = await checkRateLimit('generate', user.id, 30, 60_000)
     if (!rl.ok) {
       return err(
         `Слишком много запросов. Повторите через ${rl.retryAfterSec} сек.`,
@@ -173,6 +175,7 @@ export async function POST(request: Request) {
       : isMacroShot
       ? MACRO_SHOT_ID
       : (rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null)
+    const modelPhoto = modelId ? MODEL_PHOTO_MAP[modelId] : null
 
     const productType: ProductType = (VALID_PRODUCT_TYPES as Set<string>).has(rawProductType)
       ? rawProductType as ProductType
@@ -228,6 +231,16 @@ export async function POST(request: Request) {
     }
 
     // ── 6. Create "processing" generation record ──────────────────────────────
+    const statusToken = crypto.randomUUID()
+    const initialMetadata = {
+      aspect_ratio: aspectRatio,
+      template_category: templateCategory,
+      model_id: modelId ?? null,
+      product_type: productType,
+      is_contact_sheet: isContactSheet || undefined,
+      status_poll_token: statusToken,
+    }
+
     const { data: genRaw, error: genInsertErr } = await supabase
       .from('generations')
       .insert({
@@ -235,13 +248,7 @@ export async function POST(request: Request) {
         template_id:     templateId,
         input_image_url: inputPath,
         status:          'processing',
-        metadata: {
-          aspect_ratio:      aspectRatio,
-          template_category: templateCategory,
-          model_id:          modelId ?? null,
-          product_type:      productType,
-          is_contact_sheet:  isContactSheet || undefined,
-        },
+        metadata:        initialMetadata,
       } as never)
       .select('id')
       .single()
@@ -291,27 +298,20 @@ export async function POST(request: Request) {
         .single()
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const urls: string[]  = (profileCustom as any)?.custom_model_urls ?? []
+      const modelRefs: string[] = (profileCustom as any)?.custom_model_urls ?? []
       const customIndex     = getCustomModelIndex(rawModelId!)
-      // MED-NEW-6: getCustomModelIndex returns -1 for malformed IDs
-      const customUrl       = customIndex >= 0 ? (urls[customIndex] ?? null) : null
+      const customModelRef  = customIndex >= 0 ? (modelRefs[customIndex] ?? null) : null
 
-      if (customUrl) {
-        try {
-          // HIGH-NEW-1: validate URL is a Supabase Storage URL before fetching (SSRF guard)
-          assertSafeStorageUrl(customUrl)
-          const modelRes = await fetch(customUrl, { signal: AbortSignal.timeout(30_000) })
-          if (modelRes.ok) {
-            modelImageBuffer = Buffer.from(await modelRes.arrayBuffer())
-            modelMimeType    = modelRes.headers.get('content-type')?.split(';')[0] ?? 'image/jpeg'
-          }
-        } catch {
-          // Custom model unavailable or unsafe URL — fall through to standalone mode
+      if (customModelRef) {
+        const customModel = await downloadCustomModel(serviceSupabase, user.id, customModelRef)
+        if (customModel) {
+          modelImageBuffer = customModel.buffer
+          modelMimeType = customModel.mimeType
+        } else {
           console.warn(`User ${user.id}: custom model image unavailable`)
         }
       }
-    } else if (modelId) {
-      const modelPhoto = MODEL_PHOTO_MAP[modelId]
+    } else if (modelId && modelPhoto && modelPhoto.renderMode !== 'prompt-only') {
       const modelPath  = path.join(process.cwd(), 'public', 'models', modelPhoto.filename)
       console.log(`[Generate] loading model photo: ${modelPath}`)
       try {
@@ -320,7 +320,7 @@ export async function POST(request: Request) {
       } catch (e) {
         console.error(`[Generate] model photo read failed (${modelPath}):`, e)
         await refundWithRetry(serviceSupabase, user.id, 'Generate/ModelFileRead')
-        await supabase
+        await serviceSupabase
           .from('generations')
           .update({ status: 'failed', error_message: 'Файл шаблона недоступен.' } as never)
           .eq('id', generationId)
@@ -345,7 +345,7 @@ export async function POST(request: Request) {
       // HIGH-3: premium template access guard — refund credit before returning 403
       if (tpl?.is_premium && profile.plan === 'free') {
         await refundWithRetry(serviceSupabase, user.id, 'Generate/PremiumCheck')
-        await supabase
+        await serviceSupabase
           .from('generations')
           .update({ status: 'failed', error_message: 'Требуется платный план.' } as never)
           .eq('id', generationId)
@@ -405,6 +405,10 @@ export async function POST(request: Request) {
       modelMimeType,
       productType,
       userPrompt:         userPrompt || undefined,
+      modelSubjectType:   modelPhoto?.subjectType,
+      modelPose:          modelPhoto?.pose,
+      modelPromptHint:    modelPhoto?.promptHint,
+      isPromptOnlyTemplate: modelPhoto?.renderMode === 'prompt-only' || undefined,
       isMacroShot:        isMacroShot    || undefined,
       isContactSheet:     isContactSheet || undefined,
       contactSheetRatio:  isContactSheet ? contactSheetRatio : undefined,
@@ -417,148 +421,97 @@ export async function POST(request: Request) {
       cardProductDesc:    (isCardFree || cardTemplateId) ? rawProductDesc : undefined,
     }
 
+    const finalizeMeta: FinalizeGenerateJobMeta = {
+      kind: 'generate-image',
+      generationId,
+      userId: user.id,
+      isContactSheet,
+      creditsRemaining: creditsAfter,
+    }
+
     const queuedJob = aiQueue.enqueue({
       userId:     user.id,
       providerId: 'gemini',
       type:       'image',
       params:     aiParams,
+      meta:       finalizeMeta,
+      maxAttempts: 1,
     })
 
-    const completedJob = await aiQueue.waitForJob(queuedJob.id, 55_000)
+    await serviceSupabase
+      .from('generations')
+      .update({
+        metadata: {
+          ...initialMetadata,
+          async_job_id: queuedJob.id,
+          credits_remaining_after_enqueue: creditsAfter,
+        },
+      } as never)
+      .eq('id', generationId)
 
-    if (completedJob.status !== 'completed' || !completedJob.result?.imageBuffer) {
-      // Job failed or timed out — refund credit (HIGH-2: retry on transient DB errors)
-      await refundWithRetry(serviceSupabase, user.id, 'Generate/JobFailed')
-
-      const safeErrMsg = (completedJob.error ?? 'Ошибка генерации. Попробуйте снова.').slice(0, 200)
-
-      await supabase
-        .from('generations')
-        .update({ status: 'failed', error_message: safeErrMsg } as never)
-        .eq('id', generationId)
-
-      console.error('[Generate] AI job failed:', safeErrMsg)
-      const httpStatus = completedJob.status === 'queued' ? 504 : 500
-      return err(safeErrMsg, httpStatus)
-    }
-
-    const aiImageBuffer = completedJob.result.imageBuffer
-    const aiMimeType    = completedJob.result.mimeType ?? 'image/jpeg'
-
-    // ── 10a. Contact-sheet: split into 4 panels, upload each ────────────────
-    if (isContactSheet) {
-      console.log(`[Generate] contact-sheet: aiMimeType=${aiMimeType} bufferSize=${aiImageBuffer.length} modelId=${modelId ?? 'standalone'}`)
-      let panels
-      try {
-        panels = await splitContactSheet(aiImageBuffer)
-        console.log(`[Generate] split OK: ${panels.length} panels, sizes=${panels.map(p => p.width + 'x' + p.height).join(', ')}`)
-      } catch (splitErr) {
-        console.error('[Generate] split error:', splitErr)
-        // HIGH-2: retry refund up to 3 times to prevent permanent credit loss
-        await refundWithRetry(serviceSupabase, user.id, 'Generate/SplitError')
-        await supabase.from('generations').update({ status: 'failed', error_message: 'Ошибка разрезания сетки.' } as never).eq('id', generationId)
-        return err('Ошибка обработки изображения. Попробуйте снова.', 500)
+    const quickJob = await aiQueue.waitForJob(queuedJob.id, 1_500)
+    if (quickJob.status === 'completed' || quickJob.status === 'failed') {
+      const finalized = await finalizeGenerateJob(quickJob, finalizeMeta)
+      if (finalized.status !== 'completed') {
+        const safeErrMsg = finalized.error ?? 'Ошибка генерации. Попробуйте снова.'
+        console.error('[Generate] AI job failed:', safeErrMsg)
+        return err(safeErrMsg, safeErrMsg.toLowerCase().includes('времени') ? 504 : 500)
       }
 
-      // Upload all 4 panels in parallel
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-      const panelVariants: Array<{ id: number; url: string; is_upscaled: boolean }> = []
-
-      const uploadResults = await Promise.all(
-        panels.map(async (panel) => {
-          const panelPath = `${user.id}/${generationId}-panel-${panel.id}.jpg`
-          const { error: pErr } = await serviceSupabase.storage
-            .from(OUTPUT_BUCKET)
-            .upload(panelPath, panel.buffer, { contentType: 'image/jpeg', upsert: false })
-          if (pErr) {
-            console.error(`[Generate] panel ${panel.id} upload error:`, pErr)
-            return null
-          }
-          const { data: pPub } = serviceSupabase.storage.from(OUTPUT_BUCKET).getPublicUrl(panelPath)
-          return { id: panel.id, url: pPub.publicUrl }
+      if (finalized.isContactSheet) {
+        return NextResponse.json({
+          success: true,
+          generationId,
+          isContactSheet: true,
+          panels: finalized.panels ?? [],
+          sheetUrl: finalized.outputUrl ?? null,
+          creditsRemaining: finalized.creditsRemaining,
         })
-      )
-
-      const failedPanels = uploadResults.filter((r) => r === null).length
-      if (failedPanels > 0) {
-        // LOGIC-4: log partial upload failures before refunding
-        console.error(`[Generate] ${failedPanels}/4 panels failed to upload for gen ${generationId}`)
-        // HIGH-2: retry refund up to 3 times to prevent permanent credit loss
-        await refundWithRetry(serviceSupabase, user.id, 'Generate/PanelUpload')
-        await supabase.from('generations').update({ status: 'failed', error_message: 'Ошибка загрузки панелей.' } as never).eq('id', generationId)
-        return err('Ошибка сохранения результатов. Попробуйте снова.', 500)
       }
 
-      for (const r of uploadResults) {
-        if (r) panelVariants.push({ id: r.id, url: r.url, is_upscaled: false })
-      }
-
-      // Also upload the full 2K contact sheet for reference
-      const sheetExt  = aiMimeType === 'image/png' ? 'png' : 'jpg'
-      const sheetPath = `${user.id}/${generationId}-sheet.${sheetExt}`
-      await serviceSupabase.storage
-        .from(OUTPUT_BUCKET)
-        .upload(sheetPath, aiImageBuffer, { contentType: aiMimeType, upsert: false })
-      const { data: sheetPub } = serviceSupabase.storage.from(OUTPUT_BUCKET).getPublicUrl(sheetPath)
-
-      // ── 11. Mark completed + store JSONB panel_variants ──────────────────
-      await supabase
-        .from('generations')
-        .update({
-          status:           'completed',
-          output_image_url: sheetPub.publicUrl,
-          panel_variants:   panelVariants,
-        } as never)
-        .eq('id', generationId)
-
-      // Build thumbnail URLs using Supabase Image Transformations
-      const panelsWithThumbs = panelVariants.map((p) => ({
-        ...p,
-        thumbUrl: p.url.replace(
-          `${supabaseUrl}/storage/v1/object/public/`,
-          `${supabaseUrl}/storage/v1/render/image/public/`
-        ) + '?width=400&quality=80',
-      }))
-
-      console.log(`[Generate] contact-sheet done: ${panelsWithThumbs.length} panels returned`)
       return NextResponse.json({
-        success:          true,
+        success: true,
         generationId,
-        isContactSheet:   true,
-        panels:           panelsWithThumbs,
-        sheetUrl:         sheetPub.publicUrl,
-        creditsRemaining: creditsAfter,
+        outputUrl: finalized.outputUrl ?? null,
+        creditsRemaining: finalized.creditsRemaining,
       })
     }
 
-    // ── 10. Upload AI result (regular mode) ───────────────────────────────────
-    const ext        = aiMimeType === 'image/png' ? 'png' : 'jpg'
-    const outputPath = `${user.id}/${generationId}-result.${ext}`
+    after(async () => {
+      try {
+        const settledJob = await aiQueue.waitForJob(queuedJob.id, ASYNC_GENERATION_TIMEOUT_MS)
 
-    const { error: resultUploadErr } = await serviceSupabase.storage
-      .from(OUTPUT_BUCKET)
-      .upload(outputPath, aiImageBuffer, { contentType: aiMimeType, upsert: false })
+        if (settledJob.status === 'completed' || settledJob.status === 'failed') {
+          await finalizeGenerateJob(settledJob, finalizeMeta)
+          return
+        }
 
-    if (resultUploadErr) {
-      console.error('Result upload error:', resultUploadErr)
-      return err('Ошибка сохранения результата. Попробуйте снова.', 500)
-    }
-
-    const { data: pub } = serviceSupabase.storage.from(OUTPUT_BUCKET).getPublicUrl(outputPath)
-    const resultPublicUrl = pub.publicUrl
-
-    // ── 11. Mark generation completed ────────────────────────────────────────
-    await supabase
-      .from('generations')
-      .update({ status: 'completed', output_image_url: resultPublicUrl } as never)
-      .eq('id', generationId)
+        await failQueuedGeneration(
+          generationId,
+          user.id,
+          'Генерация заняла слишком много времени. Попробуйте снова.',
+          'Generate/AsyncWaitTimeout'
+        )
+      } catch (backgroundError) {
+        console.error('[Generate] async finalization failed:', backgroundError)
+        await failQueuedGeneration(
+          generationId,
+          user.id,
+          'Ошибка генерации. Попробуйте снова.',
+          'Generate/AsyncFinalize'
+        )
+      }
+    })
 
     return NextResponse.json({
-      success:          true,
+      success: true,
+      queued: true,
+      jobId: queuedJob.id,
       generationId,
-      outputUrl:        resultPublicUrl,
+      statusToken,
+      isContactSheet,
       creditsRemaining: creditsAfter,
-    })
+    }, { status: 202 })
   } catch (fatal) {
     console.error('Generate route fatal error:', fatal)
     return err('Внутренняя ошибка сервера. Попробуйте позже.', 500)
@@ -567,4 +520,35 @@ export async function POST(request: Request) {
 
 function err(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })
+}
+
+async function failQueuedGeneration(
+  generationId: string,
+  userId: string,
+  message: string,
+  refundReason: string
+) {
+  const serviceSupabase = createServiceClient()
+
+  const { data: rowRaw } = await serviceSupabase
+    .from('generations')
+    .select('status')
+    .eq('id', generationId)
+    .eq('user_id', userId)
+    .single()
+
+  const row = rowRaw as { status: string } | null
+  if (!row || row.status === 'completed' || row.status === 'failed') {
+    return
+  }
+
+  await refundWithRetry(serviceSupabase, userId, refundReason)
+  await serviceSupabase
+    .from('generations')
+    .update({
+      status: 'failed',
+      error_message: message.slice(0, 200),
+    } as never)
+    .eq('id', generationId)
+    .eq('status', row.status)
 }

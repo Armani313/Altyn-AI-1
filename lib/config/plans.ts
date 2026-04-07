@@ -9,11 +9,13 @@ interface PlanMeta {
   label: string
   /** Monthly generation quota */
   credits: number
+  /** Public monthly price in USD */
+  monthlyPriceUsd: number
 }
 
 export const PLAN_META: Record<Plan, PlanMeta> = {
-  free:     { label: 'Бесплатный', credits: 5   },
-  starter:  { label: 'Старт',     credits: 20  },
-  pro:      { label: 'Про',       credits: 150 },
-  business: { label: 'Бизнес',    credits: 500 },
+  free:     { label: 'Бесплатный', credits: 5,   monthlyPriceUsd: 0  },
+  starter:  { label: 'Старт',      credits: 20,  monthlyPriceUsd: 1  },
+  pro:      { label: 'Про',        credits: 150, monthlyPriceUsd: 10 },
+  business: { label: 'Бизнес',     credits: 500, monthlyPriceUsd: 25 },
 }

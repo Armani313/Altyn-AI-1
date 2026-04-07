@@ -1,10 +1,11 @@
 /**
  * In-memory per-user / per-IP rate limiter.
  *
- * Works correctly for single-instance deployments.
- * For horizontal scaling (multiple containers) connect Upstash Redis:
- *   install @upstash/redis @upstash/ratelimit and set UPSTASH_REDIS_REST_URL + TOKEN
+ * Prefers the shared Postgres-backed limiter via service_role RPC.
+ * Falls back to in-memory counters only if the RPC or DB is unavailable.
  */
+
+import { createServiceClient } from '@/lib/supabase/service'
 
 interface Entry { count: number; windowStart: number }
 
@@ -30,6 +31,30 @@ export async function checkRateLimit(
   limit:    number,
   windowMs: number,
 ): Promise<{ ok: boolean; retryAfterSec?: number }> {
+  try {
+    const supabase = createServiceClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('check_rate_limit', {
+      p_route: route,
+      p_key: key,
+      p_limit: limit,
+      p_window_ms: windowMs,
+    })
+
+    const row = Array.isArray(data) ? data[0] : data
+    if (!error && row && typeof row.ok === 'boolean') {
+      return row.ok
+        ? { ok: true }
+        : { ok: false, retryAfterSec: row.retry_after_sec ?? 1 }
+    }
+
+    if (error) {
+      console.warn(`[RateLimit] shared limiter failed for route=${route}:`, error)
+    }
+  } catch (error) {
+    console.warn(`[RateLimit] shared limiter unavailable for route=${route}:`, error)
+  }
+
   const store = getStore(route)
   const now   = Date.now()
   const entry = store.get(key)

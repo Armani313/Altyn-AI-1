@@ -9,9 +9,10 @@
  */
 
 import { useState } from 'react'
+import { useLocale } from 'next-intl'
 import { Download, Loader2, ZoomIn, CheckCircle2 } from 'lucide-react'
 import { Lightbox } from '@/components/ui/lightbox'
-import { PANEL_NAMES_RU } from '@/lib/ai/contact-sheet'
+import { PANEL_NAMES_EN, PANEL_NAMES_RU } from '@/lib/ai/contact-sheet'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -56,15 +57,36 @@ async function downloadImage(url: string, name: string) {
 export function ContactSheetViewer({ generationId, panels }: ContactSheetViewerProps) {
   const [selectedId,  setSelectedId]  = useState<1 | 2 | 3 | 4 | null>(null)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+  const locale = useLocale() === 'ru' ? 'ru' : 'en'
+  const panelNames = locale === 'ru' ? PANEL_NAMES_RU : PANEL_NAMES_EN
+  const copy = locale === 'ru'
+    ? {
+        title: 'Выберите ракурс',
+        subtitle: 'Нажмите на понравившийся вариант, чтобы скачать или увеличить',
+        optionLabel: 'Вариант',
+        expandLabel: 'Открыть полноэкранно',
+        selected: 'Выбран',
+        downloading: 'Загрузка…',
+        download: 'Скачать',
+      }
+    : {
+        title: 'Choose a variation',
+        subtitle: 'Click the version you like to download it or open it larger',
+        optionLabel: 'Option',
+        expandLabel: 'Open fullscreen',
+        selected: 'Selected',
+        downloading: 'Downloading…',
+        download: 'Download',
+      }
 
   return (
     <div className="flex flex-col gap-3">
 
       {/* Label */}
       <div>
-        <p className="text-sm font-semibold text-foreground">Выберите ракурс</p>
+        <p className="text-sm font-semibold text-foreground">{copy.title}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Нажмите на понравившийся вариант, чтобы скачать или увеличить
+          {copy.subtitle}
         </p>
       </div>
 
@@ -84,13 +106,13 @@ export function ContactSheetViewer({ generationId, panels }: ContactSheetViewerP
                   : 'border-cream-200 hover:border-rose-gold-200'
                 }
               `}
-              aria-label={`Вариант ${panel.id}: ${PANEL_NAMES_RU[panel.id as 1|2|3|4]}`}
+              aria-label={`${copy.optionLabel} ${panel.id}: ${panelNames[panel.id as 1 | 2 | 3 | 4]}`}
             >
               {/* Thumbnail */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={panel.thumbUrl}
-                alt={`Вариант ${panel.id} — ${PANEL_NAMES_RU[panel.id as 1|2|3|4]}`}
+                alt={`${copy.optionLabel} ${panel.id} — ${panelNames[panel.id as 1 | 2 | 3 | 4]}`}
                 className="w-full h-full object-cover"
                 loading={idx > 1 ? 'lazy' : 'eager'}
               />
@@ -107,7 +129,7 @@ export function ContactSheetViewer({ generationId, panels }: ContactSheetViewerP
                 px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm
                 ${isSelected ? 'bg-rose-gold-400 text-white' : 'bg-black/40 text-white'}
               `}>
-                {panel.id} · {PANEL_NAMES_RU[panel.id as 1|2|3|4]}
+                {panel.id} · {panelNames[panel.id as 1 | 2 | 3 | 4]}
               </span>
 
               {/* Selected checkmark */}
@@ -121,7 +143,7 @@ export function ContactSheetViewer({ generationId, panels }: ContactSheetViewerP
               <button
                 onClick={(e) => { e.stopPropagation(); setLightboxSrc(panel.url) }}
                 className="absolute bottom-1.5 right-1.5 w-7 h-7 flex items-center justify-center bg-white/80 hover:bg-white backdrop-blur-sm rounded-lg shadow opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                aria-label="Открыть полноэкранно"
+                aria-label={copy.expandLabel}
               >
                 <ZoomIn className="w-3 h-3 text-foreground/70" />
               </button>
@@ -134,13 +156,16 @@ export function ContactSheetViewer({ generationId, panels }: ContactSheetViewerP
       {selectedId && (
         <div className="flex items-center justify-between gap-2 px-1">
           <p className="text-xs text-muted-foreground">
-            Выбран: <span className="text-foreground font-medium">
-              {PANEL_NAMES_RU[selectedId]}
+            {copy.selected}:{' '}
+            <span className="text-foreground font-medium">
+              {panelNames[selectedId]}
             </span>
           </p>
           <DownloadButton
             url={panels.find((p) => p.id === selectedId)!.url}
             name={`luminify-panel-${selectedId}-${generationId}`}
+            downloadingLabel={copy.downloading}
+            downloadLabel={copy.download}
           />
         </div>
       )}
@@ -157,7 +182,17 @@ export function ContactSheetViewer({ generationId, panels }: ContactSheetViewerP
 }
 
 // ── Inline download button ────────────────────────────────────────────────────
-function DownloadButton({ url, name }: { url: string; name: string }) {
+function DownloadButton({
+  url,
+  name,
+  downloadingLabel,
+  downloadLabel,
+}: {
+  url: string
+  name: string
+  downloadingLabel: string
+  downloadLabel: string
+}) {
   const [busy, setBusy] = useState(false)
   return (
     <button
@@ -169,7 +204,7 @@ function DownloadButton({ url, name }: { url: string; name: string }) {
         ? <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin" />
         : <Download className="w-3.5 h-3.5 text-rose-gold-500" />
       }
-      {busy ? 'Загрузка…' : 'Скачать'}
+      {busy ? downloadingLabel : downloadLabel}
     </button>
   )
 }

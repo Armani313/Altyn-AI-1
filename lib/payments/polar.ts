@@ -17,15 +17,35 @@
 import { Polar } from '@polar-sh/sdk'
 import { PLAN_META } from '@/lib/config/plans'
 
+const polarEnvironment = (process.env.POLAR_ENVIRONMENT as 'sandbox' | 'production' | undefined) ?? 'production'
+
+export function getPolarServerConfigError(): string | null {
+  if (typeof window !== 'undefined') return null
+
+  if (
+    process.env.NODE_ENV === 'production' &&
+    polarEnvironment !== 'production'
+  ) {
+    return 'POLAR_ENVIRONMENT must be set to "production" when NODE_ENV=production'
+  }
+
+  if (!process.env.POLAR_ACCESS_TOKEN?.trim()) {
+    return 'POLAR_ACCESS_TOKEN is not configured'
+  }
+
+  return null
+}
+
 // ── SDK Client (server-only) ──────────────────────────────────────────────────
 // LOW-3: validate access token at module load time (fails fast instead of at checkout)
-if (typeof window === 'undefined' && !process.env.POLAR_ACCESS_TOKEN) {
-  console.error('POLAR_ACCESS_TOKEN is not configured — billing will not work')
+const polarConfigError = getPolarServerConfigError()
+if (typeof window === 'undefined' && polarConfigError) {
+  console.error(`${polarConfigError} — billing routes will return 503 until fixed`)
 }
 
 export const polar = new Polar({
   accessToken: process.env.POLAR_ACCESS_TOKEN ?? '',
-  server: (process.env.POLAR_ENVIRONMENT as 'sandbox' | 'production') ?? 'production',
+  server: polarEnvironment,
 })
 
 // ── Plan → Polar Product mapping ──────────────────────────────────────────────

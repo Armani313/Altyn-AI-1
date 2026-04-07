@@ -1,30 +1,50 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { Wand2, LayoutGrid, PenTool, Images, Settings } from 'lucide-react'
+import { Wand2, LayoutGrid, PenTool, Images, Settings, Scissors } from 'lucide-react'
 
 export function BottomNav() {
   const t        = useTranslations('sidebar')
   const locale   = useLocale()
   const pathname = usePathname()
+  const [editorMode, setEditorMode] = useState<'remove-bg' | 'photo-editor' | null>(null)
+
+  useEffect(() => {
+    if (pathname !== '/editor') {
+      setEditorMode(null)
+      return
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const photoMode = params.get('mode') === 'photo-editor' || params.get('direct') === '1'
+    setEditorMode(photoMode ? 'photo-editor' : 'remove-bg')
+  }, [pathname])
 
   // Hard navigation required for /editor (ONNX Runtime CSP)
   const editorHref = locale === 'en' ? '/editor' : `/${locale}/editor`
+  const photoEditorHref = `${editorHref}?mode=photo-editor`
 
   const items = [
     { href: '/dashboard', icon: Wand2,       label: t('lifestyle'), hardNav: false },
     { href: '/cards',     icon: LayoutGrid,  label: t('cards'),     hardNav: false },
-    { href: editorHref,   icon: PenTool,     label: t('editor'),    hardNav: true  },
+    { href: editorHref,   icon: Scissors,    label: t('removeBg'),  hardNav: true  },
+    { href: photoEditorHref, icon: PenTool,  label: t('editor'),    hardNav: true  },
     { href: '/library',   icon: Images,      label: t('library'),   hardNav: false },
     { href: '/settings',  icon: Settings,    label: t('settings'),  hardNav: false },
   ]
 
   const isActive = (href: string) =>
     pathname === href ||
-    (href === editorHref && pathname === '/editor') ||
+    (href === editorHref && editorMode === 'remove-bg') ||
+    (href === photoEditorHref && editorMode === 'photo-editor') ||
     (href === '/settings' && pathname.startsWith('/settings')) ||
     (href === '/dashboard' && pathname.startsWith('/dashboard/'))
+
+  const hardNavigate = (href: string) => {
+    window.location.assign(href)
+  }
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-t border-cream-200 lg:hidden">
@@ -53,9 +73,14 @@ export function BottomNav() {
           )
 
           return hardNav ? (
-            <a key={href} href={href} className={`relative ${cls}`}>
+            <button
+              key={href}
+              type="button"
+              onClick={() => hardNavigate(href)}
+              className={`relative ${cls}`}
+            >
               {content}
-            </a>
+            </button>
           ) : (
             <Link key={href} href={href} className={`relative ${cls}`}>
               {content}

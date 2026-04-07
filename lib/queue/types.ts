@@ -10,7 +10,7 @@
 
 export type JobStatus  = 'queued' | 'processing' | 'completed' | 'failed'
 export type JobType    = 'image'  | 'video'
-export type ProviderId = 'gemini' | 'kling' | 'runway' | 'replicate'
+export type ProviderId = 'gemini' | 'topaz' | 'kling' | 'runway' | 'replicate'
 
 export interface JobResult {
   /** Filled for image jobs */
@@ -31,6 +31,8 @@ export interface QueueJob {
   status:       JobStatus
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params:       any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  meta?:        any
   result?:      JobResult
   error?:       string
   createdAt:    number
@@ -71,6 +73,8 @@ export interface EnqueueOptions {
   type:        JobType
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params:      any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  meta?:       any
   /** Default: 0 */
   priority?:   number
   /** Default: 3 */

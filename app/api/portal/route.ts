@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { polar } from '@/lib/payments/polar'
+import { polar, getPolarServerConfigError } from '@/lib/payments/polar'
 
 export const runtime = 'nodejs'
 
@@ -19,6 +19,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  const polarConfigError = getPolarServerConfigError()
+  if (polarConfigError) {
+    console.error(polarConfigError)
+    return NextResponse.redirect(new URL('/settings/billing?error=portal', request.url))
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
   try {
@@ -27,7 +33,15 @@ export async function GET(request: Request) {
       returnUrl: `${appUrl}/settings/billing`,
     })
 
-    return NextResponse.redirect(session.customerPortalUrl)
+    const portalUrl = session.customerPortalUrl
+    const allowedHosts = ['sandbox.polar.sh', 'dashboard.polar.sh']
+    const parsedHost = new URL(portalUrl).hostname
+    if (!allowedHosts.includes(parsedHost)) {
+      console.error(`Polar API portal: unexpected redirect host "${parsedHost}" — blocked`)
+      return NextResponse.redirect(new URL('/settings/billing?error=portal', request.url))
+    }
+
+    return NextResponse.redirect(portalUrl)
   } catch (err) {
     console.error('Polar customer portal session failed:', err)
     return NextResponse.redirect(

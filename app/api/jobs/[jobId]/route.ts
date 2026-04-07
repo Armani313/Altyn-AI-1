@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { aiQueue } from '@/lib/queue'
 import { UUID_REGEX } from '@/lib/constants'
+import { finalizeGenerateJob, type FinalizeGenerateJobMeta } from '@/lib/generate/finalize-generate-job'
 
 export const maxDuration = 5
 export const runtime     = 'nodejs'
@@ -46,6 +47,22 @@ export async function GET(
   }
 
   // ── Return status ───────────────────────────────────────────────────────────
+  if (job.type === 'image' && job.meta?.kind === 'generate-image') {
+    const finalized = await finalizeGenerateJob(job, job.meta as FinalizeGenerateJobMeta)
+    return NextResponse.json({
+      jobId: job.id,
+      status: finalized.status,
+      type: job.type,
+      error: finalized.error ?? null,
+      outputUrl: finalized.outputUrl ?? null,
+      panels: finalized.panels ?? null,
+      isContactSheet: finalized.isContactSheet ?? false,
+      creditsRemaining: finalized.creditsRemaining,
+      startedAt: job.startedAt ?? null,
+      completedAt: job.completedAt ?? null,
+    })
+  }
+
   return NextResponse.json({
     jobId:      job.id,
     status:     job.status,

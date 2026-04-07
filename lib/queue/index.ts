@@ -16,16 +16,28 @@
 
 import { queueManager } from './queue-manager'
 import { GeminiProvider } from '@/lib/ai/providers/gemini-provider'
+import { TopazProvider } from '@/lib/ai/providers/topaz-provider'
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __aiQueueProvidersRegistered: boolean | undefined
+  // eslint-disable-next-line no-var
+  var __aiQueueInitPromise: Promise<void> | undefined
+}
 
 // ── Register providers ────────────────────────────────────────────────────────
-
-// Image generation
-queueManager.registerProvider(new GeminiProvider())
+if (!globalThis.__aiQueueProvidersRegistered) {
+  queueManager.registerProvider(new GeminiProvider())
+  queueManager.registerProvider(new TopazProvider())
+  globalThis.__aiQueueProvidersRegistered = true
+}
 
 // ── Startup init (fire-and-forget) ────────────────────────────────────────────
 // Seeds RPD counter from DB and recovers stuck generations after a restart.
-// Runs async so it doesn't block module import; completes in <100ms typically.
-queueManager.init()
+// Guarded globally so polling routes do not re-run init on every hot reload/import.
+if (!globalThis.__aiQueueInitPromise) {
+  globalThis.__aiQueueInitPromise = queueManager.init()
+}
 
 // Future providers (uncomment when ready):
 // import { KlingProvider }     from '@/lib/ai/providers/kling-provider'

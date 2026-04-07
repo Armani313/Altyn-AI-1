@@ -16,10 +16,10 @@ export class GeminiProvider implements AIProvider<GenerationParams> {
   readonly types: JobType[] = ['image']
 
   readonly config: ProviderConfig = {
-    rpm:           80,                        // 80% of 100 RPM hard limit
+    rpm:           40,                        // keep a wide safety margin under provider burst limits
     rpd:           1_000,                     // hard daily cap — fail immediately when hit
-    maxConcurrent: 4,                         // Flash model handles more parallel requests
-    retryDelays:   [3_000, 10_000, 30_000],  // faster backoff for flash model
+    maxConcurrent: 2,                         // smoother than 4, but avoids stalling all queued HTTP requests
+    retryDelays:   [5_000, 15_000, 45_000],  // gentler backoff for long-running image requests
   }
 
   async execute(params: GenerationParams): Promise<JobResult> {

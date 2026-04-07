@@ -35,7 +35,7 @@ export function BgRemoverCta() {
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
             </Button>
           </Link>
-          <a href="mailto:support@luminify.app">
+          <a href="mailto:arman@luminify.app">
             <Button
               variant="outline"
               size="lg"

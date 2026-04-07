@@ -6,8 +6,8 @@ type ModelStatus = 'loading' | 'ready' | 'error'
 
 const IMGLY_PUBLIC_PATH = 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/'
 
-export function useBgRemoval() {
-  const [modelStatus, setModelStatus] = useState<ModelStatus>('loading')
+export function useBgRemoval(enabled = true) {
+  const [modelStatus, setModelStatus] = useState<ModelStatus>(enabled ? 'loading' : 'ready')
   const [modelProgress, setModelProgress] = useState(0)
 
   const [isProcessing, setIsProcessing] = useState(false)
@@ -26,6 +26,11 @@ export function useBgRemoval() {
 
   // Eager model warm-up
   useEffect(() => {
+    if (!enabled) {
+      setModelStatus('ready')
+      setModelProgress(100)
+      return
+    }
     if (warmupDone.current) return
     warmupDone.current = true
 
@@ -65,9 +70,10 @@ export function useBgRemoval() {
     }
 
     warmup()
-  }, [])
+  }, [enabled])
 
   const removeBg = useCallback(async (file: File) => {
+    if (!enabled) return
     if (runningRef.current) return
     runningRef.current = true
     setIsProcessing(true)
@@ -105,7 +111,7 @@ export function useBgRemoval() {
       setIsProcessing(false)
       runningRef.current = false
     }
-  }, [])
+  }, [enabled])
 
   const reset = useCallback(() => {
     if (resultUrlRef.current) {

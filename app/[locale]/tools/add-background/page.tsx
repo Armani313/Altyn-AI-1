@@ -8,6 +8,7 @@ import { AddBgHowTo } from '@/components/tools/add-bg-how-to'
 import { BgRemoverTools } from '@/components/tools/bg-remover-tools'
 import { AddBgFaq } from '@/components/tools/add-bg-faq'
 import { BgRemoverCta } from '@/components/tools/bg-remover-cta'
+import { buildLocalizedMetadata, getSeoKeywords, type SeoLocale } from '@/lib/seo'
 
 export async function generateMetadata({
   params,
@@ -16,10 +17,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'addBgPage' })
-  return {
+  const currentLocale = locale === 'ru' ? 'ru' : 'en'
+
+  return buildLocalizedMetadata({
+    locale: currentLocale as SeoLocale,
+    path: '/tools/add-background',
     title: t('metaTitle'),
     description: t('metaDescription'),
-  }
+    keywords: getSeoKeywords('add-background', currentLocale as SeoLocale),
+  })
 }
 
 export default async function AddBackgroundPage({

@@ -3,25 +3,37 @@ import { setRequestLocale } from 'next-intl/server'
 import { VALID_PRODUCT_TYPES, type ProductType } from '@/lib/constants'
 import { CategoryWorkspace } from '@/components/generate/category-workspace'
 
-const CATEGORY_TITLES: Record<ProductType, string> = {
-  jewelry:    'Украшения — Лайфстайл фото',
-  scarves:    'Платки — Лайфстайл фото',
-  headwear:   'Головные уборы — Лайфстайл фото',
-  outerwear:  'Верхняя одежда — Лайфстайл фото',
-  bottomwear: 'Нижняя одежда — Лайфстайл фото',
-  watches:    'Часы — Лайфстайл фото',
-  bags:       'Сумки — Лайфстайл фото',
+const CATEGORY_TITLES: Record<'ru' | 'en', Record<ProductType, string>> = {
+  ru: {
+    jewelry: 'Украшения — Лайфстайл фото',
+    scarves: 'Платки — Лайфстайл фото',
+    headwear: 'Головные уборы — Лайфстайл фото',
+    outerwear: 'Верхняя одежда — Лайфстайл фото',
+    bottomwear: 'Нижняя одежда — Лайфстайл фото',
+    watches: 'Часы — Лайфстайл фото',
+    bags: 'Сумки — Лайфстайл фото',
+  },
+  en: {
+    jewelry: 'Jewelry — Lifestyle Photos',
+    scarves: 'Scarves — Lifestyle Photos',
+    headwear: 'Headwear — Lifestyle Photos',
+    outerwear: 'Outerwear — Lifestyle Photos',
+    bottomwear: 'Bottomwear — Lifestyle Photos',
+    watches: 'Watches — Lifestyle Photos',
+    bags: 'Bags — Lifestyle Photos',
+  },
 }
 
-export function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
+export function generateMetadata({ params }: { params: Promise<{ locale: string; category: string }> }) {
   // Next.js 16 — params is a Promise but generateMetadata receives resolved value in practice
   // We handle both cases for safety
-  return Promise.resolve(params).then(({ category }) => {
+  return Promise.resolve(params).then(({ locale, category }) => {
     if (!VALID_PRODUCT_TYPES.has(category as ProductType)) {
       return { title: '404' }
     }
+    const currentLocale = locale === 'ru' ? 'ru' : 'en'
     return {
-      title: CATEGORY_TITLES[category as ProductType],
+      title: CATEGORY_TITLES[currentLocale][category as ProductType],
     }
   })
 }

@@ -34,13 +34,13 @@ export default async function SettingsPage({
 
   const { data: profileRaw } = await supabase
     .from('profiles')
-    .select('business_name, contact_name, phone, credits_remaining, plan')
+    .select('business_name, contact_name, phone, email, credits_remaining, plan')
     .eq('id', user.id)
     .single()
 
   const profile = profileRaw as Pick<
     Profile,
-    'business_name' | 'contact_name' | 'phone' | 'credits_remaining' | 'plan'
+    'business_name' | 'contact_name' | 'phone' | 'email' | 'credits_remaining' | 'plan'
   > | null
 
   return (
@@ -67,7 +67,7 @@ export default async function SettingsPage({
                 contact_name:  profile?.contact_name  ?? '',
                 phone:         profile?.phone          ?? '',
               }}
-              email={user.email ?? ''}
+              email={profile?.email ?? user.email ?? ''}
             />
           </div>
 

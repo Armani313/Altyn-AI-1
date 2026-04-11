@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap, Home, Scissors } from 'lucide-react'
+import { Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap, Home, Scissors, Clapperboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/supabase/actions'
 import type { Profile } from '@/types/database.types'
@@ -41,6 +41,7 @@ export function Sidebar({ profile }: SidebarProps) {
   const CREATE_ITEMS = [
     { href: '/dashboard',  icon: Wand2,       label: t('lifestyle'),  hardNav: false },
     { href: '/cards',      icon: LayoutGrid,  label: t('cards'),      hardNav: false },
+    { href: '/video',      icon: Clapperboard, label: t('video'),     hardNav: false },
     { href: editorHref,    icon: Scissors,    label: t('removeBg'),   hardNav: true  },
     { href: photoEditorHref, icon: PenTool,   label: t('editor'),     hardNav: true  },
   ]

@@ -1,6 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { PROTECTED_ROUTES, AUTH_ROUTES } from '@/lib/config/routes'
+import {
+  DEVICE_ID_COOKIE,
+  DEVICE_ID_COOKIE_OPTIONS,
+  generateDeviceId,
+} from '@/lib/auth/device-id'
 
 // Non-default locales that appear as a URL prefix (e.g. /ru/login).
 // 'en' is the default locale and has no prefix (just /login, /dashboard).
@@ -21,6 +26,13 @@ function getLocaleInfo(pathname: string) {
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
+  let deviceId = request.cookies.get(DEVICE_ID_COOKIE)?.value ?? null
+  const shouldSetDeviceCookie = !deviceId
+
+  if (!deviceId) {
+    deviceId = generateDeviceId()
+    request.cookies.set(DEVICE_ID_COOKIE, deviceId)
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,13 +67,25 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = `${urlPrefix}/login`
-    return NextResponse.redirect(url)
+    const response = NextResponse.redirect(url)
+    if (shouldSetDeviceCookie && deviceId) {
+      response.cookies.set(DEVICE_ID_COOKIE, deviceId, DEVICE_ID_COOKIE_OPTIONS)
+    }
+    return response
   }
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = `${urlPrefix}/dashboard`
-    return NextResponse.redirect(url)
+    const response = NextResponse.redirect(url)
+    if (shouldSetDeviceCookie && deviceId) {
+      response.cookies.set(DEVICE_ID_COOKIE, deviceId, DEVICE_ID_COOKIE_OPTIONS)
+    }
+    return response
+  }
+
+  if (shouldSetDeviceCookie && deviceId) {
+    supabaseResponse.cookies.set(DEVICE_ID_COOKIE, deviceId, DEVICE_ID_COOKIE_OPTIONS)
   }
 
   return supabaseResponse

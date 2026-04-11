@@ -3,14 +3,17 @@ import Link from 'next/link'
 import { Wand2, ImageIcon, Loader2 } from 'lucide-react'
 import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { Header } from '@/components/dashboard/header'
 import { Button } from '@/components/ui/button'
 import { LibraryGridShell } from '@/components/library/library-grid-shell'
+import { createSignedPosterUrl } from '@/lib/video/poster-url'
 import {
   buildLibraryDisplayItems,
   summarizeLibraryGenerations,
   type LibraryDisplayCard,
-  type LibraryGeneration,
+  type LibraryImageGeneration,
+  type LibraryVideoGeneration,
 } from '@/lib/library/display-items'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
@@ -52,12 +55,30 @@ export default async function LibraryPage({
     .order('created_at', { ascending: false })
     .limit(120)
 
-  const items = (generationsRaw ?? []) as LibraryGeneration[]
-  const displayItems = buildLibraryDisplayItems(items)
-  const summary = summarizeLibraryGenerations(items)
+  const { data: videoGenerationsRaw } = await supabase
+    .from('video_generations')
+    .select('id, status, input_image_url, output_video_url, created_at, metadata')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(120)
+
+  const imageGenerations = (generationsRaw ?? []) as LibraryImageGeneration[]
+  const rawVideoGenerations = (videoGenerationsRaw ?? []) as Array<Omit<LibraryVideoGeneration, 'posterUrl'>>
+  const serviceSupabase = createServiceClient()
+  const videoGenerations: LibraryVideoGeneration[] = await Promise.all(
+    rawVideoGenerations.map(async (generation) => ({
+      ...generation,
+      posterUrl: await createSignedPosterUrl(serviceSupabase, generation.input_image_url),
+    }))
+  )
+
+  const displayItems = buildLibraryDisplayItems(imageGenerations, videoGenerations)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 120)
+  const summary = summarizeLibraryGenerations(imageGenerations, videoGenerations)
   const displayCount = displayItems.length
   const processingCount = summary.processingCount
-  const pendingGenerationIds = summary.pendingGenerationIds
+  const pendingItems = summary.pendingItems
   const shortDateFormatter = new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'short',
@@ -127,7 +148,7 @@ export default async function LibraryPage({
               <div className="mb-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">{displayCount}</strong> {t('images')}
+                    <strong className="text-foreground">{displayCount}</strong> {t('items')}
                   </p>
                 </div>
 
@@ -140,15 +161,15 @@ export default async function LibraryPage({
               </div>
               <LibraryGridShell
                 items={displayCards}
-                pendingGenerationIds={pendingGenerationIds}
+                pendingItems={pendingItems}
               />
             </>
           )}
 
-          {displayCount === 0 && pendingGenerationIds.length > 0 && (
+          {displayCount === 0 && pendingItems.length > 0 && (
             <LibraryGridShell
               items={displayCards}
-              pendingGenerationIds={pendingGenerationIds}
+              pendingItems={pendingItems}
             />
           )}
         </div>

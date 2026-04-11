@@ -21,6 +21,7 @@ const RETENTION_DAYS = Number(process.env.CLEANUP_RETENTION_DAYS ?? 15)
 const BATCH_SIZE     = 100
 const INPUT_BUCKET   = 'jewelry-uploads'
 const OUTPUT_BUCKET  = 'generated-images'
+const VIDEO_OUTPUT_BUCKET = 'generated-videos'
 
 export async function POST(request: Request) {
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -46,12 +47,25 @@ export async function POST(request: Request) {
     .neq('status', 'processing') // never delete in-flight jobs
     .limit(BATCH_SIZE)
 
+  const { data: videoRows, error: videoQueryErr } = await supabase
+    .from('video_generations')
+    .select('id, user_id, input_image_url, output_video_url')
+    .lt('created_at', cutoffDate)
+    .neq('status', 'queued')
+    .neq('status', 'processing')
+    .limit(BATCH_SIZE)
+
   if (queryErr) {
     console.error('[Cleanup] query error:', queryErr)
     return NextResponse.json({ error: 'DB query failed' }, { status: 500 })
   }
 
-  if (!rows || rows.length === 0) {
+  if (videoQueryErr) {
+    console.error('[Cleanup] video query error:', videoQueryErr)
+    return NextResponse.json({ error: 'DB video query failed' }, { status: 500 })
+  }
+
+  if ((!rows || rows.length === 0) && (!videoRows || videoRows.length === 0)) {
     console.log(`[Cleanup] nothing to delete (cutoff: ${cutoffDate})`)
     return NextResponse.json({ deleted: 0, retention_days: RETENTION_DAYS })
   }
@@ -59,11 +73,14 @@ export async function POST(request: Request) {
   // ── Collect storage paths ────────────────────────────────────────────────────
   const inputPaths:  string[] = []
   const outputPaths: string[] = []
+  const videoOutputPaths: string[] = []
   const ids:         string[] = []
+  const videoIds:    string[] = []
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   // Public URL format: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
   const outputPrefix = `${supabaseUrl}/storage/v1/object/public/${OUTPUT_BUCKET}/`
+  const videoOutputPrefix = `${supabaseUrl}/storage/v1/object/public/${VIDEO_OUTPUT_BUCKET}/`
 
   for (const row of rows as Array<{
     id: string
@@ -84,11 +101,28 @@ export async function POST(request: Request) {
     }
   }
 
+  for (const row of (videoRows ?? []) as Array<{
+    id: string
+    user_id: string
+    input_image_url: string | null
+    output_video_url: string | null
+  }>) {
+    videoIds.push(row.id)
+
+    if (row.input_image_url) {
+      inputPaths.push(row.input_image_url)
+    }
+
+    if (row.output_video_url?.startsWith(videoOutputPrefix)) {
+      videoOutputPaths.push(row.output_video_url.slice(videoOutputPrefix.length))
+    }
+  }
+
   // ── Delete storage files ─────────────────────────────────────────────────────
   let storageErrors = 0
 
   if (inputPaths.length > 0) {
-    const { error } = await supabase.storage.from(INPUT_BUCKET).remove(inputPaths)
+    const { error } = await supabase.storage.from(INPUT_BUCKET).remove(Array.from(new Set(inputPaths)))
     if (error) {
       console.error('[Cleanup] input storage delete error:', error)
       storageErrors++
@@ -99,6 +133,14 @@ export async function POST(request: Request) {
     const { error } = await supabase.storage.from(OUTPUT_BUCKET).remove(outputPaths)
     if (error) {
       console.error('[Cleanup] output storage delete error:', error)
+      storageErrors++
+    }
+  }
+
+  if (videoOutputPaths.length > 0) {
+    const { error } = await supabase.storage.from(VIDEO_OUTPUT_BUCKET).remove(videoOutputPaths)
+    if (error) {
+      console.error('[Cleanup] video storage delete error:', error)
       storageErrors++
     }
   }
@@ -114,16 +156,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'DB delete failed', storage_errors: storageErrors }, { status: 500 })
   }
 
+  if (videoIds.length > 0) {
+    const { error: videoDeleteErr } = await supabase
+      .from('video_generations')
+      .delete()
+      .in('id', videoIds)
+
+    if (videoDeleteErr) {
+      console.error('[Cleanup] video DB delete error:', videoDeleteErr)
+      return NextResponse.json(
+        { error: 'DB video delete failed', storage_errors: storageErrors },
+        { status: 500 }
+      )
+    }
+  }
+
   console.log(
-    `[Cleanup] deleted ${ids.length} generations | ` +
-    `input files: ${inputPaths.length} | output files: ${outputPaths.length} | ` +
+    `[Cleanup] deleted ${ids.length} image generations and ${videoIds.length} video generations | ` +
+    `input files: ${inputPaths.length} | image outputs: ${outputPaths.length} | video outputs: ${videoOutputPaths.length} | ` +
     `storage errors: ${storageErrors} | cutoff: ${cutoffDate}`
   )
 
   return NextResponse.json({
-    deleted:        ids.length,
+    deleted:        ids.length + videoIds.length,
+    image_rows:     ids.length,
+    video_rows:     videoIds.length,
     input_files:    inputPaths.length,
     output_files:   outputPaths.length,
+    video_output_files: videoOutputPaths.length,
     storage_errors: storageErrors,
     retention_days: RETENTION_DAYS,
     cutoff:         cutoffDate,

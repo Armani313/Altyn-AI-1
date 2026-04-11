@@ -55,13 +55,6 @@ export function RegisterForm() {
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
-      options: {
-        data: {
-          full_name: data.contact_name,
-          business_name: data.business_name,
-          phone: data.phone,
-        },
-      },
     })
 
     if (error) {
@@ -77,6 +70,13 @@ export function RegisterForm() {
       // Email confirmation disabled — session ready, redirect immediately
       setHasSession(true)
       setSuccess(true)
+
+      try {
+        await fetch('/api/auth/claim-trial', { method: 'POST' })
+      } catch (claimError) {
+        console.warn('[Auth] Trial claim skipped after signup:', claimError)
+      }
+
       setTimeout(() => {
         router.push('/dashboard')
         router.refresh()
@@ -122,61 +122,6 @@ export function RegisterForm() {
             <span>{serverError}</span>
           </div>
         )}
-
-        {/* Business name */}
-        <div className="space-y-1.5">
-          <Label htmlFor="business_name" className="text-sm font-medium">
-            {t('businessName')}
-          </Label>
-          <Input
-            id="business_name"
-            placeholder={t('businessNamePlaceholder')}
-            className={`h-11 bg-white border-cream-300 focus:border-primary ${
-              errors.business_name ? 'border-destructive' : ''
-            }`}
-            {...register('business_name')}
-          />
-          {errors.business_name && (
-            <p className="text-xs text-destructive">{errors.business_name.message}</p>
-          )}
-        </div>
-
-        {/* Two columns: contact name + phone */}
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="contact_name" className="text-sm font-medium">
-              {t('contactName')}
-            </Label>
-            <Input
-              id="contact_name"
-              placeholder={t('contactNamePlaceholder')}
-              className={`h-11 bg-white border-cream-300 focus:border-primary ${
-                errors.contact_name ? 'border-destructive' : ''
-              }`}
-              {...register('contact_name')}
-            />
-            {errors.contact_name && (
-              <p className="text-xs text-destructive">{errors.contact_name.message}</p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="phone" className="text-sm font-medium">
-              {t('phone')}
-            </Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="+7 777 000 00 00"
-              className={`h-11 bg-white border-cream-300 focus:border-primary ${
-                errors.phone ? 'border-destructive' : ''
-              }`}
-              {...register('phone')}
-            />
-            {errors.phone && (
-              <p className="text-xs text-destructive">{errors.phone.message}</p>
-            )}
-          </div>
-        </div>
 
         {/* Email */}
         <div className="space-y-1.5">
@@ -224,6 +169,9 @@ export function RegisterForm() {
               ) : (
                 <Eye className="w-4 h-4" />
               )}
+              <span className="sr-only">
+                {showPassword ? t('hidePassword') : t('showPassword')}
+              </span>
             </button>
           </div>
           {errors.password && (

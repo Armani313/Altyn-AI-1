@@ -7,6 +7,7 @@ export const PROTECTED_ROUTES = [
   '/dashboard',
   '/library',
   '/generate',
+  '/video',
   '/history',
   '/settings',
   '/editor',

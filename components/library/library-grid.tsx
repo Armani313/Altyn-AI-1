@@ -2,24 +2,35 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Download, Maximize2, Calendar, ImageIcon } from 'lucide-react'
+import { Download, Maximize2, Calendar, ImageIcon, Clapperboard, Play } from 'lucide-react'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import { useRouter } from '@/i18n/navigation'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { saveUpscaleSourceImage } from '@/lib/tools/upscale-transfer'
 import type { LibraryDisplayCard } from '@/lib/library/display-items'
 
 const STATUS_CLASSES: Record<LibraryDisplayCard['status'], string> = {
+  queued:     'bg-amber-50 text-amber-600 border-amber-200',
   pending:    'bg-amber-50 text-amber-600 border-amber-200',
   processing: 'bg-blue-50 text-blue-600 border-blue-200',
   completed:  'bg-emerald-50 text-emerald-600 border-emerald-200',
   failed:     'bg-red-50 text-red-600 border-red-200',
 }
 
-async function downloadImage(url: string, name: string) {
+async function downloadMedia(url: string, name: string, extension: 'jpg' | 'mp4') {
   try {
     const res  = await fetch(url)
     const blob = await res.blob()
-    const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
+    const ext  = extension === 'mp4'
+      ? 'mp4'
+      : blob.type === 'image/png'
+        ? 'png'
+        : 'jpg'
     const tmp  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = tmp
@@ -40,8 +51,10 @@ export function LibraryGrid({ items }: LibraryGridProps) {
   const tLightbox = useTranslations('lightbox')
   const router = useRouter()
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [videoDialogItem, setVideoDialogItem] = useState<LibraryDisplayCard | null>(null)
 
   const STATUS_MAP: Record<LibraryDisplayCard['status'], { label: string; class: string }> = {
+    queued:     { label: t('statusQueued'),     class: STATUS_CLASSES.queued     },
     pending:    { label: t('statusPending'),    class: STATUS_CLASSES.pending    },
     processing: { label: t('statusProcessing'), class: STATUS_CLASSES.processing },
     completed:  { label: t('statusCompleted'),  class: STATUS_CLASSES.completed  },
@@ -49,7 +62,7 @@ export function LibraryGrid({ items }: LibraryGridProps) {
   }
 
   const lightboxImages: LightboxImage[] = items
-    .filter((item) => item.status === 'completed' && item.imageUrl)
+    .filter((item) => item.mediaType === 'image' && item.status === 'completed' && item.imageUrl)
     .map((item) => ({
       url: item.imageUrl!,
       label: item.lightboxLabel,
@@ -71,7 +84,8 @@ export function LibraryGrid({ items }: LibraryGridProps) {
         {items.map((item) => {
           const status = STATUS_MAP[item.status]
           const lbIndex = toLightboxIndex(item.imageUrl)
-          const canExpand = item.status === 'completed' && item.imageUrl && lbIndex >= 0
+          const canExpand = item.mediaType === 'image' && item.status === 'completed' && item.imageUrl && lbIndex >= 0
+          const canPlayVideo = item.mediaType === 'video' && item.status === 'completed' && item.videoUrl
 
           return (
             <div
@@ -95,21 +109,49 @@ export function LibraryGrid({ items }: LibraryGridProps) {
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                     </button>
+                  ) : canPlayVideo ? (
+                    <button
+                      type="button"
+                      onClick={() => setVideoDialogItem(item)}
+                      className="group relative h-full w-full text-left"
+                      aria-label={t('openVideo')}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.previewUrl}
+                        alt={t('videoAlt')}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur-sm transition-transform duration-300 group-hover:scale-105">
+                          <Play className="ml-0.5 h-5 w-5 fill-current" />
+                        </span>
+                      </div>
+                    </button>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.previewUrl}
-                      alt={t('imageAlt')}
+                      alt={item.mediaType === 'video' ? t('videoAlt') : t('imageAlt')}
                       className="w-full h-full object-cover"
                     />
                   )
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-center px-3">
                     <div className="w-10 h-10 rounded-xl bg-cream-200 flex items-center justify-center">
-                      <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
+                      {item.mediaType === 'video' ? (
+                        <Clapperboard className="w-5 h-5 text-muted-foreground/50" />
+                      ) : (
+                        <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
+                      )}
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      {item.status === 'processing' ? t('generating') : t('noImage')}
+                      {item.status === 'processing' || item.status === 'queued'
+                        ? t('generating')
+                        : item.mediaType === 'video'
+                          ? t('noVideo')
+                          : t('noImage')}
                     </span>
                   </div>
                 )}
@@ -128,12 +170,18 @@ export function LibraryGrid({ items }: LibraryGridProps) {
                 </div>
 
                 {/* Action buttons — always visible */}
-                {item.imageUrl && (
+                {(item.imageUrl || item.videoUrl) && (
                   <div className="flex gap-1.5">
                     <button
-                      onClick={() => downloadImage(item.imageUrl!, item.panelId
-                        ? `luminify-${item.generationId.slice(0, 8)}-panel-${item.panelId}`
-                        : `luminify-${item.generationId.slice(0, 8)}`)}
+                      onClick={() => downloadMedia(
+                        item.mediaType === 'video' ? item.videoUrl! : item.imageUrl!,
+                        item.mediaType === 'video'
+                          ? `luminify-video-${item.generationId.slice(0, 8)}`
+                          : item.panelId
+                            ? `luminify-${item.generationId.slice(0, 8)}-panel-${item.panelId}`
+                            : `luminify-${item.generationId.slice(0, 8)}`,
+                        item.mediaType === 'video' ? 'mp4' : 'jpg'
+                      )}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 text-[10px] font-semibold py-3 rounded-lg transition-colors touch-manipulation min-h-[40px]"
                       aria-label={t('download')}
                     >
@@ -148,6 +196,16 @@ export function LibraryGrid({ items }: LibraryGridProps) {
                         aria-label={t('expandFullscreen')}
                       >
                         <Maximize2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {canPlayVideo && (
+                      <button
+                        onClick={() => setVideoDialogItem(item)}
+                        className="w-10 h-10 flex items-center justify-center bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 rounded-lg transition-colors touch-manipulation"
+                        aria-label={t('openVideo')}
+                      >
+                        <Play className="h-3.5 w-3.5 fill-current" />
                       </button>
                     )}
                   </div>
@@ -166,6 +224,29 @@ export function LibraryGrid({ items }: LibraryGridProps) {
         primaryActionLabel={tLightbox('enhance')}
         onPrimaryAction={handleEnhanceImage}
       />
+
+      <Dialog open={videoDialogItem !== null} onOpenChange={(open) => { if (!open) setVideoDialogItem(null) }}>
+        <DialogContent className="max-w-4xl border-cream-200 bg-white p-3 sm:p-4">
+          <DialogHeader className="pr-10">
+            <DialogTitle className="text-left text-base">
+              {t('videoPreviewTitle')}
+            </DialogTitle>
+          </DialogHeader>
+
+          {videoDialogItem?.videoUrl ? (
+            <div className="overflow-hidden rounded-2xl border border-cream-200 bg-black">
+              <video
+                src={videoDialogItem.videoUrl}
+                poster={videoDialogItem.previewUrl ?? undefined}
+                controls
+                autoPlay
+                playsInline
+                className="max-h-[80vh] w-full object-contain"
+              />
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

@@ -3,6 +3,7 @@ import { setRequestLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { claimSignupTrialForUser } from '@/lib/auth/signup-trial'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { BottomNav } from '@/components/dashboard/bottom-nav'
 import type { Profile } from '@/types/database.types'
@@ -32,16 +33,36 @@ export default async function DashboardLayout({
     redirect(loginPath)
   }
 
+  const profileSelect = 'contact_name, business_name, credits_remaining, plan, trial_credits_decision'
+
   const { data: profileRaw } = await supabase
     .from('profiles')
-    .select('contact_name, business_name, credits_remaining, plan')
+    .select(profileSelect)
     .eq('id', user.id)
     .single()
 
-  const profile = profileRaw as Pick<
+  let profile = profileRaw as Pick<
     Profile,
-    'contact_name' | 'business_name' | 'credits_remaining' | 'plan'
+    'contact_name' | 'business_name' | 'credits_remaining' | 'plan' | 'trial_credits_decision'
   > | null
+
+  if (profile?.trial_credits_decision === 'pending' && user.email) {
+    await claimSignupTrialForUser({
+      userId: user.id,
+      email: user.email,
+    })
+
+    const { data: refreshedProfileRaw } = await supabase
+      .from('profiles')
+      .select(profileSelect)
+      .eq('id', user.id)
+      .single()
+
+    profile = refreshedProfileRaw as Pick<
+      Profile,
+      'contact_name' | 'business_name' | 'credits_remaining' | 'plan' | 'trial_credits_decision'
+    > | null
+  }
 
   return (
     <div className="flex min-h-screen bg-[#FAF9F6]">

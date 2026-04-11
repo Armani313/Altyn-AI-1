@@ -64,6 +64,12 @@ export function LoginForm() {
       return
     }
 
+    try {
+      await fetch('/api/auth/claim-trial', { method: 'POST' })
+    } catch (claimError) {
+      console.warn('[Auth] Trial claim skipped after login:', claimError)
+    }
+
     router.push('/dashboard')
     router.refresh()
   }

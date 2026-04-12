@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { claimSignupTrialForUser } from '@/lib/auth/signup-trial'
+import { DashboardProfileProvider } from '@/components/dashboard/dashboard-profile-provider'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { BottomNav } from '@/components/dashboard/bottom-nav'
 import type { Profile } from '@/types/database.types'
@@ -65,34 +66,36 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#FAF9F6]">
-      {/* Desktop sidebar — hidden on mobile */}
-      <Sidebar profile={profile} />
+    <DashboardProfileProvider initialProfile={profile}>
+      <div className="flex min-h-screen bg-[#FAF9F6]">
+        {/* Desktop sidebar — hidden on mobile */}
+        <Sidebar />
 
-      <div className="flex-1 lg:ml-[240px] min-w-0 flex flex-col">
-        {/* Mobile top bar — hidden on desktop */}
-        <div
-          className="flex items-center justify-center px-4 py-3 border-b border-cream-200 bg-white/80 backdrop-blur-xl lg:hidden"
-          style={{ paddingTop: 'calc(var(--safe-top, 0px) + 8px)' }}
-        >
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg gradient-rose-gold flex items-center justify-center">
-              <span className="text-white text-[10px] font-bold font-serif">L</span>
-            </div>
-            <span className="font-serif text-sm font-semibold text-foreground tracking-tight">
-              Luminify
-            </span>
-          </Link>
+        <div className="flex-1 lg:ml-[240px] min-w-0 flex flex-col">
+          {/* Mobile top bar — hidden on desktop */}
+          <div
+            className="flex items-center justify-center px-4 py-3 border-b border-cream-200 bg-white/80 backdrop-blur-xl lg:hidden"
+            style={{ paddingTop: 'calc(var(--safe-top, 0px) + 8px)' }}
+          >
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg gradient-rose-gold flex items-center justify-center">
+                <span className="text-white text-[10px] font-bold font-serif">L</span>
+              </div>
+              <span className="font-serif text-sm font-semibold text-foreground tracking-tight">
+                Luminify
+              </span>
+            </Link>
+          </div>
+
+          {/* Content area with bottom padding for bottom nav on mobile */}
+          <div className="flex-1 pb-[var(--bottom-nav-height)] lg:pb-0">
+            {children}
+          </div>
         </div>
 
-        {/* Content area with bottom padding for bottom nav on mobile */}
-        <div className="flex-1 pb-[var(--bottom-nav-height)] lg:pb-0">
-          {children}
-        </div>
+        {/* Mobile bottom navigation — hidden on desktop */}
+        <BottomNav />
       </div>
-
-      {/* Mobile bottom navigation — hidden on desktop */}
-      <BottomNav />
-    </div>
+    </DashboardProfileProvider>
   )
 }

@@ -10,6 +10,7 @@ import { TemplatePicker } from '@/components/generate/template-picker'
 import { ResultViewer } from '@/components/generate/result-viewer'
 import { createClient }   from '@/lib/supabase/client'
 import type { ProductType } from '@/lib/constants'
+import { useDashboardProfile } from '@/components/dashboard/dashboard-profile-provider'
 import {
   getLifestyleGenerationStore,
   type LifestyleWorkspaceSnapshot,
@@ -27,6 +28,9 @@ interface CategoryWorkspaceProps {
 export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const t = useTranslations('dashboard')
   const store = getLifestyleGenerationStore(productType)
+  const dashboardProfile = useDashboardProfile()
+  const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
+  const setDashboardCreditsRemaining = dashboardProfile?.setCreditsRemaining
 
   const MOBILE_STEPS = [
     { id: 1 as MobileStep, label: t('mobileStep1') },
@@ -35,7 +39,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   ]
 
   const [workspace, setWorkspace] = useState<LifestyleWorkspaceSnapshot>(() => store.snapshot)
-  const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
+  const [localCreditsRemaining, setLocalCreditsRemaining] = useState<number | null>(null)
   const [customModelUrls, setCustomModelUrls] = useState<string[]>([])
   const [mobileStep, setMobileStep] = useState<MobileStep>(() => {
     const snapshot = store.snapshot
@@ -49,6 +53,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const aspectRatio = workspace.aspectRatio
   const generationResults = workspace.results
   const userPrompt = workspace.userPrompt
+  const creditsRemaining = localCreditsRemaining ?? providerCreditsRemaining
 
   useEffect(() => {
     const supabase = createClient()
@@ -71,7 +76,8 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const profile = profileResult.data as any
       if (profile?.credits_remaining != null) {
-        setCreditsRemaining(profile.credits_remaining as number)
+        setLocalCreditsRemaining(profile.credits_remaining as number)
+        setDashboardCreditsRemaining?.(profile.credits_remaining as number)
       }
 
       if (modelsResponse?.ok) {
@@ -85,16 +91,17 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [setDashboardCreditsRemaining])
 
   useEffect(() => {
     return store.subscribe((snapshot, nextCredits) => {
       setWorkspace({ ...snapshot })
       if (typeof nextCredits === 'number') {
-        setCreditsRemaining(nextCredits)
+        setLocalCreditsRemaining(nextCredits)
+        setDashboardCreditsRemaining?.(nextCredits)
       }
     })
-  }, [store])
+  }, [setDashboardCreditsRemaining, store])
 
   const handleUpload = useCallback(
     (file: File, url: string) => {

@@ -9,9 +9,10 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { logout } from '@/lib/supabase/actions'
 import type { Profile } from '@/types/database.types'
 import { PLAN_META } from '@/lib/config/plans'
+import { useDashboardProfile } from './dashboard-profile-provider'
 
 interface MobileNavProps {
-  profile: Pick<Profile, 'contact_name' | 'business_name' | 'credits_remaining' | 'plan'> | null
+  profile?: Pick<Profile, 'contact_name' | 'business_name' | 'credits_remaining' | 'plan'> | null
 }
 
 export function MobileNav({ profile }: MobileNavProps) {
@@ -19,8 +20,10 @@ export function MobileNav({ profile }: MobileNavProps) {
   const t        = useTranslations('sidebar')
   const locale   = useLocale()
   const pathname = usePathname()
-  const plan     = profile?.plan ?? 'free'
-  const credits  = profile?.credits_remaining ?? 0
+  const dashboardProfile = useDashboardProfile()
+  const resolvedProfile = profile ?? dashboardProfile?.profile ?? null
+  const plan     = resolvedProfile?.plan ?? 'free'
+  const credits  = resolvedProfile?.credits_remaining ?? 0
   const planMeta = PLAN_META[plan]
   const [editorMode, setEditorMode] = useState<'remove-bg' | 'photo-editor' | null>(null)
 
@@ -185,15 +188,15 @@ export function MobileNav({ profile }: MobileNavProps) {
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full gradient-rose-gold flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-semibold">
-                {profile?.contact_name?.[0]?.toUpperCase() ?? '?'}
+                {resolvedProfile?.contact_name?.[0]?.toUpperCase() ?? '?'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-foreground truncate">
-                {profile?.contact_name ?? t('user')}
+                {resolvedProfile?.contact_name ?? t('user')}
               </p>
               <p className="text-[10px] text-muted-foreground truncate">
-                {profile?.business_name ?? ''}
+                {resolvedProfile?.business_name ?? ''}
               </p>
             </div>
             <form action={logout}>

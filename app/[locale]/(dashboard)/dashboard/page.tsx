@@ -29,7 +29,6 @@ export default function DashboardPage() {
       <Header
         title={t('hubTitle')}
         subtitle={t('hubSubtitle')}
-        profile={null}
       />
 
       <div className="flex-1 p-4 sm:p-6 xl:p-8">

@@ -9,6 +9,7 @@ import { CardProductForm }    from '@/components/cards/card-product-form'
 import { CardTemplatePicker } from '@/components/cards/card-template-picker'
 import { CardResultViewer, type CardResult } from '@/components/cards/card-result-viewer'
 import { createClient }       from '@/lib/supabase/client'
+import { useDashboardProfile } from '@/components/dashboard/dashboard-profile-provider'
 import {
   type CardTemplate,
   MAX_CARD_TEMPLATES,
@@ -20,6 +21,9 @@ type MobileStep  = 1 | 2 | 3
 
 export default function CardsPage() {
   const t = useTranslations('cards')
+  const dashboardProfile = useDashboardProfile()
+  const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
+  const setDashboardCreditsRemaining = dashboardProfile?.setCreditsRemaining
 
   const MOBILE_STEPS = [
     { id: 1 as MobileStep, label: t('mobileStep1') },
@@ -37,23 +41,27 @@ export default function CardsPage() {
   const [customTemplateUrl,   setCustomTemplateUrl]   = useState<string | null>(null)
   const [aspectRatio,         setAspectRatio]         = useState<AspectRatio>('1:1')
   const [results,             setResults]             = useState<CardResult[]>([])
-  const [creditsRemaining,    setCreditsRemaining]    = useState<number | null>(null)
+  const [localCreditsRemaining, setLocalCreditsRemaining] = useState<number | null>(null)
   const [mobileStep,          setMobileStep]          = useState<MobileStep>(1)
   const [cardTemplates,       setCardTemplates]       = useState<CardTemplate[]>([])
   const [templateMap,         setTemplateMap]         = useState<Record<string, CardTemplate>>({})
+  const creditsRemaining = localCreditsRemaining ?? providerCreditsRemaining
 
-  const setCreditsRef = useRef(setCreditsRemaining)
-  useEffect(() => { setCreditsRef.current = setCreditsRemaining }, [])
+  const setCreditsRef = useRef(setLocalCreditsRemaining)
+  useEffect(() => { setCreditsRef.current = setLocalCreditsRemaining }, [])
 
   useEffect(() => {
     const store = getCardsStore()
     setResults(store.results)
     const unsubscribe = store.subscribe((newResults, newCredits) => {
       setResults(newResults)
-      if (typeof newCredits === 'number') setCreditsRef.current(newCredits)
+      if (typeof newCredits === 'number') {
+        setCreditsRef.current(newCredits)
+        setDashboardCreditsRemaining?.(newCredits)
+      }
     })
     return unsubscribe
-  }, [])
+  }, [setDashboardCreditsRemaining])
 
   useEffect(() => {
     try {
@@ -92,11 +100,12 @@ export default function CardsPage() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const profile = data as any
           if (profile?.credits_remaining != null) {
-            setCreditsRemaining(profile.credits_remaining as number)
+            setLocalCreditsRemaining(profile.credits_remaining as number)
+            setDashboardCreditsRemaining?.(profile.credits_remaining as number)
           }
         })
     })
-  }, [])
+  }, [setDashboardCreditsRemaining])
 
   useEffect(() => {
     fetch('/api/card-templates')

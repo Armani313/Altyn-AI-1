@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { Zap, Gift, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useDashboardProfile } from './dashboard-profile-provider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,13 +22,15 @@ const LOCALE_LABELS: Record<string, string> = {
 interface HeaderProps {
   title: string
   subtitle?: string
-  profile: Pick<Profile, 'credits_remaining'> | null
+  profile?: Pick<Profile, 'credits_remaining'> | null
   freeService?: boolean
 }
 
 export function Header({ title, subtitle, profile, freeService = false }: HeaderProps) {
   const t        = useTranslations('header')
-  const credits  = profile?.credits_remaining ?? 0
+  const dashboardProfile = useDashboardProfile()
+  const resolvedProfile = profile ?? dashboardProfile?.profile ?? null
+  const credits  = resolvedProfile?.credits_remaining ?? 0
   const pathname = usePathname()
   const router   = useRouter()
 

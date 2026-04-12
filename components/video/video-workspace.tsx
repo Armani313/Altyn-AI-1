@@ -7,6 +7,7 @@ import { Header } from '@/components/dashboard/header'
 import { UploadZone } from '@/components/generate/upload-zone'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { useDashboardProfile } from '@/components/dashboard/dashboard-profile-provider'
 import { fetchVideoGenerationStatus } from '@/lib/video/poll-video-generation'
 import { VIDEO_CREDITS_COST, VIDEO_SESSION_KEY } from '@/lib/video/constants'
 import type { VideoTemplateListItem } from '@/lib/video/types'
@@ -19,12 +20,15 @@ type MobileStep = 1 | 2 | 3
 export function VideoWorkspace() {
   const t = useTranslations('video')
   const tTemplates = useTranslations('videoTemplates')
+  const dashboardProfile = useDashboardProfile()
+  const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
+  const setDashboardCreditsRemaining = dashboardProfile?.setCreditsRemaining
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [templates, setTemplates] = useState<VideoTemplateListItem[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
-  const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
+  const [localCreditsRemaining, setLocalCreditsRemaining] = useState<number | null>(null)
   const [mobileStep, setMobileStep] = useState<MobileStep>(1)
   const [generationStatus, setGenerationStatus] = useState<VideoGenerationStatus | null>(null)
   const [outputVideoUrl, setOutputVideoUrl] = useState<string | null>(null)
@@ -36,6 +40,7 @@ export function VideoWorkspace() {
     () => templates.find((template) => template.id === selectedTemplateId) ?? null,
     [selectedTemplateId, templates]
   )
+  const creditsRemaining = localCreditsRemaining ?? providerCreditsRemaining
 
   const isGenerating = generationStatus === 'queued' || generationStatus === 'processing'
   const selectedTemplateName = selectedTemplate
@@ -62,7 +67,8 @@ export function VideoWorkspace() {
         setPosterUrl(result.posterUrl)
         setGenerationError(result.error)
         if (typeof result.creditsRemaining === 'number') {
-          setCreditsRemaining(result.creditsRemaining)
+          setLocalCreditsRemaining(result.creditsRemaining)
+          setDashboardCreditsRemaining?.(result.creditsRemaining)
         }
 
         if (result.status === 'completed' || result.status === 'failed') {
@@ -78,7 +84,7 @@ export function VideoWorkspace() {
 
       await new Promise<void>((resolve) => window.setTimeout(resolve, 10_000))
     }
-  }, [t])
+  }, [setDashboardCreditsRemaining, t])
 
   useEffect(() => {
     const supabase = createClient()
@@ -96,7 +102,8 @@ export function VideoWorkspace() {
           if (cancelled) return
           const profile = data as { credits_remaining: number } | null
           if (profile?.credits_remaining != null) {
-            setCreditsRemaining(profile.credits_remaining)
+            setLocalCreditsRemaining(profile.credits_remaining)
+            setDashboardCreditsRemaining?.(profile.credits_remaining)
           }
         })
     })
@@ -104,7 +111,7 @@ export function VideoWorkspace() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [setDashboardCreditsRemaining])
 
   useEffect(() => {
     let cancelled = false
@@ -215,7 +222,8 @@ export function VideoWorkspace() {
 
       setGenerationStatus('processing')
       if (typeof data.creditsRemaining === 'number') {
-        setCreditsRemaining(data.creditsRemaining)
+        setLocalCreditsRemaining(data.creditsRemaining)
+        setDashboardCreditsRemaining?.(data.creditsRemaining)
       }
 
       sessionStorage.setItem(VIDEO_SESSION_KEY, data.generationId)
@@ -224,7 +232,7 @@ export function VideoWorkspace() {
       setGenerationStatus('failed')
       setGenerationError(t('errorConnection'))
     }
-  }, [isGenerating, pollGeneration, selectedTemplateId, t, uploadedFile])
+  }, [isGenerating, pollGeneration, selectedTemplateId, setDashboardCreditsRemaining, t, uploadedFile])
 
   const handleRetry = useCallback(() => {
     void handleGenerate()

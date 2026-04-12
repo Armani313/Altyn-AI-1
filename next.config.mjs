@@ -2,8 +2,6 @@ import path from 'path'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 const isDev = process.env.NODE_ENV === 'development'
-const devLocalImgSrc = 'http://localhost:3000 http://127.0.0.1:3000'
-const devLocalConnectSrc = 'ws://localhost:3000 ws://127.0.0.1:3000 http://localhost:3000 http://127.0.0.1:3000'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
@@ -69,7 +67,8 @@ const nextConfig = {
     const headers = [
       {
         // Applied to ALL routes — non-CSP security headers.
-        // CSP is in the next entry (excluded from /remove-bg which needs its own).
+        // CSP is set in proxy.ts where we can match locale-normalized ONNX routes
+        // reliably and swap in the relaxed policy only for those pages.
         source: '/(.*)',
         headers: [
           // MED-2: HSTS — force HTTPS for 2 years (Cloudflare also enforces this,
@@ -89,68 +88,6 @@ const nextConfig = {
           },
           // LOW-6: X-XSS-Protection removed — deprecated in all modern browsers
           // and can cause issues in some older ones. CSP above replaces it.
-        ],
-      },
-      {
-        // MED-1: Content-Security-Policy — applied to all routes EXCEPT pages that use
-        // ONNX Runtime (remove-bg, editor). Those pages need 'unsafe-eval' for
-        // onnxruntime-web; if we set the global CSP here AND a per-page CSP below, the
-        // browser enforces BOTH (most-restrictive union), blocking 'unsafe-eval'.
-        source: '/((?!(?:ru/|en/)?(?:remove-bg|editor)).*)',
-        headers: [
-          {
-            key:   'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              // 'unsafe-eval' is needed by webpack HMR / React Refresh in dev only
-              // blob: needed for ONNX Runtime — it injects its worker via a blob: script URL
-          isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com"
-                : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com",
-              "style-src 'self' 'unsafe-inline'",
-              // Supabase storage for generated images; Google Analytics tracking pixel
-              `img-src 'self' data: blob: https://*.supabase.co https://www.google-analytics.com https://www.googletagmanager.com${isDev ? ` ${devLocalImgSrc}` : ''}`,
-              // Google Fonts (if ever added)
-              "font-src 'self' https://fonts.gstatic.com",
-              // Supabase API + realtime; ONNX Runtime WASM CDN; Google Analytics
-              `connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://region1.google-analytics.com${isDev ? ` ${devLocalConnectSrc}` : ''}`,
-              // Polar embedded checkout iframe
-              "frame-src https://polar.sh https://*.polar.sh",
-              // Replaces X-Frame-Options — more expressive
-              // Allow blob: workers — ONNX Runtime creates thread workers via blob URLs
-              // when running in a Web Worker context (even in single-thread mode as fallback)
-              "worker-src 'self' blob:",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; '),
-          },
-        ],
-      },
-      {
-        // COOP + COEP + CSP override for ONNX Runtime pages (remove-bg, editor):
-        // 1. COOP/COEP unlocks SharedArrayBuffer → multi-threaded WASM inference.
-        // 2. CSP adds 'unsafe-eval' — onnxruntime-web CJS build uses new Function()
-        //    internally for dynamic code generation (WebGL/WASM glue).
-        source: '/:locale(ru|en)?/(remove-bg|editor)',
-        headers: [
-          { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
-          { key: 'Cross-Origin-Embedder-Policy',  value: 'credentialless' },
-          {
-            key:   'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://static.cloudflareinsights.com",
-              "style-src 'self' 'unsafe-inline'",
-              `img-src 'self' data: blob: https://*.supabase.co${isDev ? ` ${devLocalImgSrc}` : ''}`,
-              "font-src 'self' https://fonts.gstatic.com",
-              `connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com${isDev ? ` ${devLocalConnectSrc}` : ''}`,
-              "worker-src 'self' blob:",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; '),
-          },
         ],
       },
     ]

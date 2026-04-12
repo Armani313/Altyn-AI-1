@@ -103,18 +103,26 @@ function assertSingleRowMatch(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleOrderPaid(supabase: any, order: any) {
-  // MED-2: optional chaining guards against unexpected payload structure
-  const userId    = order?.customer?.externalId
-  const productId = order?.productId
+  // Resolve userId: prefer customer.externalId, fallback to checkout metadata
+  const userId = resolveUserId(order)
 
-  if (!userId || typeof userId !== 'string') {
-    console.warn(`Polar order.paid: missing/invalid externalId (orderId=${order?.id}) — skipping`)
+  if (!userId) {
+    console.error(
+      `Polar order.paid: cannot resolve userId (orderId=${order?.id}, ` +
+      `customer.externalId=${order?.customer?.externalId}, ` +
+      `metadata.userId=${order?.metadata?.userId}) — skipping`
+    )
     return
   }
 
+  // Resolve productId: prefer order.productId, fallback to order.product.id
+  const productId = order?.productId ?? order?.product?.id
   const planKey = resolvePlanByProductId(productId ?? undefined)
   if (!planKey) {
-    console.warn(`Polar order.paid: unknown product ${productId}`)
+    console.error(
+      `Polar order.paid: unknown product (orderId=${order?.id}, ` +
+      `productId=${order?.productId}, product.id=${order?.product?.id}) — skipping`
+    )
     return
   }
 
@@ -155,17 +163,25 @@ async function handleOrderPaid(supabase: any, order: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleSubscriptionActive(supabase: any, sub: any) {
-  const userId    = sub?.customer?.externalId
-  const productId = sub?.productId
+  const userId = resolveUserId(sub)
 
-  if (!userId || typeof userId !== 'string') {
-    console.warn(`Polar subscription.active: missing/invalid externalId (subId=${sub?.id}) — skipping`)
+  if (!userId) {
+    console.error(
+      `Polar subscription.active: cannot resolve userId (subId=${sub?.id}, ` +
+      `customer.externalId=${sub?.customer?.externalId}, ` +
+      `metadata.userId=${sub?.metadata?.userId}) — skipping`
+    )
     return
   }
 
+  // Resolve productId: prefer sub.productId, fallback to sub.product.id
+  const productId = sub?.productId ?? sub?.product?.id
   const planKey = resolvePlanByProductId(productId)
   if (!planKey) {
-    console.warn(`Polar subscription.active: unknown product ${productId}`)
+    console.error(
+      `Polar subscription.active: unknown product (subId=${sub?.id}, ` +
+      `productId=${sub?.productId}, product.id=${sub?.product?.id}) — skipping`
+    )
     return
   }
 
@@ -203,10 +219,14 @@ async function handleSubscriptionActive(supabase: any, sub: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleSubscriptionRevoked(supabase: any, sub: any) {
-  const userId = sub?.customer?.externalId
+  const userId = resolveUserId(sub)
 
-  if (!userId || typeof userId !== 'string') {
-    console.warn(`Polar subscription.revoked: missing/invalid externalId (subId=${sub?.id}) — skipping`)
+  if (!userId) {
+    console.error(
+      `Polar subscription.revoked: cannot resolve userId (subId=${sub?.id}, ` +
+      `customer.externalId=${sub?.customer?.externalId}, ` +
+      `metadata.userId=${sub?.metadata?.userId}) — skipping`
+    )
     return
   }
 
@@ -252,6 +272,21 @@ async function handleSubscriptionCanceled(supabase: any, sub: any) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Extract Supabase user ID from webhook payload.
+ * Priority: customer.externalId → metadata.userId (set at checkout)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveUserId(payload: any): string | null {
+  const fromCustomer = payload?.customer?.externalId
+  if (fromCustomer && typeof fromCustomer === 'string') return fromCustomer
+
+  const fromMeta = payload?.metadata?.userId
+  if (fromMeta && typeof fromMeta === 'string') return fromMeta
+
+  return null
+}
 
 function resolvePlanByProductId(productId: string | undefined): 'starter' | 'pro' | 'business' | null {
   if (!productId) return null

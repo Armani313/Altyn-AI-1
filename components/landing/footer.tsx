@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl'
+import NextLink from 'next/link'
 import { Link } from '@/i18n/navigation'
 import { Separator } from '@/components/ui/separator'
 
@@ -21,12 +22,12 @@ export function Footer() {
   ]
 
   const companyLinks = [
-    { label: t('about'), href: '/about' },
-    { label: t('faq'), href: '/faq' },
-    { label: t('pricing'), href: '#pricing' },
-    { label: t('contact'), href: '/contacts' },
-    { label: t('privacy'), href: '/privacy' },
-    { label: t('terms'), href: '/terms' },
+    { label: t('about'), href: '/about', localized: true },
+    { label: t('faq'), href: '/faq', localized: true },
+    { label: t('pricing'), href: '#pricing', localized: false },
+    { label: t('contact'), href: '/contacts', localized: true },
+    { label: t('privacy'), href: '/privacy', localized: false },
+    { label: t('terms'), href: '/terms', localized: false },
   ]
 
   return (
@@ -97,12 +98,21 @@ export function Footer() {
             <ul className="space-y-2.5">
               {companyLinks.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-                  >
-                    {link.label}
-                  </Link>
+                  {link.localized ? (
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <NextLink
+                      href={link.href}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                    >
+                      {link.label}
+                    </NextLink>
+                  )}
                 </li>
               ))}
             </ul>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import NextLink from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslations } from 'next-intl'
@@ -196,9 +197,9 @@ export function RegisterForm() {
 
         <p className="text-center text-xs text-muted-foreground">
           {t('terms')}{' '}
-          <Link href="/terms" className="underline hover:text-foreground">
+          <NextLink href="/terms" className="underline hover:text-foreground">
             {t('termsLink')}
-          </Link>
+          </NextLink>
         </p>
       </form>
 

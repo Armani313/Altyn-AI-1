@@ -19,7 +19,8 @@ import {
   VIDEO_RESOLUTION,
 } from '@/lib/video/constants'
 import { readMetadataObject } from '@/lib/generate/panel-variants'
-import type { VideoTemplate } from '@/types/database.types'
+import { canAccessPremiumTemplates } from '@/lib/config/plans'
+import type { Plan, VideoTemplate } from '@/types/database.types'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -64,11 +65,11 @@ export async function POST(request: Request) {
 
     const { data: profileRaw } = await supabase
       .from('profiles')
-      .select('credits_remaining')
+      .select('credits_remaining, plan')
       .eq('id', user.id)
       .single()
 
-    const profile = profileRaw as { credits_remaining: number } | null
+    const profile = profileRaw as { credits_remaining: number; plan: Plan } | null
     if (!profile) {
       return err('Профиль пользователя не найден.', 404)
     }
@@ -132,6 +133,13 @@ export async function POST(request: Request) {
 
     if (templateError || !template) {
       return err('Видео-шаблон не найден.', 404)
+    }
+
+    if (template.is_premium && !canAccessPremiumTemplates(profile.plan)) {
+      return err(
+        'Этот видео-шаблон доступен только на тарифах Pro и Business. Обновите подписку в разделе «Настройки → Оплата».',
+        403
+      )
     }
 
     const rawExt = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'

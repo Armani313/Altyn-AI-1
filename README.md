@@ -206,6 +206,35 @@ npm run dev
 - `010_google_oauth_profile.sql` — обновления Google OAuth profile
 - `011_plan_business.sql` — поддержка business plan
 - `012_security3.sql` — общий rate limiting и security follow-up
+- `013_video_generation.sql` — таблицы и шаблоны для видео
+- `014_video_generation_credit_cost.sql` и `015_video_generation_credit_cost_6.sql` — стоимость видео-кредитов
+- `016_signup_bonus_credits.sql` — явная выдача signup credits
+- `017_profile_email.sql` — email в `public.profiles` + sync с `auth.users`
+- `018_simplified_auth_profile_defaults.sql` — упрощённые profile defaults
+- `019_signup_trial_abuse_guard.sql` — server-side контроль выдачи trial credits
+
+Важно: если код начинает читать новую колонку или полагаться на новую функцию/триггер,
+соответствующую remote-миграцию нужно применить до production rollout. Иначе получится
+schema drift: код уже ожидает поле, а живая база ещё нет.
+
+## Операционные Проверки
+
+- Базовый liveness: [`/api/health`](/Users/aro/Altyn-AI-1/app/api/health/route.ts)
+- Integrity/readiness: [`/api/health/integrity`](/Users/aro/Altyn-AI-1/app/api/health/integrity/route.ts)
+
+`/api/health/integrity` проверяет:
+
+- service-role доступ к Supabase
+- наличие критичных billing env vars
+- наличие обязательных колонок в `profiles` и `subscriptions`
+- что `profiles.email` полностью backfilled и не содержит `NULL`
+
+Для Polar webhook используй прямой endpoint без промежуточных редиректов:
+
+- `https://luminify.app/api/webhooks/polar`
+
+Не указывай redirecting-домен вроде `nuraystudio.kz`, если он делает `301` на другой host:
+это легко ломает доставку webhook-событий.
 
 ## Безопасность
 

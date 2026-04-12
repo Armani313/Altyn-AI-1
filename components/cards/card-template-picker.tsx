@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocale } from 'next-intl'
 import { Sparkles, Lock, Check, Upload, X, Wand2 } from 'lucide-react'
 import {
@@ -9,6 +9,8 @@ import {
   CUSTOM_CARD_TEMPLATE_ID,
   AI_FREE_CARD_ID,
 } from '@/lib/card-templates'
+import { canAccessPremiumTemplates, isPremiumTemplateLocked } from '@/lib/config/plans'
+import type { Plan } from '@/types/database.types'
 
 interface CardTemplatePickerProps {
   templates:               CardTemplate[]
@@ -16,6 +18,7 @@ interface CardTemplatePickerProps {
   onSelect:                (ids: string[]) => void
   maxSelect?:              number
   disabled?:               boolean
+  currentPlan?:            Plan | null
   customTemplateUrl:       string | null
   onCustomTemplateChange:  (file: File | null, url: string | null) => void
 }
@@ -26,11 +29,13 @@ export function CardTemplatePicker({
   onSelect,
   maxSelect = MAX_CARD_TEMPLATES,
   disabled = false,
+  currentPlan = 'free',
   customTemplateUrl,
   onCustomTemplateChange,
 }: CardTemplatePickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const locale = useLocale() === 'ru' ? 'ru' : 'en'
+  const premiumUnlocked = canAccessPremiumTemplates(currentPlan)
   const copy = locale === 'ru'
     ? {
         aiPick: 'Пусть ИИ выберет',
@@ -66,6 +71,18 @@ export function CardTemplatePicker({
   const atMax    = selectedIds.length >= maxSelect
   const filtered = templates
 
+  useEffect(() => {
+    const nextSelected = selectedIds.filter((id) => {
+      if (id === CUSTOM_CARD_TEMPLATE_ID || id === AI_FREE_CARD_ID) return true
+      const template = templates.find((item) => item.id === id)
+      return !isPremiumTemplateLocked(currentPlan, template?.premium)
+    })
+
+    if (nextSelected.length !== selectedIds.length) {
+      onSelect(nextSelected)
+    }
+  }, [currentPlan, onSelect, selectedIds, templates])
+
   const toggle = (id: string) => {
     if (disabled) return
     if (selectedIds.includes(id)) {
@@ -77,7 +94,7 @@ export function CardTemplatePicker({
 
   const handleAIPick = () => {
     if (disabled) return
-    const pool     = templates.filter((t) => !t.premium)
+    const pool     = templates.filter((t) => !isPremiumTemplateLocked(currentPlan, t.premium))
     const shuffled = [...pool].sort(() => Math.random() - 0.5)
     const picks    = shuffled.slice(0, Math.min(2, maxSelect)).map((t) => t.id)
     onSelect(picks)
@@ -271,14 +288,15 @@ export function CardTemplatePicker({
 
         {/* ── Preset template cards ───────────────────────────────────────── */}
         {filtered.map((template) => {
+          const premiumLocked = isPremiumTemplateLocked(currentPlan, template.premium)
           const isSelected = selectedIds.includes(template.id)
-          const isDisabled = template.premium || disabled || (atMax && !isSelected)
+          const isDisabled = premiumLocked || disabled || (atMax && !isSelected)
           const selIdx     = selectedIds.indexOf(template.id)
 
           return (
             <button
               key={template.id}
-              onClick={() => !template.premium && toggle(template.id)}
+              onClick={() => !premiumLocked && toggle(template.id)}
               disabled={isDisabled}
               className={`
                 relative group rounded-xl overflow-hidden border-2 transition-all duration-200
@@ -317,7 +335,7 @@ export function CardTemplatePicker({
                 </div>
               )}
 
-              {template.premium && (
+              {premiumLocked && (
                 <div className="absolute inset-0 bg-cream-100/50 flex items-center justify-center">
                   <div className="w-7 h-7 rounded-full bg-cream-200 flex items-center justify-center shadow-soft">
                     <Lock className="w-3.5 h-3.5 text-muted-foreground" />
@@ -325,7 +343,7 @@ export function CardTemplatePicker({
                 </div>
               )}
 
-              {template.label && !template.premium && (
+              {template.label && !premiumLocked && (
                 <div className="absolute top-1.5 left-1.5">
                   <span className="text-[9px] font-bold uppercase tracking-wide bg-white/90 text-rose-gold-600 px-1.5 py-0.5 rounded-full shadow-sm">
                     {template.label}
@@ -345,16 +363,20 @@ export function CardTemplatePicker({
 
       {/* Footer */}
       <div className="mt-3 flex items-center justify-between">
-        <p className="text-[11px] text-muted-foreground">
-          <Lock className="w-3 h-3 inline mr-1" />
-          {copy.premiumNote}{' '}
-          <a
-            href={locale === 'ru' ? '/ru/settings/billing' : '/settings/billing'}
-            className="text-primary underline-offset-2 hover:underline"
-          >
-            {copy.premiumPlan}
-          </a>
-        </p>
+        {!premiumUnlocked ? (
+          <p className="text-[11px] text-muted-foreground">
+            <Lock className="w-3 h-3 inline mr-1" />
+            {copy.premiumNote}{' '}
+            <a
+              href={locale === 'ru' ? '/ru/settings/billing' : '/settings/billing'}
+              className="text-primary underline-offset-2 hover:underline"
+            >
+              {copy.premiumPlan}
+            </a>
+          </p>
+        ) : (
+          <span />
+        )}
         {selectedIds.length > 0 && (
           <button
             onClick={() => onSelect([])}

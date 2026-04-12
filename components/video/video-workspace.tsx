@@ -14,6 +14,7 @@ import type { VideoTemplateListItem } from '@/lib/video/types'
 import type { VideoGenerationStatus } from '@/types/database.types'
 import { VideoTemplatePicker } from '@/components/video/video-template-picker'
 import { VideoResultViewer } from '@/components/video/video-result-viewer'
+import { isPremiumTemplateLocked } from '@/lib/config/plans'
 
 type MobileStep = 1 | 2 | 3
 
@@ -21,6 +22,7 @@ export function VideoWorkspace() {
   const t = useTranslations('video')
   const tTemplates = useTranslations('videoTemplates')
   const dashboardProfile = useDashboardProfile()
+  const currentPlan = dashboardProfile?.profile?.plan ?? 'free'
   const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
   const setDashboardCreditsRemaining = dashboardProfile?.setCreditsRemaining
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -36,10 +38,14 @@ export function VideoWorkspace() {
   const [generationError, setGenerationError] = useState<string | null>(null)
   const pollRunIdRef = useRef(0)
 
-  const selectedTemplate = useMemo(
+  const rawSelectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) ?? null,
     [selectedTemplateId, templates]
   )
+  const selectedTemplate = rawSelectedTemplate && !isPremiumTemplateLocked(currentPlan, rawSelectedTemplate.premium)
+    ? rawSelectedTemplate
+    : null
+  const effectiveSelectedTemplateId = selectedTemplate?.id ?? null
   const creditsRemaining = localCreditsRemaining ?? providerCreditsRemaining
 
   const isGenerating = generationStatus === 'queued' || generationStatus === 'processing'
@@ -191,11 +197,11 @@ export function VideoWorkspace() {
   }, [isGenerating, previewUrl, stopPolling])
 
   const handleGenerate = useCallback(async () => {
-    if (!uploadedFile || !selectedTemplateId || isGenerating) return
+    if (!uploadedFile || !effectiveSelectedTemplateId || isGenerating) return
 
     const formData = new FormData()
     formData.append('image', uploadedFile)
-    formData.append('template_id', selectedTemplateId)
+    formData.append('template_id', effectiveSelectedTemplateId)
 
     setMobileStep(3)
     setGenerationError(null)
@@ -232,15 +238,15 @@ export function VideoWorkspace() {
       setGenerationStatus('failed')
       setGenerationError(t('errorConnection'))
     }
-  }, [isGenerating, pollGeneration, selectedTemplateId, setDashboardCreditsRemaining, t, uploadedFile])
+  }, [effectiveSelectedTemplateId, isGenerating, pollGeneration, setDashboardCreditsRemaining, t, uploadedFile])
 
   const handleRetry = useCallback(() => {
     void handleGenerate()
   }, [handleGenerate])
 
   const step1Done = !!previewUrl
-  const step2Done = !!selectedTemplateId
-  const canGenerate = !!uploadedFile && !!selectedTemplateId && !isGenerating
+  const step2Done = !!effectiveSelectedTemplateId
+  const canGenerate = !!uploadedFile && !!effectiveSelectedTemplateId && !isGenerating
 
   const MOBILE_STEPS = [
     { id: 1 as MobileStep, label: t('mobileStep1') },
@@ -306,7 +312,7 @@ export function VideoWorkspace() {
             <div className="flex-1 rounded-2xl border border-cream-200 bg-white p-3 shadow-soft sm:p-4">
               <VideoTemplatePicker
                 templates={templates}
-                selectedId={selectedTemplateId}
+                selectedId={effectiveSelectedTemplateId}
                 onSelect={(id) => {
                   setSelectedTemplateId(id)
                   setGenerationError(null)
@@ -317,6 +323,7 @@ export function VideoWorkspace() {
                 }}
                 disabled={isGenerating}
                 loading={loadingTemplates}
+                currentPlan={currentPlan}
               />
             </div>
           </div>
@@ -351,8 +358,8 @@ export function VideoWorkspace() {
         ) : mobileStep === 2 ? (
           <Button
             size="mobile"
-            onClick={() => selectedTemplateId ? setMobileStep(3) : undefined}
-            disabled={!selectedTemplateId}
+            onClick={() => effectiveSelectedTemplateId ? setMobileStep(3) : undefined}
+            disabled={!effectiveSelectedTemplateId}
             className="w-full bg-primary text-white shadow-soft hover:bg-rose-gold-600"
           >
             {t('mobileNextGenerate')}

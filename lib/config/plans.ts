@@ -19,3 +19,27 @@ export const PLAN_META: Record<Plan, PlanMeta> = {
   pro:      { label: 'Про',        credits: 150, monthlyPriceUsd: 10 },
   business: { label: 'Бизнес',     credits: 500, monthlyPriceUsd: 25 },
 }
+
+export function canAccessPremiumTemplates(plan: Plan | null | undefined): boolean {
+  return plan === 'pro' || plan === 'business'
+}
+
+export function isPremiumTemplateLocked(
+  plan: Plan | null | undefined,
+  isPremium: boolean | null | undefined
+): boolean {
+  return Boolean(isPremium) && !canAccessPremiumTemplates(plan)
+}
+
+export function getGenerationQueuePriority(plan: Plan | null | undefined): number {
+  switch (plan) {
+    case 'business':
+      return 3
+    case 'pro':
+      return 2
+    case 'starter':
+      return 1
+    default:
+      return 0
+  }
+}

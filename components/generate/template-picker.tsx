@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Sparkles, Lock, Check, Upload, Loader2, User, X, ScanLine } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
@@ -9,6 +9,8 @@ import {
   MAX_CUSTOM_MODELS, makeCustomModelId, isCustomModelId,
   MACRO_SHOT_ID, AI_FREE_LIFESTYLE_ID,
 } from '@/lib/constants'
+import { canAccessPremiumTemplates, isPremiumTemplateLocked } from '@/lib/config/plans'
+import type { Plan } from '@/types/database.types'
 
 type TabCategory = 'all' | ModelCategory
 type SubjectFilter = 'all' | ModelSubjectType
@@ -23,6 +25,7 @@ interface TemplatePickerProps {
   onSelect:                 (ids: string[]) => void
   maxSelect?:               number
   disabled?:                boolean
+  currentPlan?:             Plan | null
   productType?:             ProductType
   customModelUrls:          string[]
   onCustomModelUrlsChange:  (urls: string[]) => void
@@ -33,6 +36,7 @@ export function TemplatePicker({
   onSelect,
   maxSelect = 4,
   disabled = false,
+  currentPlan = 'free',
   productType = 'jewelry',
   customModelUrls,
   onCustomModelUrlsChange,
@@ -49,6 +53,7 @@ export function TemplatePicker({
   const [uploadError,  setUploadError]  = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<'new' | number>('new')
+  const premiumUnlocked = canAccessPremiumTemplates(currentPlan)
 
   const TABS: { id: TabCategory; label: string }[] = [
     { id: 'all',       label: t('tabAll')      },
@@ -87,9 +92,21 @@ export function TemplatePicker({
     }
   }
 
+  useEffect(() => {
+    const nextSelected = selectedIds.filter((id) => {
+      const model = MODEL_PHOTO_MAP[id]
+      return !isPremiumTemplateLocked(currentPlan, model?.premium)
+    })
+
+    if (nextSelected.length !== selectedIds.length) {
+      onSelect(nextSelected)
+    }
+  }, [currentPlan, onSelect, selectedIds])
+
   const handleAIPick = () => {
     if (disabled) return
-    const pool = (filtered.length > 0 ? filtered : MODEL_PHOTOS).filter((m) => !m.premium)
+    const pool = (filtered.length > 0 ? filtered : MODEL_PHOTOS)
+      .filter((m) => !isPremiumTemplateLocked(currentPlan, m.premium))
     const shuffled = [...pool].sort(() => Math.random() - 0.5)
     const picks = shuffled.slice(0, Math.min(3, maxSelect)).map((m) => m.id)
     onSelect(picks)
@@ -512,14 +529,15 @@ export function TemplatePicker({
 
         {/* ── Regular model cards ───────────────────────────────────────── */}
         {filtered.map((model) => {
+          const premiumLocked  = isPremiumTemplateLocked(currentPlan, model.premium)
           const isSelected     = selectedIds.includes(model.id)
-          const isDisabled     = model.premium || disabled || (atMax && !isSelected)
+          const isDisabled     = premiumLocked || disabled || (atMax && !isSelected)
           const selectionIndex = selectedIds.indexOf(model.id)
 
           return (
             <button
               key={model.id}
-              onClick={() => !model.premium && toggle(model.id)}
+              onClick={() => !premiumLocked && toggle(model.id)}
               disabled={isDisabled}
               className={`
                 relative group rounded-xl overflow-hidden border-2 transition-all duration-200
@@ -557,7 +575,7 @@ export function TemplatePicker({
                 </div>
               )}
 
-              {model.premium && (
+              {premiumLocked && (
                 <div className="absolute inset-0 bg-cream-100/50 flex items-center justify-center">
                   <div className="w-7 h-7 rounded-full bg-cream-200 flex items-center justify-center shadow-soft">
                     <Lock className="w-3.5 h-3.5 text-muted-foreground" />
@@ -565,7 +583,7 @@ export function TemplatePicker({
                 </div>
               )}
 
-              {model.label && !model.premium && (
+              {model.label && !premiumLocked && (
                 <div className="absolute top-1.5 left-1.5">
                   <span className="text-[9px] font-bold uppercase tracking-wide bg-white/90 text-rose-gold-600 px-1.5 py-0.5 rounded-full shadow-sm">
                     {model.label}
@@ -588,13 +606,17 @@ export function TemplatePicker({
 
       {/* Footer */}
       <div className="mt-3 flex items-center justify-between">
-        <p className="text-[11px] text-muted-foreground">
-          <Lock className="w-3 h-3 inline mr-1" />
-          {t('premiumNote')}{' '}
-          <Link href="/settings/billing" className="text-primary underline-offset-2 hover:underline">
-            {t('premiumPlan')}
-          </Link>
-        </p>
+        {!premiumUnlocked ? (
+          <p className="text-[11px] text-muted-foreground">
+            <Lock className="w-3 h-3 inline mr-1" />
+            {t('premiumNote')}{' '}
+            <Link href="/settings/billing" className="text-primary underline-offset-2 hover:underline">
+              {t('premiumPlan')}
+            </Link>
+          </p>
+        ) : (
+          <span />
+        )}
         {selectedIds.length > 0 && (
           <button
             onClick={() => onSelect([])}

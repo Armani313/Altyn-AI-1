@@ -29,6 +29,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const t = useTranslations('dashboard')
   const store = getLifestyleGenerationStore(productType)
   const dashboardProfile = useDashboardProfile()
+  const currentPlan = dashboardProfile?.profile?.plan ?? 'free'
   const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
   const setDashboardCreditsRemaining = dashboardProfile?.setCreditsRemaining
 
@@ -227,6 +228,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
                 onSelect={handleTemplateSelect}
                 maxSelect={MAX_SELECTED_TEMPLATES}
                 disabled={isAnyGenerating}
+                currentPlan={currentPlan}
                 productType={productType}
                 customModelUrls={customModelUrls}
                 onCustomModelUrlsChange={setCustomModelUrls}

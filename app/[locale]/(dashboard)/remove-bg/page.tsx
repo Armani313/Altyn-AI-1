@@ -6,6 +6,6 @@ export default async function RemoveBgPage({
   params: Promise<{ locale: string }>
 }) {
   const { locale } = await params
-  const editorPath = locale === 'ru' ? '/editor' : `/${locale}/editor`
+  const editorPath = locale === 'en' ? '/editor' : `/${locale}/editor`
   redirect(editorPath)
 }

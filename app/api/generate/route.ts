@@ -49,6 +49,8 @@ import { assertSafeImageBytes } from '@/lib/utils/security'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { refundWithRetry } from '@/lib/utils/refund'
 import { downloadCustomModel } from '@/lib/custom-models'
+import { canAccessPremiumTemplates, getGenerationQueuePriority } from '@/lib/config/plans'
+import type { Plan } from '@/types/database.types'
 
 export const maxDuration = 240
 export const runtime = 'nodejs'
@@ -86,7 +88,7 @@ export async function POST(request: Request) {
       .eq('id', user.id)
       .single()
 
-    const profile = profileRaw as { credits_remaining: number; plan: string } | null
+    const profile = profileRaw as { credits_remaining: number; plan: Plan } | null
 
     if (!profile) {
       return err('Профиль пользователя не найден. Обратитесь в поддержку.', 404)
@@ -176,10 +178,18 @@ export async function POST(request: Request) {
       ? MACRO_SHOT_ID
       : (rawModelId && VALID_MODEL_IDS.has(rawModelId) ? rawModelId : null)
     const modelPhoto = modelId ? MODEL_PHOTO_MAP[modelId] : null
+    const premiumTemplatesUnlocked = canAccessPremiumTemplates(profile.plan)
 
     const productType: ProductType = (VALID_PRODUCT_TYPES as Set<string>).has(rawProductType)
       ? rawProductType as ProductType
       : 'jewelry'
+
+    if (modelPhoto?.premium && !premiumTemplatesUnlocked) {
+      return err(
+        'Этот шаблон доступен только на тарифах Pro и Business. Обновите подписку в разделе «Настройки → Оплата».',
+        403
+      )
+    }
 
     if (!imageFile || imageFile.size === 0) {
       return err('Файл изображения не найден. Пожалуйста, загрузите фото.', 400)
@@ -209,6 +219,28 @@ export async function POST(request: Request) {
     }
 
     // ── 5. Upload source image ────────────────────────────────────────────────
+    const serviceSupabase = createServiceClient()
+
+    let cardTemplateMeta: { image_url: string; is_premium: boolean } | null = null
+    if (cardTemplateId && !isCardFree) {
+      const { data: tplRow } = await serviceSupabase
+        .from('card_templates')
+        .select('image_url, is_premium')
+        .eq('id', cardTemplateId)
+        .eq('is_active', true)
+        .single()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cardTemplateMeta = (tplRow as any) as { image_url: string; is_premium: boolean } | null
+
+      if (cardTemplateMeta?.is_premium && !premiumTemplatesUnlocked) {
+        return err(
+          'Этот шаблон доступен только на тарифах Pro и Business. Обновите подписку в разделе «Настройки → Оплата».',
+          403
+        )
+      }
+    }
+
     const rawExt    = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
     const safeExt   = (SAFE_IMAGE_EXTENSIONS as readonly string[]).includes(rawExt) ? rawExt : 'jpg'
     const inputPath = `${user.id}/${Date.now()}-source.${safeExt}`
@@ -261,7 +293,6 @@ export async function POST(request: Request) {
     }
 
     const generationId  = gen.id
-    const serviceSupabase = createServiceClient()
 
     // ── 7. Atomic credit decrement BEFORE AI (MED-NEW-4) ─────────────────────
     // Must use service client so auth.role() = 'service_role' — the trigger in
@@ -333,24 +364,7 @@ export async function POST(request: Request) {
     let cardTemplateMime:   string | undefined
 
     if (cardTemplateId && !isCardFree) {
-      const { data: tplRow } = await serviceSupabase
-        .from('card_templates')
-        .select('image_url, is_premium')
-        .eq('id', cardTemplateId)
-        .eq('is_active', true)
-        .single()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tpl = (tplRow as any) as { image_url: string; is_premium: boolean } | null
-
-      // HIGH-3: premium template access guard — refund credit before returning 403
-      if (tpl?.is_premium && profile.plan === 'free') {
-        await refundWithRetry(serviceSupabase, user.id, 'Generate/PremiumCheck')
-        await serviceSupabase
-          .from('generations')
-          .update({ status: 'failed', error_message: 'Требуется платный план.' } as never)
-          .eq('id', generationId)
-        return err('Этот шаблон доступен только на платных тарифах. Перейдите на Pro в разделе «Настройки → Оплата».', 403)
-      }
+      const tpl = cardTemplateMeta
       if (tpl) {
         try {
           // MED-2: validate path format with strict regex BEFORE joining/decoding.
@@ -433,6 +447,7 @@ export async function POST(request: Request) {
       userId:     user.id,
       providerId: 'gemini',
       type:       'image',
+      priority:   getGenerationQueuePriority(profile.plan),
       params:     aiParams,
       meta:       finalizeMeta,
       maxAttempts: 1,

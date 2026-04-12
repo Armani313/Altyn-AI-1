@@ -22,6 +22,7 @@ type MobileStep  = 1 | 2 | 3
 export default function CardsPage() {
   const t = useTranslations('cards')
   const dashboardProfile = useDashboardProfile()
+  const currentPlan = dashboardProfile?.profile?.plan ?? 'free'
   const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
   const setDashboardCreditsRemaining = dashboardProfile?.setCreditsRemaining
 
@@ -139,7 +140,14 @@ export default function CardsPage() {
 
   const handleTemplateSelect = (ids: string[]) => {
     setSelectedTemplates(ids)
-    if (ids.length > 0 && mobileStep === 2) setMobileStep(3)
+    if (ids.length > 0 && mobileStep === 2) {
+      setMobileStep(3)
+      return
+    }
+
+    if (ids.length === 0 && previewUrl) {
+      setMobileStep(2)
+    }
   }
 
   const handleCustomTemplateChange = (file: File | null, url: string | null) => {
@@ -262,6 +270,7 @@ export default function CardsPage() {
                 onSelect={handleTemplateSelect}
                 maxSelect={MAX_CARD_TEMPLATES}
                 disabled={isAnyGenerating}
+                currentPlan={currentPlan}
                 customTemplateUrl={customTemplateUrl}
                 onCustomTemplateChange={handleCustomTemplateChange}
               />

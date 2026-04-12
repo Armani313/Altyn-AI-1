@@ -695,11 +695,11 @@ export function TopazToolPage({ tool, relatedTools, locale }: TopazToolPageProps
                   ))}
                   <div className="rounded-[1.5rem] border border-dashed border-rose-gold-300 bg-rose-gold-50/60 p-6">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-gold-700">
-                      {locale === 'ru' ? 'Video tools' : 'Video tools'}
+                      {locale === 'ru' ? 'Видео-инструменты' : 'Video tools'}
                     </p>
                     <p className="mt-3 text-sm leading-relaxed text-foreground">
                       {locale === 'ru'
-                        ? 'Видео-ветка пойдёт отдельным long-running потоком, а не через сырой upload в обычный formData route.'
+                        ? 'Видео-режим будет запущен отдельным пайплайном длительной обработки, а не через хрупкую обычную загрузку файла.'
                         : 'The video branch will ship as a dedicated long-running pipeline, not as a fragile formData upload route.'}
                     </p>
                   </div>

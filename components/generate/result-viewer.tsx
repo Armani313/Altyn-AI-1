@@ -199,6 +199,24 @@ export function ResultViewer({
   const requiredCredits  = Math.max(1, selectedCount)
   const enoughCredits    = creditsRemaining == null || creditsRemaining >= requiredCredits
   const currentRatio     = RATIOS.find((r) => r.id === aspectRatio)!
+  const promptPresets = [
+    {
+      label: t('presetKeepScaleLabel'),
+      value: t('presetKeepScaleValue'),
+    },
+    {
+      label: t('presetNoShrinkLabel'),
+      value: t('presetNoShrinkValue'),
+    },
+    {
+      label: t('presetProductForwardLabel'),
+      value: t('presetProductForwardValue'),
+    },
+    {
+      label: t('presetCloseUpLabel'),
+      value: t('presetCloseUpValue'),
+    },
+  ]
 
   const lightboxImages: LightboxImage[] = results
     .filter((r) => r.status === 'done' && r.resultUrl)
@@ -212,6 +230,19 @@ export function ResultViewer({
     setLightboxIndex(null)
     saveUpscaleSourceImage(image.url)
     router.push(`/tools/photo-enhancer?image=${encodeURIComponent(image.url)}`)
+  }
+
+  const applyPromptPreset = (value: string) => {
+    const current = userPrompt.trim()
+    if (!current) {
+      onUserPromptChange(value)
+      return
+    }
+
+    if (current.includes(value)) return
+
+    const separator = /[.!?…]$/.test(current) ? ' ' : '. '
+    onUserPromptChange(`${current}${separator}${value}`.slice(0, 300))
   }
 
   const genLabel = () => {
@@ -313,6 +344,30 @@ export function ResultViewer({
               rows={3}
               className="mt-3 w-full resize-none rounded-lg border border-cream-200 bg-cream-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-rose-gold-300 focus:border-transparent transition-all"
             />
+            <div className="mt-3">
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {t('quickPresets')}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {promptPresets.map((preset) => {
+                  const active = userPrompt.includes(preset.value)
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => applyPromptPreset(preset.value)}
+                      className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                        active
+                          ? 'border-rose-gold-300 bg-rose-gold-50 text-foreground'
+                          : 'border-cream-200 bg-white text-muted-foreground hover:border-rose-gold-200 hover:text-foreground'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
             <div className="flex items-center justify-between mt-1.5">
               <p className="text-[11px] text-muted-foreground">
                 {t('wishHint')}

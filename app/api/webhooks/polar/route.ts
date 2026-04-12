@@ -83,6 +83,24 @@ export async function POST(request: Request) {
 
 // ── Event handlers ────────────────────────────────────────────────────────────
 
+function assertSupabaseSuccess(
+  context: string,
+  result: { error: { message?: string } | null }
+) {
+  if (result.error) {
+    throw new Error(`${context}: ${result.error.message ?? 'Unknown Supabase error'}`)
+  }
+}
+
+function assertSingleRowMatch(
+  context: string,
+  row: { id?: string } | null
+) {
+  if (!row?.id) {
+    throw new Error(`${context}: target row was not found`)
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleOrderPaid(supabase: any, order: any) {
   // MED-2: optional chaining guards against unexpected payload structure
@@ -102,10 +120,35 @@ async function handleOrderPaid(supabase: any, order: any) {
 
   const credits = POLAR_PLANS[planKey].credits
 
-  await supabase
+  const subscriptionId = order?.subscription?.id
+  const startsAt = order?.subscription?.currentPeriodStart?.toISOString?.() ?? null
+  const endsAt = order?.subscription?.currentPeriodEnd?.toISOString?.() ?? null
+
+  if (subscriptionId && typeof subscriptionId === 'string') {
+    const subWrite = await supabase
+      .from('subscriptions')
+      .upsert({
+        user_id:        userId,
+        plan:           planKey,
+        status:         'active',
+        starts_at:      startsAt,
+        expires_at:     endsAt,
+        kaspi_order_id: subscriptionId,
+        amount:         order?.subscription?.amount ?? order?.totalAmount ?? 0,
+        currency:       order?.subscription?.currency ?? order?.currency ?? 'USD',
+      } as never, { onConflict: 'kaspi_order_id' })
+
+    assertSupabaseSuccess('Polar order.paid subscription upsert failed', subWrite)
+  }
+
+  const profileWrite = await supabase
     .from('profiles')
     .update({ plan: planKey, credits_remaining: credits } as never)
     .eq('id', userId)
+    .select('id')
+    .maybeSingle()
+  assertSupabaseSuccess('Polar order.paid profile update failed', profileWrite)
+  assertSingleRowMatch('Polar order.paid profile update failed', profileWrite.data as { id?: string } | null)
 
   console.info(`Polar order.paid: user=${userId} plan=${planKey} credits=${credits}`)
 }
@@ -132,7 +175,7 @@ async function handleSubscriptionActive(supabase: any, sub: any) {
 
   // Upsert subscription row — kaspi_order_id column stores Polar subscription ID
   // (legacy column name from previous payment provider)
-  await supabase
+  const subWrite = await supabase
     .from('subscriptions')
     .upsert({
       user_id:        userId,
@@ -141,12 +184,19 @@ async function handleSubscriptionActive(supabase: any, sub: any) {
       starts_at:      startsAt,
       expires_at:     endsAt,
       kaspi_order_id: sub.id,
+      amount:         sub.amount,
+      currency:       sub.currency,
     } as never, { onConflict: 'kaspi_order_id' })
+  assertSupabaseSuccess('Polar subscription.active upsert failed', subWrite)
 
-  await supabase
+  const profileWrite = await supabase
     .from('profiles')
     .update({ plan: planKey, credits_remaining: credits } as never)
     .eq('id', userId)
+    .select('id')
+    .maybeSingle()
+  assertSupabaseSuccess('Polar subscription.active profile update failed', profileWrite)
+  assertSingleRowMatch('Polar subscription.active profile update failed', profileWrite.data as { id?: string } | null)
 
   console.info(`Polar subscription.active: user=${userId} plan=${planKey} expires=${endsAt}`)
 }
@@ -160,10 +210,11 @@ async function handleSubscriptionRevoked(supabase: any, sub: any) {
     return
   }
 
-  await supabase
+  const subWrite = await supabase
     .from('subscriptions')
     .update({ status: 'cancelled' } as never)
     .eq('kaspi_order_id', sub.id)
+  assertSupabaseSuccess('Polar subscription.revoked status update failed', subWrite)
 
   // Check for any remaining active subscription
   const { data: activeSubs } = await supabase
@@ -177,10 +228,14 @@ async function handleSubscriptionRevoked(supabase: any, sub: any) {
   const hasActive = ((activeSubs as any[]) ?? []).length > 0
 
   if (!hasActive) {
-    await supabase
+    const profileWrite = await supabase
       .from('profiles')
       .update({ plan: 'free', credits_remaining: PLAN_META.free.credits } as never)
       .eq('id', userId)
+      .select('id')
+      .maybeSingle()
+    assertSupabaseSuccess('Polar subscription.revoked profile downgrade failed', profileWrite)
+    assertSingleRowMatch('Polar subscription.revoked profile downgrade failed', profileWrite.data as { id?: string } | null)
 
     console.info(`Polar subscription.revoked: user=${userId} downgraded to free`)
   }

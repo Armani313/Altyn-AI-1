@@ -7,39 +7,8 @@ const intlMiddleware = createIntlMiddleware(routing)
 const isDev = process.env.NODE_ENV === 'development'
 const devLocalImgSrc = 'http://localhost:3000 http://127.0.0.1:3000'
 const devLocalConnectSrc = 'ws://localhost:3000 ws://127.0.0.1:3000 http://localhost:3000 http://127.0.0.1:3000'
-const ONNX_PAGES = new Set([
-  '/editor',
-  '/remove-bg',
-  '/tools/background-remover',
-  '/tools/white-background',
-  '/tools/blur-background',
-  '/tools/change-background-color',
-  '/tools/add-background',
-])
 
-function normalizePathname(pathname: string) {
-  const normalized = pathname.replace(/^\/(?:ru|en)(?=\/|$)/, '')
-  return normalized === '' ? '/' : normalized
-}
-
-function buildContentSecurityPolicy(pathname: string) {
-  const isOnnxPage = ONNX_PAGES.has(normalizePathname(pathname))
-
-  if (isOnnxPage) {
-    return [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://static.cloudflareinsights.com",
-      "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https://*.supabase.co${isDev ? ` ${devLocalImgSrc}` : ''}`,
-      "font-src 'self' https://fonts.gstatic.com",
-      `connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com${isDev ? ` ${devLocalConnectSrc}` : ''}`,
-      "worker-src 'self' blob:",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; ')
-  }
-
+function buildContentSecurityPolicy() {
   return [
     "default-src 'self'",
     isDev
@@ -48,7 +17,7 @@ function buildContentSecurityPolicy(pathname: string) {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https://*.supabase.co https://www.google-analytics.com https://www.googletagmanager.com${isDev ? ` ${devLocalImgSrc}` : ''}`,
     "font-src 'self' https://fonts.gstatic.com",
-    `connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://staticimgly.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://region1.google-analytics.com${isDev ? ` ${devLocalConnectSrc}` : ''}`,
+    `connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://region1.google-analytics.com${isDev ? ` ${devLocalConnectSrc}` : ''}`,
     "frame-src https://polar.sh https://*.polar.sh",
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
@@ -57,19 +26,8 @@ function buildContentSecurityPolicy(pathname: string) {
   ].join('; ')
 }
 
-function applySecurityHeaders(pathname: string, response: Response) {
-  const normalizedPathname = normalizePathname(pathname)
-  const isOnnxPage = ONNX_PAGES.has(normalizedPathname)
-
-  response.headers.set('Content-Security-Policy', buildContentSecurityPolicy(pathname))
-
-  if (isOnnxPage) {
-    response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
-    response.headers.set('Cross-Origin-Embedder-Policy', 'credentialless')
-  } else {
-    response.headers.delete('Cross-Origin-Opener-Policy')
-    response.headers.delete('Cross-Origin-Embedder-Policy')
-  }
+function applySecurityHeaders(response: Response) {
+  response.headers.set('Content-Security-Policy', buildContentSecurityPolicy())
 }
 
 export async function proxy(request: NextRequest) {
@@ -79,7 +37,7 @@ export async function proxy(request: NextRequest) {
   // If next-intl is redirecting (e.g., /en → /en/ or locale normalisation),
   // pass it through — no need to run Supabase auth on a redirect response.
   if (intlResponse.status !== 200) {
-    applySecurityHeaders(request.nextUrl.pathname, intlResponse)
+    applySecurityHeaders(intlResponse)
     return intlResponse
   }
 
@@ -102,7 +60,7 @@ export async function proxy(request: NextRequest) {
     })
   }
 
-  applySecurityHeaders(request.nextUrl.pathname, authResponse)
+  applySecurityHeaders(authResponse)
 
   return authResponse
 }

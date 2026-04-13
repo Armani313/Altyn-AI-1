@@ -1,4 +1,3 @@
-import path from 'path'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -9,53 +8,13 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 const nextConfig = {
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
 
-  // ── Webpack: prevent Node.js-only packages from being bundled ────────────
-  // @imgly/background-removal depends on onnxruntime-web (browser) not
-  // onnxruntime-node. Without these aliases webpack throws "Can't resolve" errors.
-  webpack: (config, { webpack }) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'sharp$':            false,
-      'onnxruntime-node$': false,
-      // Force CJS builds of onnxruntime-web instead of the ESM bundles.
-      // Root cause: ort.bundle.min.mjs / ort.webgpu.bundle.min.mjs have 4 uses of
-      // `import.meta.url` which webpack compiles to `new __webpack_require__.U(…)`.
-      // __webpack_require__.U is NOT a URL constructor → TypeError at runtime.
-      // The CJS builds (ort.min.js / ort.webgpu.min.js) have 0 import.meta.url usages.
-      // These aliases handle the module-name lookup (resolve.alias).
-      'onnxruntime-web$':        path.resolve('./node_modules/onnxruntime-web/dist/ort.min.js'),
-      'onnxruntime-web/webgpu$': path.resolve('./node_modules/onnxruntime-web/dist/ort.webgpu.min.js'),
-    }
-
-    // Belt-and-suspenders: NormalModuleReplacementPlugin catches any remaining
-    // references to the ESM bundle files (e.g. when onnxruntime-web@1.21.0's
-    // package.json `"import"` condition bypasses resolve.alias for dynamic imports
-    // inside lazy chunks such as @imgly/background-removal).
-    config.plugins.push(
-      new webpack.NormalModuleReplacementPlugin(
-        /onnxruntime-web[/\\]dist[/\\]ort\.bundle\.min\.mjs$/,
-        path.resolve('./node_modules/onnxruntime-web/dist/ort.min.js'),
-      ),
-      new webpack.NormalModuleReplacementPlugin(
-        /onnxruntime-web[/\\]dist[/\\]ort\.webgpu\.bundle\.min\.mjs$/,
-        path.resolve('./node_modules/onnxruntime-web/dist/ort.webgpu.min.js'),
-      ),
-    )
-
-    // Suppress "Critical dependency: require function is used in a way in which
-    // dependencies cannot be statically extracted" warnings from onnxruntime-web.
-    // These are harmless — ORT uses try/require for optional backends internally.
-    config.ignoreWarnings = [
-      ...(config.ignoreWarnings ?? []),
-      { module: /onnxruntime-web/ },
-    ]
-
-    return config
-  },
-
   // ── Docker: generate a self-contained server in .next/standalone ─────────
   // The Dockerfile's runner stage copies only this folder + .next/static.
   output: 'standalone',
+
+  // sharp is used by /api/tools/topaz-image for image metadata/conversion.
+  // Mark it external so the standalone build copies the native binary correctly.
+  serverExternalPackages: ['sharp'],
 
   // ── Cloudflare proxy: real visitor IP ────────────────────────────────────
   // Next.js App Router automatically exposes all request headers including
@@ -67,8 +26,7 @@ const nextConfig = {
     const headers = [
       {
         // Applied to ALL routes — non-CSP security headers.
-        // CSP is set in proxy.ts where we can match locale-normalized ONNX routes
-        // reliably and swap in the relaxed policy only for those pages.
+        // CSP is set in proxy.ts.
         source: '/(.*)',
         headers: [
           // MED-2: HSTS — force HTTPS for 2 years (Cloudflare also enforces this,

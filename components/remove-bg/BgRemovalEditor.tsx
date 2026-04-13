@@ -2,25 +2,20 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { Upload, Download, Loader2, Scissors, RefreshCw, ImagePlus, AlertCircle, CheckCircle2, WifiOff } from 'lucide-react'
+import { Upload, Download, Loader2, Scissors, RefreshCw, ImagePlus, AlertCircle } from 'lucide-react'
+import { clientRemoveBg } from '@/lib/tools/client-remove-bg'
 import { Button } from '@/components/ui/button'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type BgType        = 'transparent' | 'color' | 'gradient' | 'image'
 type EditorStatus  = 'idle' | 'processing' | 'done' | 'error'
-type ModelStatus   = 'loading' | 'ready' | 'error'
 type GradientPreset = { label: string; from: string; to: string }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Longest side of the output canvas in pixels */
 const CANVAS_BASE = 720
-
-/** Explicit CDN path for @imgly model data — bypasses import.meta.url resolution
- *  which breaks in Next.js webpack bundles (import.meta.url → undefined).
- *  Version must match the installed @imgly/background-removal package version.  */
-const IMGLY_PUBLIC_PATH = 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/'
 
 const ASPECT_RATIOS = [
   { label: '1:1',  w: 1,  h: 1  },
@@ -86,8 +81,7 @@ export function BgRemovalEditor() {
 
   const [ratioLabel,    setRatioLabel]    = useState<RatioLabel>('1:1')
 
-  const [modelStatus,   setModelStatus]   = useState<ModelStatus>('loading')
-  const [modelProgress, setModelProgress] = useState(0)
+  // No model warmup needed — Cloudflare handles bg removal server-side
 
   // ── Derived canvas dimensions ────────────────────────────────────────────
   const activeRatio = ASPECT_RATIOS.find((r) => r.label === ratioLabel) ?? ASPECT_RATIOS[0]
@@ -97,7 +91,6 @@ export function BgRemovalEditor() {
   const blobUrlRef      = useRef<string | null>(null)
   const bgUrlRef        = useRef<string | null>(null)
   const runningRef      = useRef(false)
-  const modelWarmupDone = useRef(false)
 
   // cleanup
   useEffect(() => () => {
@@ -105,59 +98,7 @@ export function BgRemovalEditor() {
     if (bgUrlRef.current)   URL.revokeObjectURL(bgUrlRef.current)
   }, [])
 
-  // Eager model warm-up — triggers model download so it is cached in
-  // IndexedDB before the user clicks "Удалить фон".
-  // Strategy: mark "ready" as soon as all model chunks finish downloading
-  // (progress key starts with "fetch:"). The dummy inference may fail on a
-  // small image, but that doesn't mean the model isn't loaded.
-  useEffect(() => {
-    if (modelWarmupDone.current) return
-    modelWarmupDone.current = true
-
-    const warmup = async () => {
-      let downloadComplete = false
-      try {
-        const { removeBackground } = await import('@imgly/background-removal')
-
-        // 64×64 solid white canvas — small but valid for the ONNX model
-        const canvas = document.createElement('canvas')
-        canvas.width = 64; canvas.height = 64
-        const ctx = canvas.getContext('2d')
-        if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 64, 64) }
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-
-        await removeBackground(blob, {
-          publicPath: IMGLY_PUBLIC_PATH,
-          model: 'isnet',
-          output: { format: 'image/png' },
-          progress: (key: string, current: number, total: number) => {
-            // Track only download progress (key starts with "fetch:")
-            if (key.startsWith('fetch:') && total > 0) {
-              setModelProgress(Math.round((current / total) * 100))
-              if (current >= total && !downloadComplete) {
-                downloadComplete = true
-                setModelStatus('ready')
-              }
-            }
-          },
-        })
-        // Inference succeeded too — model is definitely ready
-        setModelStatus('ready')
-      } catch (e) {
-        console.error('[BgRemoval warmup]', e)
-        // If downloads finished before the inference error, model IS cached
-        if (downloadComplete) {
-          setModelStatus('ready')
-        } else {
-          setModelStatus('error')
-        }
-      }
-    }
-
-    warmup()
-  }, [])
+  // Background removal is now handled server-side via Cloudflare — no client model needed
 
   // ── Canvas rendering ──────────────────────────────────────────────────────
 
@@ -234,24 +175,13 @@ export function BgRemovalEditor() {
   const handleRemoveBg = useCallback(async () => {
     if (!uploadedFile || runningRef.current) return
     runningRef.current = true
-    setStatus('processing'); setProgress(0); setErrorMsg(''); setResultEl(null)
+    setStatus('processing'); setProgress(10); setErrorMsg(''); setResultEl(null)
 
     try {
-      const { removeBackground } = await import('@imgly/background-removal')
-
-      const resultBlob = await removeBackground(uploadedFile, {
-        publicPath: IMGLY_PUBLIC_PATH,
-        proxyToWorker: true,
-        // 'isnet'        = fp32 full-precision — best quality mask
-        // 'isnet_fp16'   = default — faster but weaker edges
-        // 'isnet_quint8' = fastest, lowest quality
-        model:  'isnet',
-        output: { format: 'image/png', quality: 1.0 },
-        progress: (key: string, current: number, total: number) => {
-          if (total > 0) setProgress(Math.round((current / total) * 100))
-          setProgressLabel(key)
-        },
-      })
+      setProgressLabel('upload')
+      const resultBlob = await clientRemoveBg(uploadedFile)
+      setProgress(90)
+      setProgressLabel('rendering')
 
       const url = URL.createObjectURL(resultBlob)
       const img = new Image()
@@ -288,8 +218,7 @@ export function BgRemovalEditor() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const isProcessing  = status === 'processing'
-  const isModelReady  = modelStatus === 'ready'
-  const canProcess    = !!uploadedFile && !isProcessing && isModelReady
+  const canProcess    = !!uploadedFile && !isProcessing
   const canDownload   = status === 'done'
 
   return (
@@ -330,42 +259,6 @@ export function BgRemovalEditor() {
             </div>
           )}
         </div>
-
-        {/* Model readiness indicator */}
-        {modelStatus === 'loading' && (
-          <div className="bg-cream-100 rounded-xl p-3 border border-cream-200">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5">
-                <Loader2 className="w-3.5 h-3.5 text-rose-gold-500 animate-spin" />
-                <span className="text-xs font-medium text-foreground">{t('loadingModel')}</span>
-              </div>
-              <span className="text-xs text-muted-foreground">{modelProgress}%</span>
-            </div>
-            <div className="h-1.5 bg-cream-300 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-rose-gold-400 to-rose-gold-500 rounded-full transition-all duration-300"
-                style={{ width: `${modelProgress}%` }}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              {t('loadedOnce')}
-            </p>
-          </div>
-        )}
-
-        {modelStatus === 'ready' && (
-          <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-100 rounded-xl">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-            <span className="text-xs font-medium text-green-700">{t('modelReady')}</span>
-          </div>
-        )}
-
-        {modelStatus === 'error' && (
-          <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl">
-            <WifiOff className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-            <span className="text-xs font-medium text-amber-700">{t('modelError')}</span>
-          </div>
-        )}
 
         {/* Button */}
         <Button onClick={handleRemoveBg} disabled={!canProcess}

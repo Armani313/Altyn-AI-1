@@ -6,8 +6,7 @@ import { motion } from 'framer-motion'
 import { Upload, Download, Loader2, RefreshCw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EASE } from '@/lib/motion'
-
-const IMGLY_PUBLIC_PATH = 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/'
+import { clientRemoveBg } from '@/lib/tools/client-remove-bg'
 
 type ProcessStatus = 'idle' | 'processing' | 'done' | 'error'
 
@@ -39,8 +38,6 @@ export function WhiteBgHero() {
 
   const [processStatus, setProcessStatus] = useState<ProcessStatus>('idle')
   const [progress, setProgress] = useState(0)
-  const [modelProgress, setModelProgress] = useState(0)
-  const [isModelLoading, setIsModelLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   const [isDragging, setIsDragging] = useState(false)
@@ -85,24 +82,7 @@ export function WhiteBgHero() {
     resultBlobRef.current = null
 
     try {
-      setIsModelLoading(true)
-      const { removeBackground } = await import('@imgly/background-removal')
-
-      const resultBlob = await removeBackground(file, {
-        publicPath: IMGLY_PUBLIC_PATH,
-        proxyToWorker: true,
-        model: 'isnet',
-        output: { format: 'image/png', quality: 1.0 },
-        progress: (key: string, current: number, total: number) => {
-          if (key.startsWith('fetch:') && total > 0) {
-            setModelProgress(Math.round((current / total) * 100))
-            if (current >= total) setIsModelLoading(false)
-          }
-          if (total > 0) setProgress(Math.round((current / total) * 100))
-        },
-      })
-
-      setIsModelLoading(false)
+      const resultBlob = await clientRemoveBg(file)
       resultBlobRef.current = resultBlob
       setResultBlobUrl(URL.createObjectURL(resultBlob))
       setProcessStatus('done')
@@ -252,21 +232,8 @@ export function WhiteBgHero() {
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="w-10 h-10 text-rose-gold-500 animate-spin" />
                         <p className="text-sm font-medium text-foreground">
-                          {t('processing')} {progress > 0 ? `${progress}%` : ''}
+                          {t('processing')}
                         </p>
-                        {isModelLoading && (
-                          <div className="w-48">
-                            <div className="h-1.5 bg-cream-300 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-r from-rose-gold-400 to-rose-gold-500 rounded-full transition-all duration-300"
-                                style={{ width: `${modelProgress}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                              {t('loadingModel')}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
                     {processStatus === 'done' && (

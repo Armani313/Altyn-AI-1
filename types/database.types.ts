@@ -265,6 +265,7 @@ export type Database = {
           currency: string
           starts_at: string | null
           expires_at: string | null
+          cancel_at_period_end: boolean
           created_at: string
           updated_at: string
         }
@@ -278,6 +279,7 @@ export type Database = {
           currency?: string
           starts_at?: string | null
           expires_at?: string | null
+          cancel_at_period_end?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -286,20 +288,139 @@ export type Database = {
           kaspi_order_id?: string | null
           starts_at?: string | null
           expires_at?: string | null
+          cancel_at_period_end?: boolean
           updated_at?: string
+        }
+      }
+      credit_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          delta: number
+          reason: CreditTransactionReason
+          ref_id: string | null
+          balance_after: number
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          delta: number
+          reason: CreditTransactionReason
+          ref_id?: string | null
+          balance_after: number
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          delta?: number
+          reason?: CreditTransactionReason
+          ref_id?: string | null
+          balance_after?: number
+          metadata?: Json
+        }
+      }
+      refund_failures: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          reason: string
+          ref_id: string | null
+          error: string | null
+          context: string | null
+          resolved_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          reason: string
+          ref_id?: string | null
+          error?: string | null
+          context?: string | null
+          resolved_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          amount?: number
+          reason?: string
+          ref_id?: string | null
+          error?: string | null
+          context?: string | null
+          resolved_at?: string | null
         }
       }
     }
     Views: Record<string, never>
     Functions: {
+      // Legacy single-credit wrappers (migration 021 re-implements them atop the
+      // *_by variants so existing callers keep working).
       decrement_credits: {
         Args: { p_user_id: string }
+        Returns: number
+      }
+      refund_credit: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      // Migration 021 — amount-aware credit RPCs with audit.
+      decrement_credits_by: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_reason: CreditTransactionReason
+          p_ref_id?: string | null
+        }
+        Returns: number
+      }
+      refund_credits_by: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_reason: 'refund_generation' | 'refund_video' | 'refund_upscale'
+          p_ref_id?: string | null
+        }
+        Returns: number
+      }
+      set_subscription_credits: {
+        Args: {
+          p_user_id: string
+          p_plan: 'free' | 'starter' | 'pro' | 'business'
+          p_credits: number
+          p_reason: 'subscription_grant' | 'subscription_downgrade'
+          p_ref_id?: string | null
+        }
+        Returns: number
+      }
+      grant_topup_credits: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_ref_id?: string | null
+          p_metadata?: Json
+        }
         Returns: number
       }
     }
     Enums: Record<string, never>
   }
 }
+
+export type CreditTransactionReason =
+  | 'signup_trial'
+  | 'generation'
+  | 'video'
+  | 'upscale'
+  | 'refund_generation'
+  | 'refund_video'
+  | 'refund_upscale'
+  | 'subscription_grant'
+  | 'subscription_downgrade'
+  | 'topup_purchase'
+  | 'manual_adjustment'
 
 // Удобные алиасы для использования в компонентах
 export type Profile = Database['public']['Tables']['profiles']['Row']

@@ -2,13 +2,20 @@
  * POST /api/checkout
  *
  * Creates a Polar checkout session and returns the URL for embedded checkout.
- * Body: { plan: 'starter' | 'pro' | 'business' }
+ * Body: { plan: 'starter' | 'pro' | 'business' } or { pack: 'topup_25' | 'topup_100' | 'topup_250' }
  * Returns: { url: string }
  */
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { polar, POLAR_PLANS, isPolarPlanKey, getPolarServerConfigError } from '@/lib/payments/polar'
+import {
+  getPolarServerConfigError,
+  polar,
+  POLAR_CREDIT_PACKS,
+  POLAR_PLANS,
+  isPolarCreditPackKey,
+  isPolarPlanKey,
+} from '@/lib/payments/polar'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
@@ -32,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   // ── 3. Validate plan param ────────────────────────────────────────────────
-  let body: { plan?: string }
+  let body: { plan?: string; pack?: string }
   try {
     body = await request.json()
   } catch {
@@ -40,15 +47,36 @@ export async function POST(request: Request) {
   }
 
   const planKey = body.plan
+  const packKey = body.pack
 
-  if (!planKey || !isPolarPlanKey(planKey)) {
+  if (Boolean(planKey) === Boolean(packKey)) {
     return NextResponse.json(
-      { error: 'Invalid plan. Available: starter, pro, business.' },
+      { error: 'Provide exactly one checkout target: plan or pack.' },
       { status: 400 }
     )
   }
 
-  const plan   = POLAR_PLANS[planKey]
+  const target = planKey && isPolarPlanKey(planKey)
+    ? {
+        kind: 'plan' as const,
+        key: planKey,
+        productId: POLAR_PLANS[planKey].productId,
+      }
+    : packKey && isPolarCreditPackKey(packKey)
+      ? {
+          kind: 'pack' as const,
+          key: packKey,
+          productId: POLAR_CREDIT_PACKS[packKey].productId,
+        }
+      : null
+
+  if (!target) {
+    return NextResponse.json(
+      { error: 'Invalid checkout target.' },
+      { status: 400 }
+    )
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const polarConfigError = getPolarServerConfigError()
 
@@ -60,8 +88,12 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!plan.productId) {
-    console.error(`POLAR_PRODUCT_ID_${planKey.toUpperCase()} is not configured`)
+  if (!target.productId) {
+    const envVarName = target.kind === 'plan'
+      ? `POLAR_PRODUCT_ID_${target.key.toUpperCase()}`
+      : `POLAR_PRODUCT_ID_${target.key.toUpperCase()}`
+
+    console.error(`${envVarName} is not configured`)
     return NextResponse.json(
       { error: 'Payment service not configured.' },
       { status: 503 }
@@ -71,14 +103,15 @@ export async function POST(request: Request) {
   // ── 4. Create Polar checkout session (embed mode) ─────────────────────────
   try {
     const checkout = await polar.checkouts.create({
-      products: [plan.productId],
+      products: [target.productId],
       externalCustomerId: user.id,
       customerEmail:      user.email ?? undefined,
       successUrl:         `${appUrl}/settings/billing?status=success`,
       embedOrigin:        appUrl,
       metadata: {
-        plan:   planKey,
-        userId: user.id,
+        billingType: target.kind,
+        userId:      user.id,
+        ...(target.kind === 'plan' ? { plan: target.key } : { pack: target.key }),
       },
     })
 

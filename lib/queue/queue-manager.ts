@@ -48,7 +48,8 @@ class QueueManager {
    *    over-quota after a restart (in-memory counter was at 0).
    * 2. Marks stuck "processing" generations (older than 5 min) as failed —
    *    prevents records stuck in limbo after a mid-request deploy.
-   *    Credits are refunded via refund_credit RPC for each stuck generation.
+   *    Credits are refunded via refund_credits_by RPC for each stuck generation
+   *    (audit-logged in credit_transactions with reason=refund_generation).
    *    Tiny double-refund risk (window between generation insert and credit
    *    decrement, ~ms) is accepted as preferable to silently eating user credits.
    */
@@ -82,15 +83,23 @@ class QueueManager {
 
       if (stuck?.length) {
         console.log(`[Queue] init: recovering ${stuck.length} stuck generation(s), refunding credits`)
-        // LOGIC-3: check each refund result individually so silent failures are logged
+        // LOGIC-3: check each refund result individually so silent failures are logged.
+        // Migration 021: use refund_credits_by with explicit reason+ref_id so each
+        // stuck-generation refund produces an audit row linked to its generation id.
+        const rows = stuck as { id: string; user_id: string }[]
         const refundResults = await Promise.allSettled(
-          stuck.map((g) =>
+          rows.map((g) =>
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (supabase as any).rpc('refund_credit', { p_user_id: (g as { id: string; user_id: string }).user_id })
+            (supabase as any).rpc('refund_credits_by', {
+              p_user_id: g.user_id,
+              p_amount: 1,
+              p_reason: 'refund_generation',
+              p_ref_id: g.id,
+            })
           )
         )
         refundResults.forEach((r, i) => {
-          const g = (stuck as { id: string; user_id: string }[])[i]
+          const g = rows[i]
           if (r.status === 'rejected') {
             console.error(`[Queue] refund failed for user ${g.user_id} gen ${g.id}:`, r.reason)
           } else if ((r.value as { error?: unknown })?.error) {

@@ -43,7 +43,7 @@ export default async function BillingPage({
       .single(),
     supabase
       .from('subscriptions')
-      .select('plan, status, expires_at, amount, starts_at')
+      .select('plan, status, expires_at, amount, starts_at, cancel_at_period_end')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -54,7 +54,7 @@ export default async function BillingPage({
   const profile = profileRes.data as Pick<Profile, 'plan' | 'credits_remaining'> | null
   const sub     = subscriptionRes.data as Pick<
     Subscription,
-    'plan' | 'status' | 'expires_at' | 'amount' | 'starts_at'
+    'plan' | 'status' | 'expires_at' | 'amount' | 'starts_at' | 'cancel_at_period_end'
   > | null
 
   const paymentSuccess = resolvedSearchParams.status === 'success'
@@ -65,7 +65,7 @@ export default async function BillingPage({
       <Header title={tSettings('title')} profile={profile} />
 
       <div className="flex-1 p-5 xl:p-6">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <SettingsTabs />
 
           {paymentSuccess && (
@@ -99,6 +99,7 @@ export default async function BillingPage({
               currentPlan={profile?.plan ?? 'free'}
               expiresAt={sub?.expires_at ?? null}
               creditsLeft={profile?.credits_remaining ?? 0}
+              cancelAtPeriodEnd={sub?.cancel_at_period_end ?? false}
             />
           </div>
 

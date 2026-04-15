@@ -2,7 +2,7 @@ import type { Json } from '@/types/database.types'
 import type { QueueJob } from '@/lib/queue/types'
 import { createServiceClient } from '@/lib/supabase/service'
 import { splitContactSheet } from '@/lib/ai/split-grid'
-import { refundWithRetry } from '@/lib/utils/refund'
+import { refundByWithRetry } from '@/lib/utils/refund'
 import {
   readMetadataObject,
   readPanelVariantsFromMetadata,
@@ -70,7 +70,16 @@ async function markFailedOnce(
     return
   }
 
-  await refundWithRetry(supabase, meta.userId, 'Generate/AsyncJobFailed')
+  // Image generation costs 1 credit; refund the same amount with a
+  // ref_id so the audit log links back to the failed generation row.
+  await refundByWithRetry(
+    supabase,
+    meta.userId,
+    1,
+    'refund_generation',
+    meta.generationId,
+    'Generate/AsyncJobFailed',
+  )
   await supabase
     .from('generations')
     .update({ status: 'failed', error_message: message.slice(0, 200) } as never)

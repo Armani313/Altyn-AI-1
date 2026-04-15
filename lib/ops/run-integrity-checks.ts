@@ -1,4 +1,4 @@
-import { POLAR_PLANS, getPolarServerConfigError } from '@/lib/payments/polar'
+import { POLAR_CREDIT_PACKS, POLAR_PLANS, getPolarServerConfigError } from '@/lib/payments/polar'
 import { createServiceClient } from '@/lib/supabase/service'
 
 export interface IntegrityCheckResult {
@@ -23,7 +23,7 @@ export async function runIntegrityChecks(): Promise<IntegrityReport> {
   const polarConfigError = getPolarServerConfigError()
   checks.push(buildResult('polar_server_config', !polarConfigError, polarConfigError ?? undefined))
 
-  const missingProductIds = Object.entries(POLAR_PLANS)
+  const missingProductIds = [...Object.entries(POLAR_PLANS), ...Object.entries(POLAR_CREDIT_PACKS)]
     .filter(([, plan]) => !plan.productId.trim())
     .map(([key]) => key)
 

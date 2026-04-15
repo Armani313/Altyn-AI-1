@@ -28,7 +28,7 @@ import { createClient }       from '@/lib/supabase/server'
 import { createServiceClient} from '@/lib/supabase/service'
 import { upscaleToFourK }     from '@/lib/ai/imagen-upscale'
 import { checkRateLimit }     from '@/lib/rate-limit'
-import { refundWithRetry }    from '@/lib/utils/refund'
+import { refundByWithRetry } from '@/lib/utils/refund'
 import { UUID_REGEX }         from '@/lib/constants'
 import {
   readPanelVariantsFromMetadata,
@@ -116,10 +116,17 @@ export async function POST(request: Request) {
     }
 
     // ── 7. Atomic credit decrement ────────────────────────────────────────────
+    // Migration 021: decrement_credits_by records ref_id (generation id) in
+    // credit_transactions so the audit trail links back to the upscaled row.
     const serviceSupabase = createServiceClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: creditsAfter, error: rpcErr } = await (serviceSupabase as any)
-      .rpc('decrement_credits', { p_user_id: user.id })
+      .rpc('decrement_credits_by', {
+        p_user_id: user.id,
+        p_amount: 1,
+        p_reason: 'upscale',
+        p_ref_id: rawGenId,
+      })
 
     if (rpcErr) return err('Ошибка списания кредита. Попробуйте снова.', 500)
     if (creditsAfter === -1) {
@@ -137,7 +144,14 @@ export async function POST(request: Request) {
         : 'Ошибка апскейла. Попробуйте снова.'
       console.error('[Upscale] Vertex AI error:', upscaleErr)
       // HIGH-2: retry refund up to 3 times to prevent permanent credit loss
-      await refundWithRetry(serviceSupabase, user.id, 'Upscale/AI')
+      await refundByWithRetry(
+        serviceSupabase,
+        user.id,
+        1,
+        'refund_upscale',
+        rawGenId,
+        'Upscale/AI',
+      )
       return err(msg.slice(0, 200), 500)
     }
 
@@ -151,7 +165,14 @@ export async function POST(request: Request) {
     if (uploadErr) {
       console.error('[Upscale] storage upload error:', uploadErr)
       // HIGH-2: retry refund up to 3 times to prevent permanent credit loss
-      await refundWithRetry(serviceSupabase, user.id, 'Upscale/Upload')
+      await refundByWithRetry(
+        serviceSupabase,
+        user.id,
+        1,
+        'refund_upscale',
+        rawGenId,
+        'Upscale/Upload',
+      )
       return err('Ошибка сохранения 4K файла. Попробуйте снова.', 500)
     }
 

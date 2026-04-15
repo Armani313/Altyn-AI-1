@@ -1,6 +1,11 @@
 /**
  * POST /api/tools/remove-bg
  *
+ * PUBLIC marketing tool — no auth / no credits by design.
+ * This endpoint is part of the free /tools/* marketing funnel and must stay
+ * reachable without a Luminify account. Do NOT add credit deduction or
+ * authentication — rate limiting is handled via getPublicRateLimitIdentity.
+ *
  * Removes the background from an uploaded image using Cloudflare Image
  * Transformations (segment=foreground). Returns the result as a PNG blob.
  *

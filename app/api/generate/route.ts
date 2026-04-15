@@ -47,7 +47,7 @@ import { CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
 import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
 import { assertSafeImageBytes } from '@/lib/utils/security'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { refundWithRetry } from '@/lib/utils/refund'
+import { refundByWithRetry } from '@/lib/utils/refund'
 import { downloadCustomModel } from '@/lib/custom-models'
 import { canAccessPremiumTemplates, getGenerationQueuePriority } from '@/lib/config/plans'
 import type { Plan } from '@/types/database.types'
@@ -298,9 +298,16 @@ export async function POST(request: Request) {
     // Must use service client so auth.role() = 'service_role' — the trigger in
     // 003_security.sql only allows credits_remaining updates from service_role.
     // Returns -1 if no credits left (race condition: another request got the last one).
+    // Migration 021: use decrement_credits_by so the audit row carries the
+    // originating generation id as ref_id (reason='generation').
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: creditsAfter, error: rpcErr } = await (serviceSupabase as any)
-      .rpc('decrement_credits', { p_user_id: user.id })
+      .rpc('decrement_credits_by', {
+        p_user_id: user.id,
+        p_amount: 1,
+        p_reason: 'generation',
+        p_ref_id: generationId,
+      })
 
     if (rpcErr) {
       console.error('Credit decrement RPC error:', rpcErr)
@@ -350,7 +357,14 @@ export async function POST(request: Request) {
         modelMimeType    = modelPhoto.filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
       } catch (e) {
         console.error(`[Generate] model photo read failed (${modelPath}):`, e)
-        await refundWithRetry(serviceSupabase, user.id, 'Generate/ModelFileRead')
+        await refundByWithRetry(
+          serviceSupabase,
+          user.id,
+          1,
+          'refund_generation',
+          generationId,
+          'Generate/ModelFileRead',
+        )
         await serviceSupabase
           .from('generations')
           .update({ status: 'failed', error_message: 'Файл шаблона недоступен.' } as never)
@@ -557,7 +571,14 @@ async function failQueuedGeneration(
     return
   }
 
-  await refundWithRetry(serviceSupabase, userId, refundReason)
+  await refundByWithRetry(
+    serviceSupabase,
+    userId,
+    1,
+    'refund_generation',
+    generationId,
+    refundReason,
+  )
   await serviceSupabase
     .from('generations')
     .update({

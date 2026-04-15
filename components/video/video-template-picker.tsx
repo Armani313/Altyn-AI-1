@@ -14,6 +14,7 @@ interface VideoTemplatePickerProps {
   disabled?: boolean
   loading?: boolean
   currentPlan?: Plan | null
+  compact?: boolean
 }
 
 export function VideoTemplatePicker({
@@ -23,6 +24,7 @@ export function VideoTemplatePicker({
   disabled = false,
   loading = false,
   currentPlan = 'free',
+  compact = false,
 }: VideoTemplatePickerProps) {
   const t = useTranslations('videoTemplates')
   const tPremium = useTranslations('templatePicker')
@@ -43,7 +45,7 @@ export function VideoTemplatePicker({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={`grid grid-cols-1 gap-3 ${compact ? 'sm:grid-cols-2 xl:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
@@ -73,7 +75,7 @@ export function VideoTemplatePicker({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={`grid grid-cols-1 gap-3 ${compact ? 'sm:grid-cols-2 xl:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {templates.map((template) => {
           const isSelected = selectedId === template.id
           const badge = templateBadge(template)

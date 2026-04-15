@@ -1,3 +1,14 @@
+/**
+ * POST /api/tools/upscale
+ *
+ * PUBLIC marketing tool — no auth / no credits by design.
+ * Part of the free /tools/* marketing funnel; must stay reachable without a
+ * Luminify account. Do NOT add credit deduction or authentication —
+ * abuse is controlled via getPublicRateLimitIdentity.
+ *
+ * Different endpoint from /api/upscale (the authenticated, credit-charged
+ * 4K panel upscale); same name, different intent.
+ */
 import { NextResponse } from 'next/server'
 import sharp from 'sharp'
 import { MAX_IMAGE_BYTES, SAFE_IMAGE_EXTENSIONS } from '@/lib/constants'

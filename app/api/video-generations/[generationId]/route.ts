@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { refundWithRetry } from '@/lib/utils/refund'
+import { refundByWithRetry } from '@/lib/utils/refund'
 import { UUID_REGEX } from '@/lib/constants'
 import { createSignedPosterUrl } from '@/lib/video/poster-url'
 import { readMetadataObject } from '@/lib/generate/panel-variants'
@@ -22,6 +22,7 @@ type VideoGenerationRow = Pick<
   | 'output_video_url'
   | 'error_message'
   | 'provider_operation_name'
+  | 'credits_charged'
   | 'metadata'
 >
 
@@ -62,7 +63,14 @@ async function markFailedOnce(
     return
   }
 
-  await refundWithRetry(serviceSupabase, row.user_id, 'Video/Finalize')
+  await refundByWithRetry(
+    serviceSupabase,
+    row.user_id,
+    row.credits_charged,
+    'refund_video',
+    row.id,
+    'Video/Finalize',
+  )
   await serviceSupabase
     .from('video_generations')
     .update({
@@ -141,7 +149,7 @@ export async function GET(
 
   const { data: rowRaw } = await supabase
     .from('video_generations')
-    .select('id, user_id, status, input_image_url, output_video_url, error_message, provider_operation_name, metadata')
+    .select('id, user_id, status, input_image_url, output_video_url, error_message, provider_operation_name, credits_charged, metadata')
     .eq('id', generationId)
     .eq('user_id', user.id)
     .single()

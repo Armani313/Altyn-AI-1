@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { refundWithRetry } from '@/lib/utils/refund'
+import { refundByWithRetry } from '@/lib/utils/refund'
 import { assertSafeImageBytes } from '@/lib/utils/security'
 import {
   ACCEPTED_IMAGE_TYPES,
@@ -11,15 +11,12 @@ import {
 } from '@/lib/constants'
 import { startVeoVideoGeneration } from '@/lib/ai/veo'
 import {
-  VIDEO_ASPECT_RATIO,
-  VIDEO_CREDITS_COST,
-  VIDEO_DURATION_SECONDS,
   VIDEO_INPUT_BUCKET,
   VIDEO_PROVIDER,
-  VIDEO_RESOLUTION,
 } from '@/lib/video/constants'
 import { readMetadataObject } from '@/lib/generate/panel-variants'
 import { canAccessPremiumTemplates } from '@/lib/config/plans'
+import { calculateVideoCredits, sanitizeVideoSettings } from '@/lib/video/options'
 import type { Plan, VideoTemplate } from '@/types/database.types'
 
 export const runtime = 'nodejs'
@@ -38,6 +35,11 @@ function buildVideoPrompt(templatePrompt: string) {
     'Preserve the exact geometry, stone arrangement, material, polish, and silhouette.',
     'Deliver a premium social-ready vertical product reel with smooth realistic motion.',
   ].join('\n\n')
+}
+
+function getOptionalFormValue(formData: FormData, key: string): string | null {
+  const value = formData.get(key)
+  return typeof value === 'string' ? value : null
 }
 
 async function removeInputPath(inputPath: string) {
@@ -73,13 +75,6 @@ export async function POST(request: Request) {
     if (!profile) {
       return err('Профиль пользователя не найден.', 404)
     }
-    if (profile.credits_remaining < VIDEO_CREDITS_COST) {
-      return err(
-        `Недостаточно кредитов. Для видео нужно ${VIDEO_CREDITS_COST}, доступно ${profile.credits_remaining}.`,
-        402
-      )
-    }
-
     let formData: FormData
     try {
       formData = await request.formData()
@@ -89,6 +84,16 @@ export async function POST(request: Request) {
 
     const imageFile = formData.get('image') as File | null
     const templateId = ((formData.get('template_id') as string | null) ?? '').trim()
+    const settings = sanitizeVideoSettings(
+      {
+        aspectRatio: getOptionalFormValue(formData, 'aspect_ratio'),
+        durationSeconds: getOptionalFormValue(formData, 'duration_seconds'),
+        resolution: getOptionalFormValue(formData, 'resolution'),
+        voiceMode: getOptionalFormValue(formData, 'voice_mode'),
+      },
+      { isUgcTemplate: false }
+    )
+    const creditsCost = calculateVideoCredits(settings)
 
     if (!TEMPLATE_ID_REGEX.test(templateId)) {
       return err('Неверный video template id.', 400)
@@ -109,6 +114,13 @@ export async function POST(request: Request) {
       return err(
         `Файл ${(imageFile.size / 1024 / 1024).toFixed(1)} МБ превышает лимит 10 МБ.`,
         413
+      )
+    }
+
+    if (profile.credits_remaining < creditsCost) {
+      return err(
+        `Недостаточно кредитов. Для видео нужно ${creditsCost}, доступно ${profile.credits_remaining}.`,
+        402
       )
     }
 
@@ -157,9 +169,10 @@ export async function POST(request: Request) {
 
     const prompt = buildVideoPrompt(template.prompt_template)
     const metadata = {
-      aspect_ratio: VIDEO_ASPECT_RATIO,
-      duration_seconds: VIDEO_DURATION_SECONDS,
-      resolution: VIDEO_RESOLUTION,
+      aspect_ratio: settings.aspectRatio,
+      duration_seconds: settings.durationSeconds,
+      resolution: settings.resolution,
+      voice_mode: settings.voiceMode,
       prompt,
       template: {
         id: template.id,
@@ -180,7 +193,7 @@ export async function POST(request: Request) {
         input_image_url: inputPath,
         status: 'queued',
         provider: VIDEO_PROVIDER,
-        credits_charged: VIDEO_CREDITS_COST,
+        credits_charged: creditsCost,
         metadata,
       } as never)
       .select('id')
@@ -196,9 +209,16 @@ export async function POST(request: Request) {
     const generationId = generation.id
     const serviceSupabase = createServiceClient()
 
+    // Debit the exact computed credit cost for this video request.
+    // The RPC also writes a matching audit row to credit_transactions.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: creditsAfter, error: debitError } = await (serviceSupabase as any)
-      .rpc('decrement_credits', { p_user_id: user.id })
+      .rpc('decrement_credits_by', {
+        p_user_id: user.id,
+        p_amount: creditsCost,
+        p_reason: 'video',
+        p_ref_id: generationId,
+      })
 
     if (debitError) {
       console.error('[video-generations] credit decrement error:', debitError)
@@ -221,6 +241,9 @@ export async function POST(request: Request) {
         prompt,
         imageBuffer,
         imageMimeType: imageFile.type,
+        aspectRatio: settings.aspectRatio,
+        durationSeconds: settings.durationSeconds,
+        resolution: settings.resolution,
       })
 
       await serviceSupabase
@@ -251,7 +274,14 @@ export async function POST(request: Request) {
         : 'Ошибка запуска Veo. Попробуйте снова.'
 
       console.error('[video-generations] Veo start error:', providerError)
-      await refundWithRetry(serviceSupabase, user.id, 'Video/Start')
+      await refundByWithRetry(
+        serviceSupabase,
+        user.id,
+        creditsCost,
+        'refund_video',
+        generationId,
+        'Video/Start',
+      )
       await serviceSupabase
         .from('video_generations')
         .update({

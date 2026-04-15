@@ -97,10 +97,18 @@ Pricing определяется в [`lib/config/plans.ts`](/Users/aro/Altyn-AI-
 
 | Тариф | Цена / месяц | Генераций |
 | --- | --- | --- |
-| Free | `$0` | `5` |
-| Starter | `$1` | `20` |
-| Pro | `$10` | `150` |
-| Business | `$25` | `500` |
+| Free | `$0` | `3` |
+| Starter | `$1` | `10` |
+| Pro | `$10` | `100` |
+| Business | `$25` | `250` |
+
+Разовые пакеты кредитов:
+
+| Пакет | Цена | Кредиты |
+| --- | --- | --- |
+| Top-up S | `$4` | `25` |
+| Top-up M | `$15` | `100` |
+| Top-up L | `$35` | `250` |
 
 Текущий billing provider — Polar. Checkout создаётся через [`app/api/checkout/route.ts`](/Users/aro/Altyn-AI-1/app/api/checkout/route.ts), а подписочные события обрабатываются в [`app/api/webhooks/polar/route.ts`](/Users/aro/Altyn-AI-1/app/api/webhooks/polar/route.ts).
 
@@ -176,6 +184,9 @@ POLAR_WEBHOOK_SECRET=
 POLAR_PRODUCT_ID_STARTER=
 POLAR_PRODUCT_ID_PRO=
 POLAR_PRODUCT_ID_BUSINESS=
+POLAR_PRODUCT_ID_TOPUP_25=
+POLAR_PRODUCT_ID_TOPUP_100=
+POLAR_PRODUCT_ID_TOPUP_250=
 POLAR_ENVIRONMENT=sandbox
 ```
 

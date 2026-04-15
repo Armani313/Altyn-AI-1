@@ -46,34 +46,41 @@ export interface ModerationResult {
   message?: string
 }
 
+interface PromptModerationOptions {
+  maxLength?: number
+}
+
 /**
  * Sanitize raw user input:
  *   - Trim whitespace
  *   - Collapse multiple spaces/newlines
  *   - Strip control characters
- *   - Hard-cap at 300 characters
+ *   - Hard-cap at maxLength characters
  */
-export function sanitizePrompt(raw: string): string {
+export function sanitizePrompt(raw: string, options: PromptModerationOptions = {}): string {
+  const maxLength = options.maxLength ?? 300
+
   return raw
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // control chars
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 300)
+    .slice(0, maxLength)
 }
 
 /**
  * Check whether a sanitized prompt is safe for generation.
  * Returns { safe: true } or { safe: false, reason, message }.
  */
-export function checkPrompt(text: string): ModerationResult {
+export function checkPrompt(text: string, options: PromptModerationOptions = {}): ModerationResult {
+  const maxLength = options.maxLength ?? 300
   const lower = text.toLowerCase()
 
   // 1. Length guard (post-sanitize)
-  if (text.length > 300) {
+  if (text.length > maxLength) {
     return {
       safe:    false,
       reason:  'too_long',
-      message: 'Пожелание не должно превышать 300 символов.',
+      message: `Пожелание не должно превышать ${maxLength} символов.`,
     }
   }
 

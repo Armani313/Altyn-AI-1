@@ -35,14 +35,14 @@ export function PricingSection() {
     ? {
         eyebrow: 'Актуальные тарифы',
         title: 'Тарифы на лендинге теперь совпадают с оплатой',
-        body: 'Начните с 5 бесплатных генераций, а затем выберите объём под свой магазин: 20, 150 или 500 генераций в месяц.',
-        note: 'Все цены и лимиты соответствуют текущим тарифам в оплате.',
+        body: `Начните с ${PLAN_META.free.credits} бесплатных генераций, а затем выберите объём под свой магазин: ${PLAN_META.starter.credits}, ${PLAN_META.pro.credits} или ${PLAN_META.business.credits} генераций в месяц.`,
+        note: 'Все цены, лимиты и разовые пакеты кредитов соответствуют текущим тарифам в оплате.',
       }
     : {
         eyebrow: 'Live plans',
         title: 'The landing pricing now matches checkout',
-        body: 'Start with 5 free generations, then scale to 20, 150, or 500 generations per month based on your store volume.',
-        note: 'All prices and limits match the current plans in checkout.',
+        body: `Start with ${PLAN_META.free.credits} free generations, then scale to ${PLAN_META.starter.credits}, ${PLAN_META.pro.credits}, or ${PLAN_META.business.credits} generations per month based on your store volume.`,
+        note: 'All prices, limits, and one-time credit packs match the current checkout setup.',
       }
 
   const plans = [
@@ -230,6 +230,16 @@ export function PricingSection() {
           className="mt-10 text-center text-sm text-muted-foreground"
         >
           <strong className="text-foreground">{tPricing('freeTrial')}</strong>{tPricing('freeTrialSub')}
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.45 }}
+          className="mt-2 text-center text-xs text-muted-foreground"
+        >
+          {tBilling('nonAccumulationNote')}
         </motion.p>
       </div>
     </section>

@@ -1,9 +1,9 @@
-import {
-  VIDEO_ASPECT_RATIO,
-  VIDEO_DURATION_SECONDS,
-  VIDEO_MODEL,
-  VIDEO_RESOLUTION,
-} from '@/lib/video/constants'
+import { VIDEO_MODEL } from '@/lib/video/constants'
+import type {
+  VideoAspectRatioOption,
+  VideoDurationOption,
+  VideoResolutionOption,
+} from '@/lib/video/options'
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta'
 
@@ -38,6 +38,9 @@ export interface StartVeoVideoParams {
   prompt: string
   imageBuffer: Buffer
   imageMimeType: string
+  aspectRatio: VideoAspectRatioOption
+  durationSeconds: VideoDurationOption
+  resolution: VideoResolutionOption
 }
 
 export interface VeoOperationResult {
@@ -98,9 +101,9 @@ export async function startVeoVideoGeneration(
           },
         ],
         parameters: {
-          aspectRatio: VIDEO_ASPECT_RATIO,
-          durationSeconds: String(VIDEO_DURATION_SECONDS),
-          resolution: VIDEO_RESOLUTION,
+          aspectRatio: params.aspectRatio,
+          durationSeconds: String(params.durationSeconds),
+          resolution: params.resolution,
         },
       }),
       signal: AbortSignal.timeout(60_000),

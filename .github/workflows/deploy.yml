@@ -14,6 +14,13 @@ jobs:
     name: Build & Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: production
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      POLAR_ENVIRONMENT: ${{ secrets.POLAR_ENVIRONMENT }}
+      POLAR_PRODUCT_ID_TOPUP_25: ${{ secrets.POLAR_PRODUCT_ID_TOPUP_25 }}
+      POLAR_PRODUCT_ID_TOPUP_100: ${{ secrets.POLAR_PRODUCT_ID_TOPUP_100 }}
+      POLAR_PRODUCT_ID_TOPUP_250: ${{ secrets.POLAR_PRODUCT_ID_TOPUP_250 }}
 
     steps:
       - name: Checkout
@@ -37,6 +44,44 @@ jobs:
             --exclude='.env.local' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }}" \
             ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/ubuntu/luminify/
+
+      - name: Sync managed production env vars
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
+          POLAR_ENVIRONMENT: ${{ env.POLAR_ENVIRONMENT }}
+          POLAR_PRODUCT_ID_TOPUP_25: ${{ env.POLAR_PRODUCT_ID_TOPUP_25 }}
+          POLAR_PRODUCT_ID_TOPUP_100: ${{ env.POLAR_PRODUCT_ID_TOPUP_100 }}
+          POLAR_PRODUCT_ID_TOPUP_250: ${{ env.POLAR_PRODUCT_ID_TOPUP_250 }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: NEXT_PUBLIC_APP_URL,POLAR_ENVIRONMENT,POLAR_PRODUCT_ID_TOPUP_25,POLAR_PRODUCT_ID_TOPUP_100,POLAR_PRODUCT_ID_TOPUP_250
+          script: |
+            set -e
+            cd /home/ubuntu/luminify
+            touch .env
+
+            upsert_env() {
+              key="$1"
+              value="$2"
+              tmp_file="$(mktemp)"
+              awk -v key="$key" -v value="$value" '
+                BEGIN { updated = 0 }
+                index($0, key "=") == 1 { print key "=" value; updated = 1; next }
+                { print }
+                END { if (!updated) print key "=" value }
+              ' .env > "$tmp_file"
+              mv "$tmp_file" .env
+            }
+
+            upsert_env NEXT_PUBLIC_APP_URL "$NEXT_PUBLIC_APP_URL"
+            upsert_env POLAR_ENVIRONMENT "$POLAR_ENVIRONMENT"
+            upsert_env POLAR_PRODUCT_ID_TOPUP_25 "$POLAR_PRODUCT_ID_TOPUP_25"
+            upsert_env POLAR_PRODUCT_ID_TOPUP_100 "$POLAR_PRODUCT_ID_TOPUP_100"
+            upsert_env POLAR_PRODUCT_ID_TOPUP_250 "$POLAR_PRODUCT_ID_TOPUP_250"
 
       - name: Build & restart container
         uses: appleboy/ssh-action@v1.0.3

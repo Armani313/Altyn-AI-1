@@ -107,7 +107,7 @@ export type Database = {
           name: string
           description: string | null
           thumbnail_url: string
-          category: 'rings' | 'necklaces' | 'bracelets' | 'earrings' | 'universal' | null
+          category: 'rings' | 'necklaces' | 'bracelets' | 'earrings' | 'universal' | 'outerwear' | 'bottomwear' | null
           is_active: boolean
           is_premium: boolean
           sort_order: number

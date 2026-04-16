@@ -56,7 +56,7 @@ export const maxDuration = 240
 export const runtime = 'nodejs'
 
 const INPUT_BUCKET  = 'jewelry-uploads'
-const VALID_CATEGORIES = ['rings', 'necklaces', 'earrings', 'bracelets', 'universal'] as const
+const VALID_CATEGORIES = ['rings', 'necklaces', 'earrings', 'bracelets', 'universal', 'outerwear', 'bottomwear'] as const
 const VALID_RATIOS     = ['1:1', '9:16', '4:5'] as const
 const ASYNC_GENERATION_TIMEOUT_MS = 7 * 60 * 1000
 

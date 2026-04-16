@@ -55,11 +55,18 @@ export function TemplatePicker({
   const uploadTargetRef = useRef<'new' | number>('new')
   const premiumUnlocked = canAccessPremiumTemplates(currentPlan)
 
+  const getTabLabel = (
+    key: 'tabOuterwear' | 'tabBottomwear',
+    fallback: string,
+  ) => (t.has(key) ? t(key) : fallback)
+
   const TABS: { id: TabCategory; label: string }[] = [
-    { id: 'all',       label: t('tabAll')      },
-    { id: 'necklaces', label: t('tabNecklaces') },
-    { id: 'earrings',  label: t('tabEarrings')  },
-    { id: 'rings',     label: t('tabRings')     },
+    { id: 'all',        label: t('tabAll')      },
+    { id: 'necklaces',  label: t('tabNecklaces') },
+    { id: 'earrings',   label: t('tabEarrings')  },
+    { id: 'rings',      label: t('tabRings')     },
+    { id: 'outerwear',  label: getTabLabel('tabOuterwear',  'Верх')  },
+    { id: 'bottomwear', label: getTabLabel('tabBottomwear', 'Низ')   },
   ]
 
   const SUBJECTS: { id: SubjectFilter; label: string }[] = [
@@ -246,12 +253,12 @@ export function TemplatePicker({
 
       {/* Filter tabs — only for jewelry mode */}
       {!isScarves && (
-        <div className="flex gap-1 p-1 bg-cream-100 rounded-xl mb-4">
+        <div className="flex gap-1 p-1 bg-cream-100 rounded-xl mb-4 overflow-x-auto scrollbar-hide">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2.5 px-2 min-h-[44px] rounded-lg text-xs font-semibold transition-all duration-200 touch-feedback ${
+              className={`flex-1 min-w-[60px] py-2.5 px-2 min-h-[44px] rounded-lg text-xs font-semibold transition-all duration-200 touch-feedback whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-white text-foreground shadow-soft'
                   : 'text-muted-foreground hover:text-foreground'

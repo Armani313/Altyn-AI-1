@@ -411,13 +411,20 @@ function getPromptOnlyQuadrants(productType: ProductType): Quadrants {
   }
 }
 
-function getPromptOnlySubjectLine(subjectType?: ModelSubjectType): string {
+function isGhostMannequinHint(promptHint?: string): boolean {
+  return !!promptHint && /\bghost mannequin\b|\binvisible mannequin\b|\bhollow man\b/i.test(promptHint)
+}
+
+function getPromptOnlySubjectLine(subjectType?: ModelSubjectType, promptHint?: string): string {
   switch (subjectType) {
     case 'men':
       return 'Use one adult male model whenever a live subject is needed.'
     case 'kids':
       return 'Use one child model with respectful, age-appropriate catalog styling whenever a live subject is needed.'
     case 'mannequins':
+      if (isGhostMannequinHint(promptHint)) {
+        return 'Apply the GHOST MANNEQUIN (invisible mannequin / hollow-man) effect across all panels: the garment must appear to be worn by an invisible person, keeping its full 3D shape, collar, sleeves, and natural fabric drape. Do NOT show any mannequin, human face, hands, or body parts. Background must be clean white or neutral studio.'
+      }
       return 'Use one clean mannequin, display bust, or display hand instead of a live person whenever it fits the product.'
     case 'women':
       return 'Use one adult female model whenever a live subject is needed.'
@@ -443,7 +450,7 @@ export function buildPromptOnlyTemplateContactSheetPrompt(
   return (
     'Create one clean 2x2 contact sheet from the product photo.\n\n' +
     'Keep the product exactly identical in all 4 panels: same design, same color, same material, and same proportions.\n\n' +
-    `${getPromptOnlySubjectLine(options.subjectType)}\n` +
+    `${getPromptOnlySubjectLine(options.subjectType, options.promptHint)}\n` +
     (poseLine ? `${poseLine}\n` : '') +
     (hintLine ? `${hintLine}\n` : '') +
     'Keep the same subject or display form across the whole sheet.\n\n' +

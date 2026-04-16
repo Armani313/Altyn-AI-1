@@ -624,11 +624,20 @@ function buildModelSubjectInstruction(
 ): string {
   if (!subjectType && !pose && !promptHint) return ''
 
+  // Detect ghost-mannequin templates via promptHint keyword so the AI prioritises
+  // the invisible/hollow-man effect over a generic mannequin description.
+  const isGhostMannequin =
+    subjectType === 'mannequins' &&
+    !!promptHint &&
+    /\bghost mannequin\b|\binvisible mannequin\b|\bhollow man\b/i.test(promptHint)
+
   const subjectLine =
     subjectType === 'men'
       ? 'Use an adult male subject for wearable or portrait-style panels.'
       : subjectType === 'kids'
       ? 'Use a child subject with age-appropriate, respectful styling and natural expressions. Do not sexualize the child.'
+      : subjectType === 'mannequins' && isGhostMannequin
+      ? 'Apply the GHOST MANNEQUIN (invisible mannequin / hollow-man) effect: the garment must appear to be worn by an invisible person, keeping its full 3D shape, collar, sleeves, and natural fabric drape. Do NOT show any mannequin, human face, hands, or body parts. Background must be clean white or neutral studio.'
       : subjectType === 'mannequins'
       ? 'Use a clean retail mannequin, display bust, or mannequin hand instead of a live person whenever it fits the composition.'
       : 'Use an adult female subject when a live model is needed.'

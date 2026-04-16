@@ -90,6 +90,7 @@ export async function POST(request: Request) {
         durationSeconds: getOptionalFormValue(formData, 'duration_seconds'),
         resolution: getOptionalFormValue(formData, 'resolution'),
         voiceMode: getOptionalFormValue(formData, 'voice_mode'),
+        negativePrompt: getOptionalFormValue(formData, 'negative_prompt'),
       },
       { isUgcTemplate: false }
     )
@@ -173,6 +174,7 @@ export async function POST(request: Request) {
       duration_seconds: settings.durationSeconds,
       resolution: settings.resolution,
       voice_mode: settings.voiceMode,
+      negative_prompt: settings.negativePrompt || undefined,
       prompt,
       template: {
         id: template.id,
@@ -244,6 +246,7 @@ export async function POST(request: Request) {
         aspectRatio: settings.aspectRatio,
         durationSeconds: settings.durationSeconds,
         resolution: settings.resolution,
+        negativePrompt: settings.negativePrompt || undefined,
       })
 
       await serviceSupabase

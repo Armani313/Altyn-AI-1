@@ -6,12 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import type { VideoGenerationStatus } from '@/types/database.types'
 import type { VideoTemplateListItem } from '@/lib/video/types'
-import {
-  VIDEO_ASPECT_RATIO,
-  VIDEO_CREDITS_COST,
-  VIDEO_DURATION_SECONDS,
-  VIDEO_RESOLUTION,
-} from '@/lib/video/constants'
+import type { VideoGenerationSettings } from '@/lib/video/options'
 
 interface VideoResultViewerProps {
   selectedTemplate: VideoTemplateListItem | null
@@ -23,6 +18,8 @@ interface VideoResultViewerProps {
   onRetry: () => void
   canGenerate: boolean
   creditsRemaining: number | null
+  creditsCost: number
+  settings: VideoGenerationSettings
 }
 
 async function downloadVideo(url: string) {
@@ -50,6 +47,8 @@ export function VideoResultViewer({
   onRetry,
   canGenerate,
   creditsRemaining,
+  creditsCost,
+  settings,
 }: VideoResultViewerProps) {
   const t = useTranslations('video')
   const tTemplates = useTranslations('videoTemplates')
@@ -87,7 +86,7 @@ export function VideoResultViewer({
           </h3>
         </div>
         <div className="rounded-full border border-cream-200 bg-cream-50 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
-          {VIDEO_ASPECT_RATIO} · {VIDEO_DURATION_SECONDS}s · {VIDEO_RESOLUTION}
+          {settings.aspectRatio} · {settings.durationSeconds}s · {settings.resolution === '4k' ? '4K' : settings.resolution}
         </div>
       </div>
 
@@ -95,12 +94,17 @@ export function VideoResultViewer({
         <div className="aspect-[9/16]">
           {isCompleted && outputVideoUrl ? (
             <video
-              src={outputVideoUrl}
+              key={outputVideoUrl}
               poster={posterUrl ?? undefined}
               controls
+              autoPlay
+              muted
               playsInline
+              crossOrigin="anonymous"
               className="h-full w-full object-cover"
-            />
+            >
+              <source src={outputVideoUrl} type="video/mp4" />
+            </video>
           ) : (
             <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6 text-center">
               {selectedTemplate?.coverImageUrl ? (
@@ -166,7 +170,7 @@ export function VideoResultViewer({
           <div className="text-right">
             <p className="text-xs text-muted-foreground">{t('costLabel')}</p>
             <p className="mt-1 text-sm font-semibold text-foreground">
-              {t('costValue', { n: VIDEO_CREDITS_COST })}
+              {t('costValue', { n: creditsCost })}
             </p>
           </div>
         </div>

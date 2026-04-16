@@ -6,10 +6,9 @@ import {
   VIDEO_RESOLUTION,
 } from '@/lib/video/constants'
 
+/** Veo 3.1 supports only 9:16 and 16:9. */
 export const VIDEO_ASPECT_RATIO_OPTIONS = [
   VIDEO_ASPECT_RATIO,
-  '1:1',
-  '4:5',
   '16:9',
 ] as const
 
@@ -22,6 +21,7 @@ export const VIDEO_DURATION_OPTIONS = [
 export const VIDEO_RESOLUTION_OPTIONS = [
   VIDEO_RESOLUTION,
   '1080p',
+  '4k',
 ] as const
 
 export const VIDEO_VOICE_MODE_OPTIONS = [
@@ -42,6 +42,7 @@ export interface VideoGenerationSettings {
   durationSeconds: VideoDurationOption
   resolution: VideoResolutionOption
   voiceMode: VideoVoiceMode
+  negativePrompt: string
 }
 
 export interface VideoSettingsInput {
@@ -49,6 +50,7 @@ export interface VideoSettingsInput {
   durationSeconds?: string | number | null
   resolution?: string | null
   voiceMode?: string | null
+  negativePrompt?: string | null
 }
 
 export const DEFAULT_VIDEO_SETTINGS: VideoGenerationSettings = {
@@ -56,17 +58,15 @@ export const DEFAULT_VIDEO_SETTINGS: VideoGenerationSettings = {
   durationSeconds: VIDEO_DURATION_SECONDS,
   resolution: VIDEO_RESOLUTION,
   voiceMode: 'auto',
+  negativePrompt: '',
 }
 
-const VIDEO_DURATION_COST_MAP: Record<VideoDurationOption, number> = {
-  4: 6,
-  6: 9,
-  8: VIDEO_CREDITS_COST,
-}
+export const VIDEO_NEGATIVE_PROMPT_MAX_LENGTH = 300
 
-const VIDEO_RESOLUTION_SURCHARGE: Record<VideoResolutionOption, number> = {
-  '720p': 0,
-  '1080p': 2,
+const VIDEO_RESOLUTION_COST: Record<VideoResolutionOption, number> = {
+  '720p': VIDEO_CREDITS_COST,
+  '1080p': VIDEO_CREDITS_COST + 2,
+  '4k': VIDEO_CREDITS_COST + 8,
 }
 
 function isObjectLike(value: Json | null | undefined): value is Record<string, Json | undefined> {
@@ -111,17 +111,43 @@ function asVoiceMode(value: string | null | undefined): VideoVoiceMode {
   return DEFAULT_VIDEO_SETTINGS.voiceMode
 }
 
+function asNegativePrompt(value: string | null | undefined): string {
+  if (typeof value !== 'string') return ''
+  return value.trim().slice(0, VIDEO_NEGATIVE_PROMPT_MAX_LENGTH)
+}
+
+/**
+ * Enforce Veo 3.1 image-to-video constraints:
+ * - Duration is always 8s (Veo ignores other values for i2v)
+ * - 1080p requires 16:9 aspect ratio
+ */
+function enforceConstraints(
+  resolution: VideoResolutionOption,
+  aspectRatio: VideoAspectRatioOption,
+): { resolution: VideoResolutionOption; aspectRatio: VideoAspectRatioOption } {
+  if (resolution === '1080p' && aspectRatio !== '16:9') {
+    return { resolution: '720p', aspectRatio }
+  }
+
+  return { resolution, aspectRatio }
+}
+
 export function sanitizeVideoSettings(
   input: VideoSettingsInput,
   options: { isUgcTemplate: boolean }
 ): VideoGenerationSettings {
   const voiceMode = options.isUgcTemplate ? asVoiceMode(input.voiceMode) : 'silent'
+  const rawResolution = asResolution(input.resolution)
+  const rawAspectRatio = asAspectRatio(input.aspectRatio)
+
+  const { resolution, aspectRatio } = enforceConstraints(rawResolution, rawAspectRatio)
 
   return {
-    aspectRatio: asAspectRatio(input.aspectRatio),
-    durationSeconds: asDuration(input.durationSeconds),
-    resolution: asResolution(input.resolution),
+    aspectRatio,
+    durationSeconds: 8,
+    resolution,
     voiceMode,
+    negativePrompt: asNegativePrompt(input.negativePrompt),
   }
 }
 
@@ -140,11 +166,12 @@ export function readVideoSettingsFromMetadata(
           : null,
       resolution: typeof value.resolution === 'string' ? value.resolution : null,
       voiceMode: typeof value.voice_mode === 'string' ? value.voice_mode : null,
+      negativePrompt: typeof value.negative_prompt === 'string' ? value.negative_prompt : null,
     },
     options
   )
 }
 
-export function calculateVideoCredits(settings: Pick<VideoGenerationSettings, 'durationSeconds' | 'resolution'>): number {
-  return VIDEO_DURATION_COST_MAP[settings.durationSeconds] + VIDEO_RESOLUTION_SURCHARGE[settings.resolution]
+export function calculateVideoCredits(settings: Pick<VideoGenerationSettings, 'resolution'>): number {
+  return VIDEO_RESOLUTION_COST[settings.resolution]
 }

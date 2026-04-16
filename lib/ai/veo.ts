@@ -41,6 +41,7 @@ export interface StartVeoVideoParams {
   aspectRatio: VideoAspectRatioOption
   durationSeconds: VideoDurationOption
   resolution: VideoResolutionOption
+  negativePrompt?: string
 }
 
 export interface VeoOperationResult {
@@ -93,17 +94,16 @@ export async function startVeoVideoGeneration(
           {
             prompt: params.prompt,
             image: {
-              inlineData: {
-                mimeType: params.imageMimeType,
-                data: params.imageBuffer.toString('base64'),
-              },
+              bytesBase64Encoded: params.imageBuffer.toString('base64'),
+              mimeType: params.imageMimeType,
             },
           },
         ],
         parameters: {
           aspectRatio: params.aspectRatio,
-          durationSeconds: String(params.durationSeconds),
+          durationSeconds: params.durationSeconds,
           resolution: params.resolution,
+          ...(params.negativePrompt ? { negativePrompt: params.negativePrompt } : {}),
         },
       }),
       signal: AbortSignal.timeout(60_000),

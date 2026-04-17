@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: exchangeData, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
       if (type === 'recovery') {
@@ -58,9 +58,15 @@ export async function GET(request: NextRequest) {
         return response
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      let user = exchangeData.user ?? exchangeData.session?.user ?? null
+
+      if (!user) {
+        const {
+          data: { user: loadedUser },
+        } = await supabase.auth.getUser()
+
+        user = loadedUser
+      }
 
       if (user?.email) {
         await claimSignupTrialForUser({

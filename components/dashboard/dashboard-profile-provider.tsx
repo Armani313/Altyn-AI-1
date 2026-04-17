@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -37,6 +38,7 @@ export function DashboardProfileProvider({
 }) {
   const pathname = usePathname()
   const [profile, setProfile] = useState<DashboardProfileState>(initialProfile)
+  const trialClaimAttemptedRef = useRef(false)
 
   const refreshProfile = useCallback(async () => {
     const supabase = createClient()
@@ -85,6 +87,34 @@ export function DashboardProfileProvider({
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
   }, [refreshProfile])
+
+  useEffect(() => {
+    if (profile?.trial_credits_decision !== 'pending') {
+      trialClaimAttemptedRef.current = false
+      return
+    }
+
+    if (trialClaimAttemptedRef.current) {
+      return
+    }
+
+    trialClaimAttemptedRef.current = true
+
+    void (async () => {
+      try {
+        const response = await fetch('/api/auth/claim-trial', { method: 'POST' })
+        if (!response.ok) {
+          trialClaimAttemptedRef.current = false
+          return
+        }
+      } catch {
+        trialClaimAttemptedRef.current = false
+        return
+      }
+
+      await refreshProfile()
+    })()
+  }, [profile?.trial_credits_decision, refreshProfile])
 
   const value = useMemo<DashboardProfileContextValue>(() => ({
     profile,

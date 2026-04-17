@@ -1111,6 +1111,8 @@
     "errorProviderConfig": "The enhancement service is not configured on the server right now.",
     "errorProviderAuth": "The image service rejected the request. Please try again a little later.",
     "errorProviderRateLimit": "The image service temporarily limited requests. Please retry in about a minute.",
+    "errorProviderBilling": "The image service is temporarily unavailable because of a billing or credit issue.",
+    "errorProviderUnavailable": "The image service is temporarily unavailable. Please try again a little later.",
     "errorSharedImage": "We could not open this image for enhancement. Please upload it manually.",
     "feat1Title": "More clarity",
     "feat1Desc": "Helps make your product photo look cleaner and sharper.",

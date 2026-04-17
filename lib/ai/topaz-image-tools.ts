@@ -85,14 +85,26 @@ function mapTopazHttpError(status: number, text: string): never {
   if (status === 401 || status === 403) {
     throw new Error('Topaz API rejected the request. Check TOPAZ_API_KEY.')
   }
+  if (status === 402) {
+    throw new Error('Topaz billing is inactive or credits are unavailable.')
+  }
   if (status === 413) {
     throw new Error('The image is too large for the enhancement API.')
+  }
+  if (status === 412) {
+    throw new Error('Topaz could not satisfy the requested image settings.')
   }
   if (status === 415 || status === 422) {
     throw new Error('Topaz could not process this image. Try JPG or PNG.')
   }
+  if (status === 425) {
+    throw new Error('Topaz asked to retry the request later.')
+  }
   if (status === 429) {
     throw new Error('Topaz rate limit reached. Try again in a minute.')
+  }
+  if (status >= 500) {
+    throw new Error('Topaz service is temporarily unavailable.')
   }
 
   throw new Error(`Topaz returned HTTP ${status}.`)

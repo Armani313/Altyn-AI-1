@@ -46,8 +46,12 @@ type UpscaleErrorCode =
   | 'queue_busy'
   | 'provider_not_configured'
   | 'provider_auth'
+  | 'provider_billing'
+  | 'provider_invalid_image'
   | 'provider_rate_limit'
   | 'provider_output_too_large'
+  | 'provider_retry_later'
+  | 'provider_unavailable'
   | 'provider_unknown'
 
 function mapTopazFailure(message: string): {
@@ -55,11 +59,38 @@ function mapTopazFailure(message: string): {
   code: UpscaleErrorCode
   message: string
 } {
+  if (message === 'TOPAZ_API_KEY env var is not configured.') {
+    return {
+      status: 503,
+      code: 'provider_not_configured',
+      message: 'Сервис улучшения не настроен на сервере.',
+    }
+  }
   if (message === 'Topaz API rejected the request. Check TOPAZ_API_KEY.') {
     return {
       status: 502,
       code: 'provider_auth',
       message: 'Сервис обработки отклонил запрос. Проверьте настройки доступа.',
+    }
+  }
+  if (message === 'Topaz billing is inactive or credits are unavailable.' || message === 'Topaz returned HTTP 402.') {
+    return {
+      status: 503,
+      code: 'provider_billing',
+      message: 'Сервис обработки временно недоступен. Попробуйте позже.',
+    }
+  }
+  if (
+    message === 'Topaz could not process this image. Try JPG or PNG.'
+    || message === 'Topaz could not satisfy the requested image settings.'
+    || message === 'Topaz returned HTTP 412.'
+    || message === 'Topaz returned HTTP 415.'
+    || message === 'Topaz returned HTTP 422.'
+  ) {
+    return {
+      status: 400,
+      code: 'provider_invalid_image',
+      message: 'Сервис обработки не смог обработать это изображение. Попробуйте другой JPG или PNG.',
     }
   }
   if (message === 'Topaz rate limit reached. Try again in a minute.') {
@@ -74,6 +105,26 @@ function mapTopazFailure(message: string): {
       status: 400,
       code: 'provider_output_too_large',
       message: 'Изображение слишком большое для обработки.',
+    }
+  }
+  if (message === 'Topaz asked to retry the request later.' || message === 'Topaz returned HTTP 425.') {
+    return {
+      status: 503,
+      code: 'provider_retry_later',
+      message: 'Сервис обработки просит повторить запрос чуть позже.',
+    }
+  }
+  if (
+    message === 'Topaz service is temporarily unavailable.'
+    || message === 'Topaz returned HTTP 500.'
+    || message === 'Topaz returned HTTP 502.'
+    || message === 'Topaz returned HTTP 503.'
+    || message === 'Topaz returned HTTP 504.'
+  ) {
+    return {
+      status: 502,
+      code: 'provider_unavailable',
+      message: 'Сервис обработки временно недоступен. Попробуйте позже.',
     }
   }
 

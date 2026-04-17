@@ -76,14 +76,26 @@ export async function enhanceImageWithTopaz({
     if (response.status === 401 || response.status === 403) {
       throw new Error('Topaz API rejected the request. Check TOPAZ_API_KEY.')
     }
+    if (response.status === 402) {
+      throw new Error('Topaz billing is inactive or credits are unavailable.')
+    }
     if (response.status === 413) {
       throw new Error('The image is too large for the enhancement API.')
+    }
+    if (response.status === 412) {
+      throw new Error('Topaz could not satisfy the requested image settings.')
     }
     if (response.status === 415 || response.status === 422) {
       throw new Error('Topaz could not process this image. Try JPG or PNG.')
     }
+    if (response.status === 425) {
+      throw new Error('Topaz asked to retry the request later.')
+    }
     if (response.status === 429) {
       throw new Error('Topaz rate limit reached. Try again in a minute.')
+    }
+    if (response.status >= 500) {
+      throw new Error('Topaz service is temporarily unavailable.')
     }
 
     throw new Error(`Topaz returned HTTP ${response.status}.`)

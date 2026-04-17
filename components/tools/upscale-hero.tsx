@@ -131,8 +131,15 @@ export function UpscaleHero({ initialImageUrl = null }: UpscaleHeroProps) {
         return t('errorProviderConfig')
       case 'provider_auth':
         return t('errorProviderAuth')
+      case 'provider_billing':
+        return t('errorProviderBilling')
+      case 'provider_invalid_image':
+        return t('errorUnsupported')
       case 'provider_rate_limit':
         return t('errorProviderRateLimit')
+      case 'provider_retry_later':
+      case 'provider_unavailable':
+        return t('errorProviderUnavailable')
       case 'provider_output_too_large':
         return t('errorLimitMp')
       default:

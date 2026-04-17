@@ -138,10 +138,18 @@ export function TopazToolPage({ tool, relatedTools, locale }: TopazToolPageProps
         return locale === 'ru' ? 'Инструмент пока не настроен на сервере.' : 'The tool is not configured on the server yet.'
       case 'provider_auth':
         return locale === 'ru' ? 'Сервис обработки отклонил запрос.' : 'The processing provider rejected the request.'
+      case 'provider_billing':
+        return locale === 'ru' ? 'У внешнего сервиса возникла проблема с биллингом или кредитами.' : 'The external service has a billing or credit issue.'
+      case 'provider_invalid_image':
+        return locale === 'ru' ? 'Внешний сервис не смог обработать это изображение. Попробуйте другой JPG или PNG.' : 'The external service could not process this image. Try another JPG or PNG.'
       case 'provider_rate_limit':
         return locale === 'ru' ? 'Внешний сервис временно ограничил запросы.' : 'The external service is temporarily rate-limiting requests.'
+      case 'provider_retry_later':
+        return locale === 'ru' ? 'Внешний сервис просит повторить запрос чуть позже.' : 'The external service asked us to retry a bit later.'
       case 'provider_timeout':
         return locale === 'ru' ? 'Обработка заняла слишком много времени. Попробуйте другое изображение.' : 'Processing took too long. Please try a different image.'
+      case 'provider_unavailable':
+        return locale === 'ru' ? 'Внешний сервис временно недоступен.' : 'The external service is temporarily unavailable.'
       case 'tool_unavailable':
         return locale === 'ru' ? 'Инструмент пока недоступен.' : 'This tool is not available yet.'
       default:

@@ -122,7 +122,6 @@ export async function upscaleToFourK(
   }
 
   // ── Parse response ────────────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = await res.json() as { predictions?: Array<{ bytesBase64Encoded?: string }> }
 
   const b64 = data.predictions?.[0]?.bytesBase64Encoded

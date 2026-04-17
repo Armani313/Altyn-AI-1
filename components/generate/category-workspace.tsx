@@ -16,7 +16,6 @@ import {
   type LifestyleWorkspaceSnapshot,
 } from '@/lib/lifestyle-generation-store'
 
-type AspectRatio = '1:1' | '9:16'
 type MobileStep  = 1 | 2 | 3
 
 const MAX_SELECTED_TEMPLATES = 4

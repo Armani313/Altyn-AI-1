@@ -25,7 +25,7 @@ export function BlurBgHero() {
   const [blurAmount, setBlurAmount] = useState(8)
 
   const [processStatus, setProcessStatus] = useState<ProcessStatus>('idle')
-  const [progress, setProgress] = useState(0)
+  const [, setProgress] = useState(0)
   const [errorMsg, setErrorMsg] = useState('')
 
   const [isDragging, setIsDragging] = useState(false)

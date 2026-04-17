@@ -227,7 +227,7 @@ export function UpscaleHero({ initialImageUrl = null }: UpscaleHeroProps) {
     }
 
     await runUpscale(file, nextScale)
-  }, [clearProgressTimer, previewUrl, resetResult, revokeObjectUrl, runUpscale, scaleMode])
+  }, [clearProgressTimer, resetResult, revokeObjectUrl, runUpscale, scaleMode])
 
   const handleSampleClick = useCallback(async (src: string) => {
     const response = await fetch(src)
@@ -267,7 +267,7 @@ export function UpscaleHero({ initialImageUrl = null }: UpscaleHeroProps) {
     setProgress(0)
     setErrorMsg('')
     setZoomTarget(null)
-  }, [clearProgressTimer, previewUrl, resultUrl, revokeObjectUrl])
+  }, [clearProgressTimer, revokeObjectUrl])
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault()

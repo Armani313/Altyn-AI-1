@@ -15,7 +15,11 @@
  * so every plan transition produces a row in `credit_transactions` for audit.
  *
  * Idempotent — safe to receive the same event multiple times.
- * Polar retries up to 10 times on non-2xx responses.
+ *
+ * Failure policy: any resolution failure (missing userId, unknown productId,
+ * DB error) is thrown so the outer catch returns 500 and Polar retries
+ * delivery up to 10 times. Never silently 200 — silent returns are how we
+ * ended up with paid-but-not-activated customers twice in a row.
  */
 
 import { NextResponse } from 'next/server'
@@ -58,7 +62,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   }
 
-  console.info(`Polar webhook: type=${event.type}`)
+  // Rich initial log for diagnosing lost events — includes event id, resolved
+  // userId (if any) and incoming productId. Lets us grep prod logs without a
+  // DB dive when the next customer reports "plan not updated".
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = event.data as any
+  const incomingProductId = data?.productId ?? data?.product?.id ?? null
+  console.info(
+    `Polar webhook: type=${event.type} id=${data?.id ?? 'unknown'} ` +
+    `userId=${resolveUserId(data) ?? 'unresolved'} ` +
+    `productId=${incomingProductId ?? 'none'}`
+  )
 
   const supabase = createServiceClient()
 
@@ -86,7 +100,7 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error(`Polar webhook: handler error for ${event.type}:`, err)
-    // Return 500 so Polar retries delivery
+    // Return 500 so Polar retries delivery (up to 10 times)
     return NextResponse.json({ error: 'Handler error' }, { status: 500 })
   }
 
@@ -106,27 +120,27 @@ function assertSupabaseSuccess(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleOrderPaid(supabase: any, order: any) {
-  // Resolve userId: prefer customer.externalId, fallback to checkout metadata
+  // Resolve userId: prefer customer.externalId, fallback to checkout metadata.
+  // Throw on miss so Polar retries — silent 200 here caused two real incidents.
   const userId = resolveUserId(order)
 
   if (!userId) {
-    console.error(
+    throw new Error(
       `Polar order.paid: cannot resolve userId (orderId=${order?.id}, ` +
       `customer.externalId=${order?.customer?.externalId}, ` +
-      `metadata.userId=${order?.metadata?.userId}) — skipping`
+      `metadata.userId=${order?.metadata?.userId})`
     )
-    return
   }
 
   // Resolve productId: prefer order.productId, fallback to order.product.id
   const productId = order?.productId ?? order?.product?.id
   const product = resolveBillingProductByProductId(productId ?? undefined)
   if (!product) {
-    console.error(
+    throw new Error(
       `Polar order.paid: unknown product (orderId=${order?.id}, ` +
-      `productId=${order?.productId}, product.id=${order?.product?.id}) — skipping`
+      `productId=${order?.productId}, product.id=${order?.product?.id}) — ` +
+      `check POLAR_PRODUCT_ID_* env vars match Polar dashboard`
     )
-    return
   }
 
   if (product.kind === 'pack') {
@@ -153,17 +167,17 @@ async function handleOrderPaid(supabase: any, order: any) {
     const subWrite = await supabase
       .from('subscriptions')
       .upsert({
-        user_id:        userId,
-        plan:           planKey,
-        status:         'active',
-        starts_at:      startsAt,
-        expires_at:     endsAt,
-        kaspi_order_id: subscriptionId,
-        amount:         order?.subscription?.amount ?? order?.totalAmount ?? 0,
-        currency:       order?.subscription?.currency ?? order?.currency ?? 'USD',
+        user_id:               userId,
+        plan:                  planKey,
+        status:                'active',
+        starts_at:             startsAt,
+        expires_at:            endsAt,
+        polar_subscription_id: subscriptionId,
+        amount:                order?.subscription?.amount ?? order?.totalAmount ?? 0,
+        currency:              order?.subscription?.currency ?? order?.currency ?? 'USD',
         // Any prior cancel schedule is cleared by a fresh successful order.
         cancel_at_period_end: false,
-      } as never, { onConflict: 'kaspi_order_id' })
+      } as never, { onConflict: 'polar_subscription_id' })
 
     assertSupabaseSuccess('Polar order.paid subscription upsert failed', subWrite)
   }
@@ -189,23 +203,22 @@ async function handleSubscriptionActive(supabase: any, sub: any) {
   const userId = resolveUserId(sub)
 
   if (!userId) {
-    console.error(
+    throw new Error(
       `Polar subscription.active: cannot resolve userId (subId=${sub?.id}, ` +
       `customer.externalId=${sub?.customer?.externalId}, ` +
-      `metadata.userId=${sub?.metadata?.userId}) — skipping`
+      `metadata.userId=${sub?.metadata?.userId})`
     )
-    return
   }
 
   // Resolve productId: prefer sub.productId, fallback to sub.product.id
   const productId = sub?.productId ?? sub?.product?.id
   const product = resolveBillingProductByProductId(productId)
   if (!product || product.kind !== 'plan') {
-    console.error(
+    throw new Error(
       `Polar subscription.active: unknown product (subId=${sub?.id}, ` +
-      `productId=${sub?.productId}, product.id=${sub?.product?.id}) — skipping`
+      `productId=${sub?.productId}, product.id=${sub?.product?.id}) — ` +
+      `check POLAR_PRODUCT_ID_* env vars match Polar dashboard`
     )
-    return
   }
 
   const planKey = product.key
@@ -213,22 +226,20 @@ async function handleSubscriptionActive(supabase: any, sub: any) {
   const startsAt = sub.currentPeriodStart?.toISOString() ?? new Date().toISOString()
   const endsAt   = sub.currentPeriodEnd?.toISOString()   ?? null
 
-  // Upsert subscription row — kaspi_order_id column stores Polar subscription ID
-  // (legacy column name from previous payment provider)
   const subWrite = await supabase
     .from('subscriptions')
     .upsert({
-      user_id:        userId,
-      plan:           planKey,
-      status:         'active',
-      starts_at:      startsAt,
-      expires_at:     endsAt,
-      kaspi_order_id: sub.id,
-      amount:         sub.amount,
-      currency:       sub.currency,
+      user_id:               userId,
+      plan:                  planKey,
+      status:                'active',
+      starts_at:             startsAt,
+      expires_at:            endsAt,
+      polar_subscription_id: sub.id,
+      amount:                sub.amount,
+      currency:              sub.currency,
       // Reactivation clears any prior cancel_at_period_end flag.
       cancel_at_period_end: false,
-    } as never, { onConflict: 'kaspi_order_id' })
+    } as never, { onConflict: 'polar_subscription_id' })
   assertSupabaseSuccess('Polar subscription.active upsert failed', subWrite)
 
   await callSetSubscriptionCredits(supabase, {
@@ -248,18 +259,17 @@ async function handleSubscriptionRevoked(supabase: any, sub: any) {
   const userId = resolveUserId(sub)
 
   if (!userId) {
-    console.error(
+    throw new Error(
       `Polar subscription.revoked: cannot resolve userId (subId=${sub?.id}, ` +
       `customer.externalId=${sub?.customer?.externalId}, ` +
-      `metadata.userId=${sub?.metadata?.userId}) — skipping`
+      `metadata.userId=${sub?.metadata?.userId})`
     )
-    return
   }
 
   const subWrite = await supabase
     .from('subscriptions')
     .update({ status: 'cancelled' } as never)
-    .eq('kaspi_order_id', sub.id)
+    .eq('polar_subscription_id', sub.id)
   assertSupabaseSuccess('Polar subscription.revoked status update failed', subWrite)
 
   // Check for any remaining active subscription
@@ -301,7 +311,7 @@ async function handleSubscriptionCanceled(supabase: any, sub: any) {
   const flagWrite = await supabase
     .from('subscriptions')
     .update({ cancel_at_period_end: true } as never)
-    .eq('kaspi_order_id', sub.id)
+    .eq('polar_subscription_id', sub.id)
   assertSupabaseSuccess('Polar subscription.canceled flag update failed', flagWrite)
 
   console.info(
@@ -340,7 +350,7 @@ async function handleOrderRefunded(supabase: any, order: any) {
   const subWrite = await supabase
     .from('subscriptions')
     .update({ status: 'cancelled', cancel_at_period_end: true } as never)
-    .eq('kaspi_order_id', subscriptionId)
+    .eq('polar_subscription_id', subscriptionId)
   assertSupabaseSuccess('Polar order.refunded subscription update failed', subWrite)
 
   console.warn(
@@ -440,13 +450,13 @@ function resolveBillingProductByProductId(productId: string | undefined):
   if (!productId) return null
 
   for (const [key, plan] of Object.entries(POLAR_PLANS)) {
-    if (plan.productId === productId && isPolarPlanKey(key)) {
+    if (plan.productId && plan.productId === productId && isPolarPlanKey(key)) {
       return { kind: 'plan', key, credits: plan.credits }
     }
   }
 
   for (const [key, pack] of Object.entries(POLAR_CREDIT_PACKS)) {
-    if (pack.productId === productId && isPolarCreditPackKey(key)) {
+    if (pack.productId && pack.productId === productId && isPolarCreditPackKey(key)) {
       return { kind: 'pack', key, credits: pack.credits }
     }
   }

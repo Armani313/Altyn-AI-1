@@ -48,7 +48,10 @@ export function Lightbox({
 
   // Sync index when lightbox opens with a new initialIndex
   useEffect(() => {
-    if (open) setCurrentIndex(initialIndex)
+    if (!open) return
+    queueMicrotask(() => {
+      setCurrentIndex(initialIndex)
+    })
   }, [open, initialIndex])
 
   const prev = useCallback(() => {

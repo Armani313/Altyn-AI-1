@@ -260,7 +260,7 @@ export type Database = {
           user_id: string
           plan: 'starter' | 'pro' | 'business'
           status: 'pending' | 'active' | 'expired' | 'cancelled'
-          kaspi_order_id: string | null
+          polar_subscription_id: string | null
           amount: number
           currency: string
           starts_at: string | null
@@ -274,7 +274,7 @@ export type Database = {
           user_id: string
           plan: 'starter' | 'pro' | 'business'
           status?: 'pending' | 'active' | 'expired' | 'cancelled'
-          kaspi_order_id?: string | null
+          polar_subscription_id?: string | null
           amount: number
           currency?: string
           starts_at?: string | null
@@ -285,7 +285,7 @@ export type Database = {
         }
         Update: {
           status?: 'pending' | 'active' | 'expired' | 'cancelled'
-          kaspi_order_id?: string | null
+          polar_subscription_id?: string | null
           starts_at?: string | null
           expires_at?: string | null
           cancel_at_period_end?: boolean

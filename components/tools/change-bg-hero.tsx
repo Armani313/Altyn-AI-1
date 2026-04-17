@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
-import { Upload, Download, Loader2, RefreshCw, Check, Pipette, LayoutGrid, Sparkles } from 'lucide-react'
+import { Upload, Download, Loader2, RefreshCw, Check, LayoutGrid, Sparkles } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { EASE } from '@/lib/motion'
@@ -56,7 +56,7 @@ export function ChangeBgHero() {
   const [bgGradient, setBgGradient] = useState(GRADIENT_PRESETS[0])
 
   const [processStatus, setProcessStatus] = useState<ProcessStatus>('idle')
-  const [progress, setProgress] = useState(0)
+  const [, setProgress] = useState(0)
   const [errorMsg, setErrorMsg] = useState('')
 
   const [isDragging, setIsDragging] = useState(false)

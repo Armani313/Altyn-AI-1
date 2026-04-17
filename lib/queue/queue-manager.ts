@@ -279,7 +279,6 @@ function msUntilUtcMidnight(): number {
 // ── Singleton (survives hot reload in dev) ────────────────────────────────────
 
 declare global {
-  // eslint-disable-next-line no-var
   var __queueManager: QueueManager | undefined
 }
 

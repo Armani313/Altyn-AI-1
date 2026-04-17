@@ -81,20 +81,6 @@ function asAspectRatio(value: string | null | undefined): VideoAspectRatioOption
   return DEFAULT_VIDEO_SETTINGS.aspectRatio
 }
 
-function asDuration(value: string | number | null | undefined): VideoDurationOption {
-  const parsed = typeof value === 'number'
-    ? value
-    : typeof value === 'string'
-      ? Number.parseInt(value, 10)
-      : NaN
-
-  if ((VIDEO_DURATION_OPTIONS as readonly number[]).includes(parsed)) {
-    return parsed as VideoDurationOption
-  }
-
-  return DEFAULT_VIDEO_SETTINGS.durationSeconds
-}
-
 function asResolution(value: string | null | undefined): VideoResolutionOption {
   if (typeof value === 'string' && (VIDEO_RESOLUTION_OPTIONS as readonly string[]).includes(value)) {
     return value as VideoResolutionOption

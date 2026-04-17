@@ -229,7 +229,6 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       mounted = false
       setCanvasReady(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cw, ch, saveHistory, rerender])
 
   useEffect(() => {

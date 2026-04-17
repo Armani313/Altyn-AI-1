@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useSyncExternalStore } from 'react'
 import { useTranslations } from 'next-intl'
 import { Check } from 'lucide-react'
 import { Header }             from '@/components/dashboard/header'
@@ -41,28 +41,28 @@ export default function CardsPage() {
   const [customTemplateFile,  setCustomTemplateFile]  = useState<File | null>(null)
   const [customTemplateUrl,   setCustomTemplateUrl]   = useState<string | null>(null)
   const [aspectRatio,         setAspectRatio]         = useState<AspectRatio>('1:1')
-  const [results,             setResults]             = useState<CardResult[]>([])
   const [localCreditsRemaining, setLocalCreditsRemaining] = useState<number | null>(null)
   const [mobileStep,          setMobileStep]          = useState<MobileStep>(1)
   const [cardTemplates,       setCardTemplates]       = useState<CardTemplate[]>([])
   const [templateMap,         setTemplateMap]         = useState<Record<string, CardTemplate>>({})
   const creditsRemaining = localCreditsRemaining ?? providerCreditsRemaining
 
-  const setCreditsRef = useRef(setLocalCreditsRemaining)
-  useEffect(() => { setCreditsRef.current = setLocalCreditsRemaining }, [])
-
-  useEffect(() => {
+  const subscribeToResults = useCallback((onStoreChange: () => void) => {
     const store = getCardsStore()
-    setResults(store.results)
-    const unsubscribe = store.subscribe((newResults, newCredits) => {
-      setResults(newResults)
+    return store.subscribe((_, newCredits) => {
       if (typeof newCredits === 'number') {
-        setCreditsRef.current(newCredits)
+        setLocalCreditsRemaining(newCredits)
         setDashboardCreditsRemaining?.(newCredits)
       }
+      onStoreChange()
     })
-    return unsubscribe
   }, [setDashboardCreditsRemaining])
+
+  const results = useSyncExternalStore(
+    subscribeToResults,
+    () => getCardsStore().results,
+    () => [] as CardResult[]
+  )
 
   useEffect(() => {
     try {
@@ -72,11 +72,13 @@ export default function CardsPage() {
         productName?: string; brandName?: string; productDescription?: string
         selectedTemplates?: string[]; aspectRatio?: AspectRatio
       }
-      if (f.productName)        setProductName(f.productName)
-      if (f.brandName)          setBrandName(f.brandName)
-      if (f.productDescription) setProductDescription(f.productDescription)
-      if (f.selectedTemplates)  setSelectedTemplates(f.selectedTemplates)
-      if (f.aspectRatio)        setAspectRatio(f.aspectRatio)
+      queueMicrotask(() => {
+        if (f.productName)        setProductName(f.productName)
+        if (f.brandName)          setBrandName(f.brandName)
+        if (f.productDescription) setProductDescription(f.productDescription)
+        if (f.selectedTemplates)  setSelectedTemplates(f.selectedTemplates)
+        if (f.aspectRatio)        setAspectRatio(f.aspectRatio)
+      })
     } catch { /* ignore */ }
   }, [])
 

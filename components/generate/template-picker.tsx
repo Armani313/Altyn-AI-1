@@ -430,8 +430,23 @@ export function TemplatePicker({
               key={`custom-${cardIdx}`}
               role="button"
               tabIndex={isDisabledCard ? -1 : 0}
-              onClick={() => !isDisabledCard && (isAddSlot ? openFilePicker('new') : toggle(modelId))}
-              onKeyDown={(e) => { if (!isDisabledCard && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); isAddSlot ? openFilePicker('new') : toggle(modelId) } }}
+              onClick={() => {
+                if (isDisabledCard) return
+                if (isAddSlot) {
+                  openFilePicker('new')
+                  return
+                }
+                toggle(modelId)
+              }}
+              onKeyDown={(e) => {
+                if (isDisabledCard || (e.key !== 'Enter' && e.key !== ' ')) return
+                e.preventDefault()
+                if (isAddSlot) {
+                  openFilePicker('new')
+                  return
+                }
+                toggle(modelId)
+              }}
               aria-disabled={isDisabledCard || undefined}
               className={`
                 relative group rounded-xl overflow-hidden border-2 transition-all duration-200 cursor-pointer
@@ -557,6 +572,7 @@ export function TemplatePicker({
               `}
             >
               <div className="aspect-[9/16] relative overflow-hidden bg-cream-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/models/${model.filename}`}
                   alt={model.name}

@@ -69,7 +69,15 @@ export function DashboardProfileProvider({
   }, [])
 
   useEffect(() => {
-    void refreshProfile()
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void refreshProfile()
+      }
+    })
+    return () => {
+      cancelled = true
+    }
   }, [pathname, refreshProfile])
 
   useEffect(() => {

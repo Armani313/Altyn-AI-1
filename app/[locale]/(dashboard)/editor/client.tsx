@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { MarketplaceEditor } from '@/components/editor/marketplace-editor'
 import { UploadPhase } from '@/components/editor/upload-phase'
 
@@ -20,13 +20,6 @@ export function EditorPageClient({
 
   const [phase, setPhase] = useState<Phase>(initialPhase)
   const [productBlobUrl, setProductBlobUrl] = useState<string | null>(initialProduct)
-  const [resolvedEntryMode, setResolvedEntryMode] = useState<EditorEntryMode>(entryMode)
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const photoMode = params.get('mode') === 'photo-editor' || params.get('direct') === '1'
-    setResolvedEntryMode(photoMode ? 'photo-editor' : 'remove-bg')
-  }, [])
 
   const handleUploadComplete = (url: string) => {
     setProductBlobUrl(url)
@@ -46,9 +39,9 @@ export function EditorPageClient({
     }>
       {phase === 'upload' && (
         <UploadPhase
-          key={resolvedEntryMode}
+          key={entryMode}
           onComplete={handleUploadComplete}
-          mode={resolvedEntryMode}
+          mode={entryMode}
         />
       )}
       {phase === 'edit' && productBlobUrl && (

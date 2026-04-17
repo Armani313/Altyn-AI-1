@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
 import { Menu, Wand2, LayoutGrid, PenTool, Images, Settings, LogOut, Zap, Scissors } from 'lucide-react'
@@ -20,23 +21,18 @@ export function MobileNav({ profile }: MobileNavProps) {
   const t        = useTranslations('sidebar')
   const locale   = useLocale()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const dashboardProfile = useDashboardProfile()
   const resolvedProfile = profile ?? dashboardProfile?.profile ?? null
   const plan     = resolvedProfile?.plan ?? 'free'
   const credits  = resolvedProfile?.credits_remaining ?? 0
   const planMeta = PLAN_META[plan]
-  const [editorMode, setEditorMode] = useState<'remove-bg' | 'photo-editor' | null>(null)
-
-  useEffect(() => {
-    if (pathname !== '/editor') {
-      setEditorMode(null)
-      return
-    }
-
-    const params = new URLSearchParams(window.location.search)
-    const photoMode = params.get('mode') === 'photo-editor' || params.get('direct') === '1'
-    setEditorMode(photoMode ? 'photo-editor' : 'remove-bg')
-  }, [pathname])
+  const editorMode =
+    pathname !== '/editor'
+      ? null
+      : searchParams.get('mode') === 'photo-editor' || searchParams.get('direct') === '1'
+        ? 'photo-editor'
+        : 'remove-bg'
 
   // Hard navigation required for /editor: needs 'unsafe-eval' CSP for ONNX Runtime.
   const editorHref = locale === 'en' ? '/editor' : `/${locale}/editor`

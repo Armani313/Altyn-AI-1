@@ -19,9 +19,7 @@ import { GeminiProvider } from '@/lib/ai/providers/gemini-provider'
 import { TopazProvider } from '@/lib/ai/providers/topaz-provider'
 
 declare global {
-  // eslint-disable-next-line no-var
   var __aiQueueProvidersRegistered: boolean | undefined
-  // eslint-disable-next-line no-var
   var __aiQueueInitPromise: Promise<void> | undefined
 }
 

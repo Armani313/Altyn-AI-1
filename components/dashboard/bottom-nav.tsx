@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
 import { Wand2, LayoutGrid, PenTool, Images, Settings, Scissors } from 'lucide-react'
@@ -9,18 +9,13 @@ export function BottomNav() {
   const t        = useTranslations('sidebar')
   const locale   = useLocale()
   const pathname = usePathname()
-  const [editorMode, setEditorMode] = useState<'remove-bg' | 'photo-editor' | null>(null)
-
-  useEffect(() => {
-    if (pathname !== '/editor') {
-      setEditorMode(null)
-      return
-    }
-
-    const params = new URLSearchParams(window.location.search)
-    const photoMode = params.get('mode') === 'photo-editor' || params.get('direct') === '1'
-    setEditorMode(photoMode ? 'photo-editor' : 'remove-bg')
-  }, [pathname])
+  const searchParams = useSearchParams()
+  const editorMode =
+    pathname !== '/editor'
+      ? null
+      : searchParams.get('mode') === 'photo-editor' || searchParams.get('direct') === '1'
+        ? 'photo-editor'
+        : 'remove-bg'
 
   // Hard navigation required for /editor (ONNX Runtime CSP)
   const editorHref = locale === 'en' ? '/editor' : `/${locale}/editor`

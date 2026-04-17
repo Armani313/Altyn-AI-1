@@ -69,7 +69,7 @@ export async function runIntegrityChecks(): Promise<IntegrityReport> {
       .limit(1),
     supabase
       .from('subscriptions')
-      .select('id,plan,status,amount,currency,kaspi_order_id')
+      .select('id,plan,status,amount,currency,polar_subscription_id')
       .limit(1),
     supabase
       .from('profiles')

@@ -54,7 +54,7 @@ export function AddBgHero() {
   const [customBgFile, setCustomBgFile] = useState<File | null>(null)
 
   const [processStatus, setProcessStatus] = useState<ProcessStatus>('idle')
-  const [progress, setProgress] = useState(0)
+  const [, setProgress] = useState(0)
   const [errorMsg, setErrorMsg] = useState('')
 
   const [isDragging, setIsDragging] = useState(false)

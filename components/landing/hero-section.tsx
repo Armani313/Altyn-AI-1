@@ -167,6 +167,7 @@ function BeforeAfterCardInner() {
               {t('before')}
             </span>
             <div className="w-full aspect-square rounded-xl overflow-hidden relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/jewelry-before.jpeg"
                 alt={t('phonePic')}
@@ -205,6 +206,7 @@ function BeforeAfterCardInner() {
             {/* Result media */}
             <div className="w-full aspect-square rounded-xl overflow-hidden relative shadow-soft">
               {afterMode === 'photo' ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src="/after1.png"
                   alt={t('lifestyle')}

@@ -17,6 +17,7 @@ jobs:
     environment: production
     env:
       NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      TOPAZ_API_KEY: ${{ secrets.TOPAZ_API_KEY }}
       POLAR_ENVIRONMENT: ${{ secrets.POLAR_ENVIRONMENT }}
       POLAR_PRODUCT_ID_TOPUP_25: ${{ secrets.POLAR_PRODUCT_ID_TOPUP_25 }}
       POLAR_PRODUCT_ID_TOPUP_100: ${{ secrets.POLAR_PRODUCT_ID_TOPUP_100 }}
@@ -49,6 +50,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
+          TOPAZ_API_KEY: ${{ env.TOPAZ_API_KEY }}
           POLAR_ENVIRONMENT: ${{ env.POLAR_ENVIRONMENT }}
           POLAR_PRODUCT_ID_TOPUP_25: ${{ env.POLAR_PRODUCT_ID_TOPUP_25 }}
           POLAR_PRODUCT_ID_TOPUP_100: ${{ env.POLAR_PRODUCT_ID_TOPUP_100 }}
@@ -58,7 +60,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          envs: NEXT_PUBLIC_APP_URL,POLAR_ENVIRONMENT,POLAR_PRODUCT_ID_TOPUP_25,POLAR_PRODUCT_ID_TOPUP_100,POLAR_PRODUCT_ID_TOPUP_250
+          envs: NEXT_PUBLIC_APP_URL,TOPAZ_API_KEY,POLAR_ENVIRONMENT,POLAR_PRODUCT_ID_TOPUP_25,POLAR_PRODUCT_ID_TOPUP_100,POLAR_PRODUCT_ID_TOPUP_250
           script: |
             set -e
             cd /home/ubuntu/luminify
@@ -78,6 +80,7 @@ jobs:
             }
 
             upsert_env NEXT_PUBLIC_APP_URL "$NEXT_PUBLIC_APP_URL"
+            upsert_env TOPAZ_API_KEY "$TOPAZ_API_KEY"
             upsert_env POLAR_ENVIRONMENT "$POLAR_ENVIRONMENT"
             upsert_env POLAR_PRODUCT_ID_TOPUP_25 "$POLAR_PRODUCT_ID_TOPUP_25"
             upsert_env POLAR_PRODUCT_ID_TOPUP_100 "$POLAR_PRODUCT_ID_TOPUP_100"

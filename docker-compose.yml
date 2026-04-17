@@ -41,6 +41,8 @@ services:
       # Google Gemini AI
       GEMINI_API_KEY:              ${GEMINI_API_KEY}
       GEMINI_MODEL:                ${GEMINI_MODEL:-}
+      # Topaz Labs Image API
+      TOPAZ_API_KEY:               ${TOPAZ_API_KEY}
       # Polar (Billing)
       POLAR_ACCESS_TOKEN:          ${POLAR_ACCESS_TOKEN}
       POLAR_WEBHOOK_SECRET:        ${POLAR_WEBHOOK_SECRET}

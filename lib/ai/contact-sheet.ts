@@ -14,6 +14,10 @@
 
 import type { ProductType, ModelSubjectType } from '@/lib/constants'
 import { buildUserPromptSuffix } from '@/lib/ai/moderation'
+import {
+  buildCardProductInfoBlock,
+  buildCardTextLocalizationDirective,
+} from '@/lib/ai/card-text-locale'
 
 // ── Panel metadata ────────────────────────────────────────────────────────────
 
@@ -212,56 +216,55 @@ function getCompositeQuadrants(productType: ProductType): CompositeQuadrants {
 
 /**
  * Builds a 2×2 contact-sheet prompt for card-template mode.
- * Two inputs: Image 1 = card template layout, Image 2 = product photo.
+ * Two inputs: Image 1 = product photo, Image 2 = card template layout.
  * Produces 4 product card variations that all follow the template layout.
  */
 export function buildCardTemplateContactSheetPrompt(
   productName?: string,
   brandName?: string,
   productDescription?: string,
+  textLocale?: string,
 ): string {
-  const name  = productName?.trim()        || ''
-  const brand = brandName?.trim()          || ''
-  const desc  = productDescription?.trim() || ''
-
-  const textBlock = [
-    brand ? `  • Бренд: "${brand}"` : '',
-    name  ? `  • Название товара: "${name}"` : '',
-    desc  ? `  • Ключевые преимущества: ${desc}` : '',
-  ].filter(Boolean).join('\n')
+  const { hasText, block } = buildCardProductInfoBlock(
+    productName,
+    brandName,
+    productDescription,
+  )
+  const localizationDirective = buildCardTextLocalizationDirective(textLocale)
 
   return (
-    'Ты — эксперт по дизайну карточек товаров для премиальных маркетплейсов (Kaspi, Wildberries, Ozon).\n\n' +
+    'You are an expert product-card designer for premium marketplaces (Kaspi, Wildberries, Ozon).\n\n' +
 
-    'Тебе даны ДВА изображения:\n' +
-    '• Изображение 1: ФОТО ТОВАРА — товар для размещения в каждой карточке. Изучи внимательно: запомни точную форму, цвет, материал, текстуру, отделку и каждую деталь дизайна.\n' +
-    '• Изображение 2: ШАБЛОН КАРТОЧКИ — твой визуальный макет. Он определяет фон, цветовую палитру, компоновку, зоны размещения и настроение.\n\n' +
+    'You are given TWO images:\n' +
+    '• Image 1: PRODUCT PHOTO — the exact item that must appear in every panel. Memorize the precise shape, color, material, texture, finish, and every design detail.\n' +
+    '• Image 2: CARD TEMPLATE — the visual blueprint that defines the background, palette, layout, text zones, and mood.\n\n' +
 
-    'Создай сетку 2×2 (Contact Sheet) с 4 РАЗНЫМИ вариациями карточки товара. ' +
-    'Каждая панель должна следовать фону и компоновке шаблона, но показывать товар по-разному:\n' +
-    '  Верхний левый:   товар по центру, классический вид спереди, фон и стиль соответствуют шаблону\n' +
-    '  Верхний правый:  товар под лёгким углом, акцент на объёме и текстуре материала\n' +
-    '  Нижний левый:    крупный план деталей товара, драматичное студийное освещение, качество макро\n' +
-    '  Нижний правый:   товар в стилизованной лайфстайл-композиции, соответствующей настроению шаблона\n\n' +
+    'TEXT AND LOCALIZATION RULES:\n' +
+    localizationDirective + '\n\n' +
 
-    'Каждая панель ОБЯЗАНА:\n' +
-    '  • Содержать ТОЧНЫЙ товар с Изображения 1 — ИДЕНТИЧНЫЕ форма, цвет, материал, текстура и пропорции. НЕ заменяй и НЕ изменяй товар.\n' +
-    '  • Воспроизводить точный цвет фона, градиент или текстуру шаблона с Изображения 2\n' +
-    '  • Применять профессиональное студийное освещение, дополняющее стиль шаблона\n' +
-    '  • Выглядеть как готовая к публикации карточка маркетплейса\n' +
-    (textBlock
-      ? '  • Содержать следующую информацию о товаре в виде чистого, элегантного текста НА РУССКОМ ЯЗЫКЕ, соответствующего типографике шаблона:\n' +
-        textBlock + '\n'
-      : ''
+    'Create a 2x2 contact sheet with 4 different product-card variations. Every panel must follow the template background and layout language, while presenting the product in a slightly different way:\n' +
+    '  • Top-left: product centered, clean classic hero view.\n' +
+    '  • Top-right: slight angle, more emphasis on volume and material texture.\n' +
+    '  • Bottom-left: tighter close-up focused on craftsmanship details and dramatic studio lighting.\n' +
+    '  • Bottom-right: more atmospheric lifestyle composition that still matches the template mood.\n\n' +
+
+    'Every panel MUST:\n' +
+    '  • Show the exact product from Image 1 with pixel-faithful shape, color, material, texture, and proportions. Never redesign or substitute the item.\n' +
+    '  • Reproduce the template background, gradients, textures, decorative shapes, and layout logic from Image 2.\n' +
+    '  • Use polished marketplace-ready typography and professional studio lighting.\n' +
+    (hasText
+      ? '  • Integrate the following seller-provided product information as concise elegant on-card copy:\n' +
+        block + '\n' +
+        '  • If the translation is too long for a panel, shorten it while preserving meaning and keep the text comfortably inside the template text zones.\n'
+      : '  • Keep each panel publication-ready without adding placeholder copy.\n'
     ) +
-    '\nПРАВИЛА:\n' +
-    '• Все 4 квадранта должны быть строго одинакового размера — настоящая сетка 2×2\n' +
-    '• Используй тонкую белую разделительную линию 4px между квадрантами\n' +
-    '• Каждый квадрант заполняет свою область полностью — без пустого пространства\n' +
-    '• Товар должен быть ПОПИКСЕЛЬНО ИДЕНТИЧЕН во всех 4 панелях\n' +
-    '• Фон и компоновка шаблона должны быть точно воспроизведены в каждой панели\n' +
-    '• Весь текст в карточках — исключительно на русском языке\n' +
-    '• Разрешение: чёткое 4K, без размытия, готово к публикации'
+    '\nRULES:\n' +
+    '• True 2x2 grid with 4 equally sized panels\n' +
+    '• Thin white 4px divider between panels\n' +
+    '• Full-bleed panels with no empty margins\n' +
+    '• The product must remain pixel-identical in all 4 panels\n' +
+    '• The template background and compositional structure must stay recognizable in every panel\n' +
+    '• 4K sharpness, clean edges, no blur, no artifacts, publication-ready'
   )
 }
 
@@ -273,50 +276,44 @@ export function buildCardFreeContactSheetPrompt(
   productName?: string,
   brandName?: string,
   productDescription?: string,
+  textLocale?: string,
 ): string {
-  const name  = productName?.trim()        || ''
-  const brand = brandName?.trim()          || ''
-  const desc  = productDescription?.trim() || ''
-
-  const textBlock = [
-    brand ? `  • Бренд: "${brand}"` : '',
-    name  ? `  • Название товара: "${name}"` : '',
-    desc  ? `  • Ключевые преимущества: ${desc}` : '',
-  ].filter(Boolean).join('\n')
+  const { hasText, block } = buildCardProductInfoBlock(
+    productName,
+    brandName,
+    productDescription,
+  )
+  const localizationDirective = buildCardTextLocalizationDirective(textLocale)
 
   return (
-    'Ты — выдающийся креативный директор и дизайнер карточек товаров для маркетплейсов (Kaspi, Wildberries, Ozon).\n\n' +
+    'You are a world-class creative director and product-card designer for marketplaces (Kaspi, Wildberries, Ozon).\n\n' +
 
-    'Внимательно изучи фото товара. Запомни точный дизайн, материалы, цвета, текстуры и каждую деталь.\n\n' +
+    'Study the product photo carefully. Memorize the exact design, materials, colors, textures, and every detail of the item.\n\n' +
 
-    'Создай сетку 2×2 (Contact Sheet) с 4 АБСОЛЮТНО РАЗНЫМИ стилями карточек — по одному на квадрант:\n\n' +
+    'TEXT AND LOCALIZATION RULES:\n' +
+    localizationDirective + '\n\n' +
 
-    '  Верхний левый:   ГЕРОИЧЕСКАЯ ЛЕВИТАЦИЯ — товар динамично парит в воздухе, эффект антигравитационного взрыва, ' +
-    'мягкий светящийся градиентный фон, современная высокоэнергетичная эстетика\n\n' +
+    'Create a 2x2 contact sheet with 4 clearly different product-card styles, one per quadrant:\n\n' +
 
-    '  Верхний правый:  ПРЕМИАЛЬНЫЙ ПЬЕДЕСТАЛ — товар стоит на элегантном геометрическом постаменте (мрамор, акрил или бархат), ' +
-    'драматичные студийные прожекторы, чёткие каустические отражения, роскошное светотеневое освещение\n\n' +
+    '  • Top-left: HERO LEVITATION — the product floats dynamically with a modern glowing gradient background and energetic premium presentation.\n\n' +
+    '  • Top-right: PREMIUM PEDESTAL — the product rests on an elegant geometric podium with dramatic studio lighting, rich reflections, and a luxury mood.\n\n' +
+    '  • Bottom-left: MACRO INFOGRAPHIC — the product is offset with an extreme detail crop, clean UI lines, and 2-3 premium callouts focused on craftsmanship.\n\n' +
+    '  • Bottom-right: ENVIRONMENTAL LIFESTYLE — the product appears in a natural premium environment such as marble, wood, or velvet, with warm atmospheric lighting.\n\n' +
 
-    '  Нижний левый:    МАКРО ИНФОГРАФИКА — товар смещён в сторону, экстремальный крупный план текстуры, ' +
-    'чистые UI-линии, 2-3 круглых выноски с деталями качества материала, технический редакционный стиль\n\n' +
-
-    '  Нижний правый:   СРЕДОВОЙ ЛАЙФСТАЙЛ — товар в своей естественной премиальной среде ' +
-    '(мраморная столешница, деревянный стол, бархатная поверхность), боке естественного света, тёплая уютная атмосфера\n\n' +
-
-    (textBlock
-      ? 'Включи следующую информацию о товаре в виде чистой, элегантной типографики НА РУССКОМ ЯЗЫКЕ в каждой карточке:\n' +
-        textBlock + '\n\n'
-      : ''
+    (hasText
+      ? 'Integrate the following seller-provided product information as concise elegant typography inside each card:\n' +
+        block + '\n' +
+        'If the localized version becomes too long, simplify the wording and reduce the type scale so everything stays readable and balanced.\n\n'
+      : 'No seller copy was provided. Keep the layouts clean and publication-ready without placeholder text.\n\n'
     ) +
 
-    'ПРАВИЛА:\n' +
-    '• Все 4 квадранта должны быть строго одинакового размера — настоящая сетка 2×2\n' +
-    '• Используй тонкую белую разделительную линию 4px между квадрантами\n' +
-    '• Каждый квадрант заполняет свою область полностью — без пустого пространства\n' +
-    '• Товар должен быть ПОПИКСЕЛЬНО ИДЕНТИЧЕН во всех 4 панелях\n' +
-    '• Каждый стиль карточки должен визуально отличаться и быть готов к публикации\n' +
-    '• Весь текст в карточках — исключительно на русском языке\n' +
-    '• Разрешение: 8K, качество рендера Unreal Engine 5, гиперпроработанные детали'
+    'RULES:\n' +
+    '• True 2x2 grid with 4 equally sized panels\n' +
+    '• Thin white 4px divider between panels\n' +
+    '• Full-bleed panels with no empty margins\n' +
+    '• The product must remain pixel-identical in all 4 panels\n' +
+    '• Each card style must feel distinct yet ready for publication\n' +
+    '• 8K render quality, hyper-detailed materials, clean typography, no blur, no artifacts'
   )
 }
 

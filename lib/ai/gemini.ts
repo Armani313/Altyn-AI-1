@@ -16,6 +16,10 @@
 import type { ProductType, ModelSubjectType } from '@/lib/constants'
 import { buildUserPromptSuffix } from '@/lib/ai/moderation'
 import { buildContactSheetPrompt } from '@/lib/ai/contact-sheet'
+import {
+  buildCardProductInfoBlock,
+  buildCardTextLocalizationDirective,
+} from '@/lib/ai/card-text-locale'
 
 const DEFAULT_MODEL   = 'gemini-3.1-flash-image-preview'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -391,24 +395,21 @@ export function buildCardFreePrompt(
   productName?: string,
   brandName?: string,
   productDescription?: string,
+  textLocale?: string,
 ): string {
-  const name  = productName?.trim()        || ''
-  const brand = brandName?.trim()          || ''
-  const desc  = productDescription?.trim() || ''
-
-  const hasText = !!(name || brand || desc)
-
-  // Build the raw info block for Phase 3
-  const rawInfoLines: string[] = []
-  if (brand) rawInfoLines.push(`Brand: "${brand}"`)
-  if (name)  rawInfoLines.push(`Product name: "${name}"`)
-  if (desc)  rawInfoLines.push(`Description: "${desc}"`)
-
-  const rawInfoBlock = rawInfoLines.map(l => `    ${l}`).join('\n')
+  const { hasText, block } = buildCardProductInfoBlock(
+    productName,
+    brandName,
+    productDescription,
+  )
+  const localizationDirective = buildCardTextLocalizationDirective(textLocale)
 
   return (
     'You are a world-class creative director, 3D product visualizer, and e-commerce conversion expert.\n' +
-    'Think through every phase SILENTLY — output ONLY the final product card image.\n\n' +
+    'Think through every phase SILENTLY and return only the final product card image asset.\n\n' +
+
+    'TEXT AND LOCALIZATION RULES:\n' +
+    localizationDirective + '\n\n' +
 
     // ── PHASE 1 ───────────────────────────────────────────────────────────────
     '── PHASE 1 — UNIVERSAL PRODUCT ANALYSIS\n' +
@@ -450,10 +451,11 @@ export function buildCardFreePrompt(
     '── PHASE 3 — MARKETING & TYPOGRAPHY REVIEW\n' +
     (hasText
       ? 'Product information provided by the seller:\n' +
-        rawInfoBlock + '\n\n' +
-        '  • Distill into 1 punchy Headline and max 3 short, high-impact bullet points.\n' +
+        block + '\n\n' +
+        '  • Distill the copy into 1 punchy headline and at most 3 short, high-impact bullet points or badges.\n' +
         '  • Fix any spelling errors or typos silently.\n' +
         '  • If name contradicts the photo, use the visually accurate term.\n' +
+        '  • If the translated copy is too long, rewrite it more compactly while preserving the meaning.\n' +
         '  • Typography: bold modern sans-serif for tech/modern goods, elegant serif for luxury/organic.\n' +
         '  • Include a visual "Trust Badge" (minimal vector icon: "100% Quality", "Eco", or "Premium").\n\n'
       : 'No text provided.\n' +
@@ -471,7 +473,7 @@ export function buildCardFreePrompt(
     '  • The composition must look like a top-tier Amazon A+ / Shopify hero image. Edge-to-edge design.\n' +
     '  • 8K resolution, Unreal Engine 5 render quality, octane render, photorealistic, hyper-detailed.\n\n' +
 
-    'OUTPUT FORMAT: Generate the product card IMAGE directly — output ONLY the image, no text.'
+    'OUTPUT FORMAT: Return only the final image asset. Do not return a written explanation, markdown, or JSON.'
   )
 }
 
@@ -481,16 +483,14 @@ export function buildCardTemplatePrompt(
   productName?: string,
   brandName?: string,
   productDescription?: string,
+  textLocale?: string,
 ): string {
-  const name  = productName?.trim()  || ''
-  const brand = brandName?.trim()    || ''
-  const desc  = productDescription?.trim() || ''
-
-  const textBlock = [
-    brand ? `  • Brand: "${brand}"` : '',
-    name  ? `  • Product name: "${name}"` : '',
-    desc  ? `  • Key selling points: ${desc}` : '',
-  ].filter(Boolean).join('\n')
+  const { hasText, block } = buildCardProductInfoBlock(
+    productName,
+    brandName,
+    productDescription,
+  )
+  const localizationDirective = buildCardTextLocalizationDirective(textLocale)
 
   return (
     'You are an expert e-commerce product card designer for premium marketplaces (Kaspi, Wildberries, Ozon).\n\n' +
@@ -498,6 +498,9 @@ export function buildCardTemplatePrompt(
     'You are given TWO images:\n' +
     '• Image 1: A CARD TEMPLATE — this is your visual blueprint. It defines the layout, background style, color palette, composition, and overall mood.\n' +
     '• Image 2: A PRODUCT PHOTO — this is the item you must feature on the card.\n\n' +
+
+    'TEXT AND LOCALIZATION RULES:\n' +
+    localizationDirective + '\n\n' +
 
     'STEP 1 — READ THE TEMPLATE:\n' +
     '  • Identify the exact background (solid color, gradient, texture, pattern — note colors precisely)\n' +
@@ -517,10 +520,11 @@ export function buildCardTemplatePrompt(
     '  • Apply professional studio lighting that matches the template\'s light mood\n' +
     '  • Give the product a beautiful, sharp close-up with correct shadows and reflections\n' +
     '  • Reproduce any decorative elements from the template (shapes, lines, gradients)\n' +
-    (textBlock
+    (hasText
       ? '  • Integrate the following product information as clean, elegant text in the template\'s text zones:\n' +
-        textBlock + '\n' +
-        '  • Use typography that matches the template\'s visual style\n'
+        block + '\n' +
+        '  • Use typography that matches the template\'s visual style\n' +
+        '  • If the translated copy becomes too long for the layout, rewrite it more compactly and reduce the type scale as needed\n'
       : ''
     ) +
     '  • Result: a polished, publication-ready product card that looks like the template but features THIS product\n\n' +
@@ -597,6 +601,8 @@ export interface GenerationParams {
   cardBrandName?:       string
   /** Product description for card modes */
   cardProductDesc?:     string
+  /** Locale that defines the language of visible text inside generated card images */
+  cardTextLocale?:      string
 }
 
 export interface GenerationResult {
@@ -708,6 +714,7 @@ export async function generateJewelryPhoto(
         params.cardProductName,
         params.cardBrandName,
         params.cardProductDesc,
+        params.cardTextLocale,
       )
       parts = [
         { inlineData: { mimeType: productMimeType,          data: productBase64 } },
@@ -720,6 +727,7 @@ export async function generateJewelryPhoto(
         params.cardProductName,
         params.cardBrandName,
         params.cardProductDesc,
+        params.cardTextLocale,
       )
       parts = [
         { inlineData: { mimeType: productMimeType, data: productBase64 } },
@@ -768,6 +776,7 @@ export async function generateJewelryPhoto(
       params.cardProductName,
       params.cardBrandName,
       params.cardProductDesc,
+      params.cardTextLocale,
     )
     parts = [
       { inlineData: { mimeType: params.cardTemplateMime, data: templateBase64 } },
@@ -780,6 +789,7 @@ export async function generateJewelryPhoto(
       params.cardProductName,
       params.cardBrandName,
       params.cardProductDesc,
+      params.cardTextLocale,
     )
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },

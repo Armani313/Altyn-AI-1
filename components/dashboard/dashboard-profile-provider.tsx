@@ -36,9 +36,13 @@ export function DashboardProfileProvider({
   initialProfile: DashboardProfileState
   children: ReactNode
 }) {
+  const MAX_TRIAL_CLAIM_RETRIES = 3
   const pathname = usePathname()
   const [profile, setProfile] = useState<DashboardProfileState>(initialProfile)
+  const [trialClaimRetrySeed, setTrialClaimRetrySeed] = useState(0)
   const trialClaimAttemptedRef = useRef(false)
+  const trialClaimRetryCountRef = useRef(0)
+  const trialClaimRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refreshProfile = useCallback(async () => {
     const supabase = createClient()
@@ -89,8 +93,21 @@ export function DashboardProfileProvider({
   }, [refreshProfile])
 
   useEffect(() => {
+    return () => {
+      if (trialClaimRetryTimeoutRef.current) {
+        clearTimeout(trialClaimRetryTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (profile?.trial_credits_decision !== 'pending') {
       trialClaimAttemptedRef.current = false
+      trialClaimRetryCountRef.current = 0
+      if (trialClaimRetryTimeoutRef.current) {
+        clearTimeout(trialClaimRetryTimeoutRef.current)
+        trialClaimRetryTimeoutRef.current = null
+      }
       return
     }
 
@@ -100,21 +117,41 @@ export function DashboardProfileProvider({
 
     trialClaimAttemptedRef.current = true
 
+    const scheduleRetry = () => {
+      if (trialClaimRetryCountRef.current >= MAX_TRIAL_CLAIM_RETRIES) {
+        return
+      }
+
+      trialClaimRetryCountRef.current += 1
+
+      if (trialClaimRetryTimeoutRef.current) {
+        clearTimeout(trialClaimRetryTimeoutRef.current)
+      }
+
+      trialClaimRetryTimeoutRef.current = setTimeout(() => {
+        trialClaimRetryTimeoutRef.current = null
+        setTrialClaimRetrySeed((value) => value + 1)
+      }, 1500 * trialClaimRetryCountRef.current)
+    }
+
     void (async () => {
       try {
         const response = await fetch('/api/auth/claim-trial', { method: 'POST' })
         if (!response.ok) {
           trialClaimAttemptedRef.current = false
+          scheduleRetry()
           return
         }
       } catch {
         trialClaimAttemptedRef.current = false
+        scheduleRetry()
         return
       }
 
+      trialClaimRetryCountRef.current = 0
       await refreshProfile()
     })()
-  }, [profile?.trial_credits_decision, refreshProfile])
+  }, [profile?.trial_credits_decision, refreshProfile, trialClaimRetrySeed])
 
   const value = useMemo<DashboardProfileContextValue>(() => ({
     profile,

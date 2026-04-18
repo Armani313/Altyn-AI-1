@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import type { User } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 import { claimSignupTrialForUser } from '@/lib/auth/signup-trial'
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
         return response
       }
 
-      let user = exchangeData.user ?? exchangeData.session?.user ?? null
+      let user: User | null = exchangeData.user ?? exchangeData.session?.user ?? null
 
       if (!user) {
         const {

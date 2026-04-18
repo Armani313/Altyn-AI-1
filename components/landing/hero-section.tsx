@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { motion } from 'framer-motion'
-import { ArrowRight, Sparkles, Clock, Zap } from 'lucide-react'
+import { ArrowRight, Sparkles, Clock, Zap, ShoppingBag, Store, Gem, Flower2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EASE } from '@/lib/motion'
 
@@ -19,6 +19,21 @@ const fadeUp = (delay = 0) => ({
 
 export function HeroSection() {
   const t = useTranslations('hero')
+
+  const categoryPills = [
+    { icon: ShoppingBag, label: 'Apparel' },
+    { icon: Flower2, label: 'Cosmetics' },
+    { icon: Gem, label: 'Jewelry' },
+  ]
+
+  const platforms = [
+    t('platformShopify'),
+    t('platformAmazon'),
+    t('platformEtsy'),
+    t('platformInstagram'),
+    t('platformTikTok'),
+    t('platformMeta'),
+  ]
 
   return (
     <section className="relative pt-24 pb-14 sm:pb-20 lg:min-h-screen lg:flex lg:items-center overflow-hidden">
@@ -53,13 +68,26 @@ export function HeroSection() {
             {/* Subheadline */}
             <motion.p
               {...fadeUp(0.16)}
-              className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-[480px]"
+              className="text-lg text-muted-foreground leading-relaxed mb-6 max-w-[520px]"
             >
               {t('sub')}
             </motion.p>
 
+            {/* Category pills */}
+            <motion.div {...fadeUp(0.2)} className="flex flex-wrap gap-2 mb-8" aria-label="Supported product categories">
+              {categoryPills.map(({ icon: Icon, label }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 bg-white border border-cream-200 text-foreground text-xs font-semibold px-3 py-1.5 rounded-full shadow-soft"
+                >
+                  <Icon className="w-3.5 h-3.5 text-rose-gold-600" />
+                  {label}
+                </span>
+              ))}
+            </motion.div>
+
             {/* Stats row */}
-            <motion.div {...fadeUp(0.22)} className="flex items-center gap-6 mb-8">
+            <motion.div {...fadeUp(0.24)} className="flex items-center gap-6 mb-8">
               {[
                 { icon: Zap,   label: t('statSpeed'), sub: t('statSpeedSub') },
                 { icon: Clock, label: t('statSave'),  sub: t('statSaveSub')  },
@@ -111,6 +139,27 @@ export function HeroSection() {
             <BeforeAfterCard />
           </motion.div>
         </div>
+
+        {/* ── Platform trust bar ─────────────────────────── */}
+        <motion.div
+          {...fadeUp(0.5)}
+          className="mt-14 sm:mt-20 flex flex-col items-center gap-4 text-center"
+        >
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            <Store className="w-3.5 h-3.5 text-rose-gold-500" />
+            {t('platformsTitle')}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-semibold text-foreground/70">
+            {platforms.map((p, i) => (
+              <span key={p} className="inline-flex items-center gap-6">
+                <span className="tracking-wide">{p}</span>
+                {i < platforms.length - 1 && (
+                  <span aria-hidden className="h-1 w-1 rounded-full bg-rose-gold-300 hidden sm:inline-block" />
+                )}
+              </span>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </section>
   )
@@ -252,7 +301,7 @@ function BeforeAfterCardInner() {
         </div>
         <div>
           <p className="text-[11px] font-semibold text-foreground leading-none">{t('readyBadge')}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Instagram · Kaspi · сайт</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{t('readyBadgePlatforms')}</p>
         </div>
       </motion.div>
     </div>

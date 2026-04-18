@@ -14,11 +14,20 @@ export function Footer() {
   ]
 
   const categoryLinks = [
-    { label: t('catJewelry'), href: '/dashboard' },
-    { label: t('catScarves'), href: '/dashboard' },
-    { label: t('catWatches'), href: '/dashboard' },
-    { label: t('catBags'), href: '/dashboard' },
-    { label: t('catOuterwear'), href: '/dashboard' },
+    { label: t('catApparel'), href: '/categories/apparel' },
+    { label: t('catCosmetics'), href: '/categories/cosmetics' },
+    { label: t('catJewelry'), href: '/categories/jewelry' },
+    { label: t('catBags'), href: '/categories/apparel' },
+    { label: t('catMarketplaces'), href: '/categories/apparel' },
+  ]
+
+  const platforms = [
+    t('platformShopify'),
+    t('platformAmazon'),
+    t('platformEtsy'),
+    t('platformTikTok'),
+    t('platformInstagram'),
+    t('platformMeta'),
   ]
 
   const companyLinks = [
@@ -33,9 +42,9 @@ export function Footer() {
   return (
     <footer className="bg-cream-100 border-t border-cream-200">
       <div className="max-w-6xl mx-auto px-6 py-14">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
           {/* Brand */}
-          <div>
+          <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group">
               <div className="w-7 h-7 rounded-lg gradient-rose-gold flex items-center justify-center">
                 <span className="text-white text-xs font-bold font-serif">L</span>
@@ -50,6 +59,20 @@ export function Footer() {
             <p className="mt-4 text-xs text-muted-foreground">
               {t('country')}
             </p>
+
+            {/* Platforms strip */}
+            <div className="mt-6">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground mb-3">
+                {t('platformsTitle')}
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                {platforms.map((p) => (
+                  <span key={p} className="text-xs font-medium text-foreground/70">
+                    {p}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Tools */}

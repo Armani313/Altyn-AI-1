@@ -25,6 +25,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/tools/change-background-color', changeFrequency: 'weekly', priority: 0.75, localized: true },
     { path: '/tools/add-background', changeFrequency: 'weekly', priority: 0.75, localized: true },
     { path: '/tools/photo-enhancer', changeFrequency: 'weekly', priority: 0.8, localized: true },
+    { path: '/categories/apparel', changeFrequency: 'weekly', priority: 0.9, localized: true },
+    { path: '/categories/cosmetics', changeFrequency: 'weekly', priority: 0.85, localized: true },
+    { path: '/categories/jewelry', changeFrequency: 'weekly', priority: 0.85, localized: true },
     { path: '/privacy', changeFrequency: 'yearly', priority: 0.3, localized: false },
     { path: '/terms', changeFrequency: 'yearly', priority: 0.3, localized: false },
   ]

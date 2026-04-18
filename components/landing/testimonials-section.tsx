@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
-import { Quote } from 'lucide-react'
+import { Quote, ShoppingBag, Flower2, Gem } from 'lucide-react'
 import { EASE } from '@/lib/motion'
 
 export function TestimonialsSection() {
@@ -13,18 +13,27 @@ export function TestimonialsSection() {
       quote: t('quote1'),
       author: t('author1'),
       company: t('company1'),
+      tag: t('tag1'),
+      icon: ShoppingBag,
+      status: 'comingSoon' as const,
       bg: 'bg-gradient-to-br from-rose-gold-50 to-cream-50',
     },
     {
       quote: t('quote2'),
       author: t('author2'),
       company: t('company2'),
+      tag: t('tag2'),
+      icon: Flower2,
+      status: 'comingSoon' as const,
       bg: 'bg-gradient-to-br from-cream-50 to-rose-gold-50',
     },
     {
       quote: t('quote3'),
       author: t('author3'),
       company: t('company3'),
+      tag: t('tag3'),
+      icon: Gem,
+      status: 'case' as const,
       bg: 'bg-gradient-to-br from-rose-gold-50 to-cream-100',
     },
   ]
@@ -50,28 +59,42 @@ export function TestimonialsSection() {
 
         {/* Cards */}
         <div className="grid md:grid-cols-3 gap-6">
-          {stories.map((story, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.6, delay: i * 0.1, ease: EASE }}
-            >
-              <div
-                className={`relative rounded-2xl border border-cream-200 p-7 h-full flex flex-col ${story.bg}`}
+          {stories.map((story, i) => {
+            const Icon = story.icon
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 0.6, delay: i * 0.1, ease: EASE }}
               >
-                <Quote className="w-8 h-8 text-rose-gold-300 mb-4 flex-shrink-0" />
-                <blockquote className="text-sm text-foreground leading-relaxed mb-6 flex-1">
-                  &ldquo;{story.quote}&rdquo;
-                </blockquote>
-                <div className="border-t border-cream-200 pt-4">
-                  <p className="text-sm font-semibold text-foreground">{story.author}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{story.company}</p>
+                <div
+                  className={`relative rounded-2xl border border-cream-200 p-7 h-full flex flex-col ${story.bg}`}
+                >
+                  {/* Category tag */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="inline-flex items-center gap-1.5 bg-white/70 backdrop-blur-sm border border-cream-200 text-rose-gold-700 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full">
+                      <Icon className="w-3 h-3" />
+                      {story.tag}
+                    </span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                      {story.status === 'case' ? t('caseBadge') : t('comingSoon')}
+                    </span>
+                  </div>
+
+                  <Quote className="w-7 h-7 text-rose-gold-300 mb-4 flex-shrink-0" />
+                  <blockquote className="text-sm text-foreground leading-relaxed mb-6 flex-1">
+                    &ldquo;{story.quote}&rdquo;
+                  </blockquote>
+                  <div className="border-t border-cream-200 pt-4">
+                    <p className="text-sm font-semibold text-foreground">{story.author}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{story.company}</p>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            )
+          })}
         </div>
       </div>
     </section>

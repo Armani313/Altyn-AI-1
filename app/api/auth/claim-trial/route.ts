@@ -34,11 +34,18 @@ export async function POST() {
     headerList: await headers(),
   })
 
+  const status = result.reason === 'rpc_error' || result.reason === 'unexpected_error'
+    ? 503
+    : result.reason === 'missing_identity'
+      ? 400
+      : 200
+
   const response = NextResponse.json({
-    ok: true,
+    ok: status < 400,
     granted: result.granted,
     decision: result.decision,
-  })
+    reason: result.reason,
+  }, { status })
 
   if (shouldSetDeviceCookie && deviceId) {
     response.cookies.set(DEVICE_ID_COOKIE, deviceId, DEVICE_ID_COOKIE_OPTIONS)

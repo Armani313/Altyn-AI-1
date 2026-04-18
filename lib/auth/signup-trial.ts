@@ -3,7 +3,7 @@ import 'server-only'
 import { createHash } from 'crypto'
 import { cookies, headers } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase/service'
-import { DEVICE_ID_COOKIE } from '@/lib/auth/device-id'
+import { DEVICE_ID_COOKIE, generateDeviceId } from '@/lib/auth/device-id'
 
 type ClaimSignupTrialParams = {
   userId: string
@@ -103,16 +103,7 @@ export async function claimSignupTrialForUser({
   }
 
   const cookieStore = await cookies()
-  const effectiveDeviceId = deviceId ?? cookieStore.get(DEVICE_ID_COOKIE)?.value ?? null
-
-  if (!effectiveDeviceId) {
-    return {
-      granted: false,
-      decision: 'skipped',
-      creditsRemaining: null,
-      reason: 'missing_device',
-    }
-  }
+  const effectiveDeviceId = deviceId ?? cookieStore.get(DEVICE_ID_COOKIE)?.value ?? generateDeviceId()
 
   const effectiveHeaders = headerList ?? await headers()
   const ip = extractClientIp(effectiveHeaders)

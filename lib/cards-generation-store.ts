@@ -21,6 +21,7 @@ export type GenerationParams = {
   templateIds:        string[]
   file:               File
   customFile:         File | null
+  outputLocale:       string
   aspectRatio:        string
   productName:        string
   brandName:          string
@@ -113,6 +114,7 @@ class CardsGenerationStore {
   async retryFailed(params: {
     file:               File | null
     customFile:         File | null
+    outputLocale:       string
     aspectRatio:        string
     productName:        string
     brandName:          string
@@ -140,6 +142,7 @@ class CardsGenerationStore {
     await this._runLoop(failedIds, {
       templateIds: failedIds, file,
       customFile:  params.customFile ?? null,
+      outputLocale: params.outputLocale,
       aspectRatio: params.aspectRatio, productName: params.productName,
       brandName: params.brandName, productDescription: params.productDescription,
     })
@@ -156,6 +159,7 @@ class CardsGenerationStore {
         const fd = new FormData()
         fd.append('image',        this._file!)
         fd.append('template_id',  templateId)
+        fd.append('output_locale', params.outputLocale)
         fd.append('aspect_ratio', params.aspectRatio)
         if (params.productName)        fd.append('product_name',        params.productName)
         if (params.brandName)          fd.append('brand_name',          params.brandName)

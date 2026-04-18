@@ -6,6 +6,7 @@
  * Request: multipart/form-data
  *   image             File    — product photo (JPG/PNG/WebP/HEIC, max 10 MB)
  *   template_id       string? — template UUID from the templates table
+ *   output_locale     string? — locale used for visible text inside generated card images
  *   template_category string? — 'rings' | 'necklaces' | 'earrings' | 'bracelets'
  *   aspect_ratio      string? — '1:1' | '9:16'  (default: '1:1')
  *
@@ -45,6 +46,7 @@ import {
 } from '@/lib/constants'
 import { CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
 import { sanitizePrompt, checkPrompt } from '@/lib/ai/moderation'
+import { normalizeCardTextLocale } from '@/lib/ai/card-text-locale'
 import { assertSafeImageBytes } from '@/lib/utils/security'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { refundByWithRetry } from '@/lib/utils/refund'
@@ -118,9 +120,11 @@ export async function POST(request: Request) {
     const rawProductType  = (formData.get('product_type') as string) || ''
     const rawUserPrompt   = (formData.get('user_prompt') as string | null) || ''
     const rawGenerateMode = (formData.get('generate_mode') as string | null) || ''
+    const rawOutputLocale = ((formData.get('output_locale') as string | null) || '').slice(0, 35)
     const rawProductName  = ((formData.get('product_name') as string | null) || '').slice(0, 100)
     const rawBrandName    = ((formData.get('brand_name')   as string | null) || '').slice(0, 60)
     const rawProductDesc  = ((formData.get('product_description') as string | null) || '').slice(0, 500)
+    const outputLocale    = normalizeCardTextLocale(rawOutputLocale)
 
     const isCardFreeCS    = rawGenerateMode === 'card-free-contact-sheet'
     const isCardFree      = rawGenerateMode === 'card-free' || isCardFreeCS
@@ -147,6 +151,8 @@ export async function POST(request: Request) {
     const cardTemplateId = rawTemplateId !== null && CARD_TPL_REGEX.test(rawTemplateId)
       ? rawTemplateId
       : null
+    const isCustomCardTemplate = rawTemplateId === CUSTOM_CARD_TEMPLATE_ID
+    const isAnyCardMode = isCardFree || !!cardTemplateId || isCustomCardTemplate
 
     const userPrompt = sanitizePrompt(rawUserPrompt)
     if (userPrompt) {
@@ -269,6 +275,7 @@ export async function POST(request: Request) {
       template_category: templateCategory,
       model_id: modelId ?? null,
       product_type: productType,
+      output_locale: isAnyCardMode ? outputLocale : undefined,
       is_contact_sheet: isContactSheet || undefined,
       status_poll_token: statusToken,
     }
@@ -444,9 +451,10 @@ export async function POST(request: Request) {
       isFreeLifestyle:    isFreeLifestyle   || undefined,
       cardTemplateBuffer,
       cardTemplateMime,
-      cardProductName:    (isCardFree || cardTemplateId) ? rawProductName : undefined,
-      cardBrandName:      (isCardFree || cardTemplateId) ? rawBrandName   : undefined,
-      cardProductDesc:    (isCardFree || cardTemplateId) ? rawProductDesc : undefined,
+      cardProductName:    isAnyCardMode ? rawProductName : undefined,
+      cardBrandName:      isAnyCardMode ? rawBrandName   : undefined,
+      cardProductDesc:    isAnyCardMode ? rawProductDesc : undefined,
+      cardTextLocale:     isAnyCardMode ? outputLocale   : undefined,
     }
 
     const finalizeMeta: FinalizeGenerateJobMeta = {

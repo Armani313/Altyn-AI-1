@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useSyncExternalStore } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Check } from 'lucide-react'
 import { Header }             from '@/components/dashboard/header'
 import { UploadZone }         from '@/components/generate/upload-zone'
@@ -21,6 +21,7 @@ type MobileStep  = 1 | 2 | 3
 
 export default function CardsPage() {
   const t = useTranslations('cards')
+  const locale = useLocale()
   const dashboardProfile = useDashboardProfile()
   const currentPlan = dashboardProfile?.profile?.plan ?? 'free'
   const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
@@ -165,6 +166,7 @@ export default function CardsPage() {
       templateIds:        selectedTemplates,
       file:               uploadedFile!,
       customFile:         customTemplateFile,
+      outputLocale:       locale,
       aspectRatio,
       productName,
       brandName,
@@ -176,6 +178,7 @@ export default function CardsPage() {
     getCardsStore().retryFailed({
       file:               uploadedFile,
       customFile:         customTemplateFile,
+      outputLocale:       locale,
       aspectRatio,
       productName,
       brandName,

@@ -2,11 +2,11 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { Check, ArrowRight, Sparkles } from 'lucide-react'
+import { Check, ArrowRight, Sparkles, Zap, ShieldCheck, Camera, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header }         from '@/components/dashboard/header'
 import { UploadZone }     from '@/components/generate/upload-zone'
-import { TemplatePicker } from '@/components/generate/template-picker'
+import { ModelPickerModal } from '@/components/generate/model-picker-modal'
 import { ResultViewer } from '@/components/generate/result-viewer'
 import { createClient }   from '@/lib/supabase/client'
 import type { ProductType } from '@/lib/constants'
@@ -31,6 +31,15 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const currentPlan = dashboardProfile?.profile?.plan ?? 'free'
   const providerCreditsRemaining = dashboardProfile?.profile?.credits_remaining ?? null
   const setDashboardCreditsRemaining = dashboardProfile?.setCreditsRemaining
+
+  const safeT = (key: string, fallback: string, vars?: Record<string, string | number>) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (t as any).has?.(key) ? (t as any)(key, vars) : fallback
+    } catch {
+      return fallback
+    }
+  }
 
   const MOBILE_STEPS = [
     { id: 1 as MobileStep, label: t('mobileStep1') },
@@ -156,6 +165,38 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const uploadHint  = t(`uploadHint_${productType}` as Parameters<typeof t>[0])
   const dragLabel   = t(`dragLabel_${productType}` as Parameters<typeof t>[0])
 
+  const benefits = [
+    {
+      icon: Clock,
+      label: safeT('benefit1Title', 'Готово за 30 секунд'),
+      desc: safeT('benefit1Desc', 'Вместо 2-недельной фотосессии'),
+    },
+    {
+      icon: Camera,
+      label: safeT('benefit2Title', 'Студийный свет и композиция'),
+      desc: safeT('benefit2Desc', 'Подходит для Shopify, Amazon, TikTok'),
+    },
+    {
+      icon: ShieldCheck,
+      label: safeT('benefit3Title', 'Коммерческая лицензия'),
+      desc: safeT('benefit3Desc', 'Используйте для рекламы и PDP'),
+    },
+    {
+      icon: Zap,
+      label: safeT('benefit4Title', 'AI-подбор модели'),
+      desc: safeT('benefit4Desc', 'Или загрузите свою модель'),
+    },
+  ]
+
+  const sellingTitle = safeT(
+    `sellingTitle_${productType}`,
+    t(productType as Parameters<typeof t>[0]) + ' — лайфстайл фото',
+  )
+  const sellingSubtitle = safeT(
+    `sellingSubtitle_${productType}`,
+    'Превратите один плоский снимок в коллекцию коммерческих on-model кадров.',
+  )
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header
@@ -163,6 +204,51 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
         subtitle={t('headerSubtitle')}
         profile={creditsRemaining != null ? { credits_remaining: creditsRemaining } : null}
       />
+
+      {/* ── Selling hero strip ─────────────────────────────────────────── */}
+      <section
+        className="px-3 sm:px-5 xl:px-6 pt-4"
+        aria-labelledby="workspace-selling-title"
+      >
+        <div className="max-w-[1400px] mx-auto">
+          <div className="relative overflow-hidden rounded-2xl border border-cream-200 bg-gradient-to-br from-rose-gold-50 via-white to-cream-50 px-4 sm:px-6 py-4 sm:py-5 shadow-soft">
+            <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-rose-gold-200/40 blur-3xl" />
+            <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-gold-200 bg-white/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-rose-gold-700">
+                  <Sparkles className="w-3 h-3" />
+                  {safeT('sellingEyebrow', 'AI lifestyle studio')}
+                </span>
+                <h1
+                  id="workspace-selling-title"
+                  className="mt-1.5 font-serif text-[clamp(1.1rem,2.2vw,1.65rem)] font-medium leading-tight tracking-tight text-foreground"
+                >
+                  {sellingTitle}
+                </h1>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground max-w-2xl">
+                  {sellingSubtitle}
+                </p>
+              </div>
+              <ul className="grid grid-cols-2 lg:flex lg:flex-wrap gap-2 lg:gap-2.5 lg:max-w-[520px]">
+                {benefits.map((benefit) => (
+                  <li
+                    key={benefit.label}
+                    className="flex items-start gap-2 rounded-xl border border-cream-200 bg-white/80 backdrop-blur-sm px-2.5 py-2 text-[11px]"
+                  >
+                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-rose-gold-100 flex items-center justify-center flex-shrink-0">
+                      <benefit.icon className="w-3.5 h-3.5 text-rose-gold-700" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground leading-tight">{benefit.label}</p>
+                      <p className="text-muted-foreground leading-tight truncate">{benefit.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ── Mobile step tabs ──────────────────────────────────────────── */}
       <div className="lg:hidden sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-cream-200 flex mt-3">
@@ -197,7 +283,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
 
       {/* ── Workspace ─────────────────────────────────────────────────── */}
       <div className="flex-1 p-3 sm:p-5 xl:p-6">
-        <div className="max-w-[1400px] mx-auto h-full grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-[1fr_1.15fr_1fr] gap-3 sm:gap-5">
+        <div className="max-w-[1400px] mx-auto h-full grid grid-cols-1 lg:grid-cols-[1fr_1.45fr] gap-3 sm:gap-5">
 
           {/* ── Column 1: Upload ──── */}
           <div className={`flex-col gap-3 ${mobileStep === 1 ? 'flex' : 'hidden lg:flex'}`}>
@@ -211,8 +297,12 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
             <p className="text-xs text-muted-foreground text-center">{uploadHint}</p>
           </div>
 
-          {/* ── Column 2: Templates ── */}
-          <div className={`flex-col gap-3 ${mobileStep === 2 ? 'flex' : 'hidden lg:flex'}`}>
+          {/* ── Column 2: Models modal trigger + Result ── */}
+          <div
+            className={`flex-col gap-3 ${
+              mobileStep === 2 || mobileStep === 3 ? 'flex' : 'hidden lg:flex'
+            }`}
+          >
             <SectionLabel
               step="02"
               title={
@@ -221,22 +311,17 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
                   : t('chooseModelsEmpty')
               }
             />
-            <div className="flex-1 bg-white rounded-2xl border border-cream-200 p-3 sm:p-4 shadow-soft">
-              <TemplatePicker
-                selectedIds={selectedTemplates}
-                onSelect={handleTemplateSelect}
-                maxSelect={MAX_SELECTED_TEMPLATES}
-                disabled={isAnyGenerating}
-                currentPlan={currentPlan}
-                productType={productType}
-                customModelUrls={customModelUrls}
-                onCustomModelUrlsChange={setCustomModelUrls}
-              />
-            </div>
-          </div>
+            <ModelPickerModal
+              selectedIds={selectedTemplates}
+              onSelect={handleTemplateSelect}
+              maxSelect={MAX_SELECTED_TEMPLATES}
+              disabled={isAnyGenerating}
+              currentPlan={currentPlan}
+              productType={productType}
+              customModelUrls={customModelUrls}
+              onCustomModelUrlsChange={setCustomModelUrls}
+            />
 
-          {/* ── Column 3: Results ──── */}
-          <div className={`flex-col gap-3 ${mobileStep === 3 ? 'flex' : 'hidden lg:flex'}`}>
             <SectionLabel step="03" title={t('getResult')} />
             <ResultViewer
               results={generationResults}

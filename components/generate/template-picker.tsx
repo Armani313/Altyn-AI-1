@@ -303,7 +303,7 @@ export function TemplatePicker({
       )}
 
       {/* Model grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto min-h-[280px] flex-1 pr-0.5 items-start auto-rows-max">
 
         {/* ── AI Free Lifestyle card (always first) ────────────────────── */}
         {(() => {
@@ -314,7 +314,7 @@ export function TemplatePicker({
               onClick={() => toggle(AI_FREE_LIFESTYLE_ID)}
               disabled={isDisabled}
               className={`
-                relative group rounded-xl overflow-hidden border-2 transition-all duration-200
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200 aspect-[9/16] w-full
                 ${isSelected
                   ? 'border-primary shadow-glow scale-[0.97]'
                   : isDisabled
@@ -323,7 +323,7 @@ export function TemplatePicker({
                 }
               `}
             >
-              <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-rose-gold-400 via-rose-gold-500 to-rose-900 flex flex-col items-center justify-center gap-3 px-3">
+              <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-rose-gold-400 via-rose-gold-500 to-rose-900 flex flex-col items-center justify-center gap-3 px-3">
                 <div className="absolute inset-0 flex items-center justify-center opacity-20">
                   <div className="w-32 h-32 rounded-full border-2 border-white animate-ping" style={{ animationDuration: '3s' }} />
                   <div className="absolute w-20 h-20 rounded-full border border-white" />
@@ -369,7 +369,7 @@ export function TemplatePicker({
               onClick={() => toggle(MACRO_SHOT_ID)}
               disabled={isDisabled}
               className={`
-                relative group rounded-xl overflow-hidden border-2 transition-all duration-200
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200 aspect-[9/16] w-full
                 ${isSelected
                   ? 'border-primary shadow-glow scale-[0.97]'
                   : isDisabled
@@ -378,7 +378,7 @@ export function TemplatePicker({
                 }
               `}
             >
-              <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex flex-col items-center justify-center gap-3 px-3">
+              <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex flex-col items-center justify-center gap-3 px-3">
                 <div className="absolute inset-0 flex items-center justify-center opacity-10">
                   <div className="w-32 h-32 rounded-full border-2 border-white" />
                   <div className="absolute w-20 h-20 rounded-full border border-white" />
@@ -449,7 +449,7 @@ export function TemplatePicker({
               }}
               aria-disabled={isDisabledCard || undefined}
               className={`
-                relative group rounded-xl overflow-hidden border-2 transition-all duration-200 cursor-pointer
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200 cursor-pointer aspect-[9/16] w-full
                 ${isSelected
                   ? 'border-primary shadow-glow scale-[0.97]'
                   : isAddSlot
@@ -459,7 +459,7 @@ export function TemplatePicker({
                 ${isDisabledCard && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              <div className="aspect-[9/16] relative overflow-hidden bg-gradient-to-br from-rose-gold-50 to-cream-100">
+              <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-rose-gold-50 to-cream-100">
                 {isLoading || isDeleting ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                     <Loader2 className="w-6 h-6 text-rose-gold-400 animate-spin" />
@@ -562,7 +562,7 @@ export function TemplatePicker({
               onClick={() => !premiumLocked && toggle(model.id)}
               disabled={isDisabled}
               className={`
-                relative group rounded-xl overflow-hidden border-2 transition-all duration-200
+                relative group rounded-xl overflow-hidden border-2 transition-all duration-200 aspect-[9/16] w-full
                 ${isSelected
                   ? 'border-primary shadow-glow scale-[0.97]'
                   : isDisabled
@@ -571,7 +571,7 @@ export function TemplatePicker({
                 }
               `}
             >
-              <div className="aspect-[9/16] relative overflow-hidden bg-cream-100">
+              <div className="absolute inset-0 overflow-hidden bg-cream-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/models/${model.filename}`}

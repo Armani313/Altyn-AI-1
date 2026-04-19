@@ -593,49 +593,49 @@ export default async function CategoryPage({
 
       <main className="pb-24 sm:pb-0">
         {/* Hero */}
-        <section className="relative overflow-hidden px-6 pb-16 pt-28">
+        <section className="relative overflow-hidden px-5 sm:px-6 pb-12 sm:pb-16 pt-24 sm:pt-28">
           <div aria-hidden className="pointer-events-none absolute inset-0">
             <div className="absolute left-[-10%] top-16 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-rose-gold-100/80 via-rose-gold-50/40 to-transparent blur-3xl" />
             <div className="absolute bottom-0 right-[-5%] h-[520px] w-[520px] rounded-full bg-gradient-to-tl from-cream-200/70 via-cream-100/30 to-transparent blur-3xl" />
           </div>
 
           <div className="relative mx-auto max-w-6xl">
-            <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="grid items-center gap-8 sm:gap-10 lg:grid-cols-[1.1fr_0.9fr]">
               <div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-rose-gold-200 bg-rose-gold-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-rose-gold-700">
+                <span className="inline-flex items-center gap-2 rounded-full border border-rose-gold-200 bg-rose-gold-50/70 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] sm:tracking-[0.22em] text-rose-gold-700">
                   <Icon className="h-3.5 w-3.5" />
                   {copy.eyebrow}
                 </span>
-                <h1 className="mt-5 max-w-3xl font-serif text-[clamp(2rem,4.5vw,3.4rem)] font-medium leading-tight tracking-tight text-foreground">
+                <h1 className="mt-4 sm:mt-5 max-w-3xl font-serif text-[clamp(1.75rem,4.5vw,3.4rem)] font-medium leading-tight tracking-tight text-foreground">
                   {copy.heroTitle}
                 </h1>
-                <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+                <p className="mt-3 sm:mt-4 max-w-2xl text-base sm:text-lg leading-relaxed text-muted-foreground">
                   {copy.heroSubtitle}
                 </p>
 
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Link href="/register">
+                <div className="mt-6 sm:mt-7 flex flex-col sm:flex-row flex-wrap gap-3">
+                  <Link href="/register" className="w-full sm:w-auto">
                     <Button
                       size="lg"
-                      className="group h-12 bg-primary px-7 text-white shadow-soft transition-all duration-300 hover:bg-rose-gold-600 hover:shadow-glow"
+                      className="group h-12 bg-primary px-6 sm:px-7 text-white shadow-soft transition-all duration-300 hover:bg-rose-gold-600 hover:shadow-glow w-full sm:w-auto"
                     >
                       {copy.heroCta}
                       <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                     </Button>
                   </Link>
-                  <Link href="/#pricing">
+                  <Link href="/#pricing" className="w-full sm:w-auto">
                     <Button
                       variant="outline"
                       size="lg"
-                      className="h-12 border-cream-200 bg-white px-7 text-foreground hover:border-rose-gold-200 hover:text-rose-gold-700"
+                      className="h-12 border-cream-200 bg-white px-6 sm:px-7 text-foreground hover:border-rose-gold-200 hover:text-rose-gold-700 w-full sm:w-auto"
                     >
                       {copy.heroSecondaryCta}
                     </Button>
                   </Link>
                 </div>
 
-                <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-muted-foreground shadow-soft border border-cream-200">
-                  <Sparkles className="h-3.5 w-3.5 text-rose-gold-500" />
+                <div className="mt-5 sm:mt-6 inline-flex items-center gap-2 rounded-full bg-white px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-medium text-muted-foreground shadow-soft border border-cream-200">
+                  <Sparkles className="h-3.5 w-3.5 text-rose-gold-500 flex-shrink-0" />
                   {copy.heroBadge}
                 </div>
               </div>
@@ -679,7 +679,7 @@ export default async function CategoryPage({
 
         {/* Trust bar */}
         {hasTrustBar && (
-          <section className="border-y border-cream-200 bg-white px-6 py-10">
+          <section className="border-y border-cream-200 bg-white px-5 sm:px-6 py-8 sm:py-10">
             <div className="mx-auto max-w-6xl">
               {copy.trustBarLabel && (
                 <p className="mb-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -720,16 +720,16 @@ export default async function CategoryPage({
         )}
 
         {/* Problem */}
-        <section className="px-6 py-16 bg-white">
+        <section className="px-5 sm:px-6 py-12 sm:py-16 bg-white">
           <div className="mx-auto max-w-5xl">
-            <h2 className="mb-8 max-w-2xl font-serif text-[clamp(1.5rem,3vw,2.2rem)] font-medium tracking-tight text-foreground">
+            <h2 className="mb-6 sm:mb-8 max-w-2xl font-serif text-[clamp(1.375rem,3vw,2.2rem)] font-medium tracking-tight text-foreground">
               {copy.problemTitle}
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {problemBullets.map((bullet) => (
                 <div
                   key={bullet}
-                  className="rounded-2xl border border-cream-200 bg-cream-50/40 p-5"
+                  className="rounded-xl sm:rounded-2xl border border-cream-200 bg-cream-50/40 p-4 sm:p-5"
                 >
                   <p className="text-sm leading-relaxed text-foreground">{bullet}</p>
                 </div>
@@ -740,25 +740,25 @@ export default async function CategoryPage({
 
         {/* How it works */}
         {howItWorksSteps.length > 0 && (
-          <section className="px-6 py-20 bg-cream-50/40">
+          <section className="px-5 sm:px-6 py-14 sm:py-20 bg-cream-50/40">
             <div className="mx-auto max-w-5xl">
-              <div className="mb-12 text-center">
-                <h2 className="font-serif text-[clamp(1.75rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
+              <div className="mb-10 sm:mb-12 text-center">
+                <h2 className="font-serif text-[clamp(1.5rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
                   {copy.howItWorksTitle}
                 </h2>
                 {copy.howItWorksSubtitle && (
-                  <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
+                  <p className="mx-auto mt-3 max-w-2xl text-base sm:text-lg text-muted-foreground">
                     {copy.howItWorksSubtitle}
                   </p>
                 )}
               </div>
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
                 {howItWorksSteps.map((step, idx) => {
                   const StepIcon = step.icon
                   return (
                     <div
                       key={step.title}
-                      className="relative rounded-3xl border border-cream-200 bg-white p-7 shadow-card"
+                      className="relative rounded-2xl sm:rounded-3xl border border-cream-200 bg-white p-5 sm:p-7 shadow-card"
                     >
                       <div className="mb-4 flex items-center gap-3">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl gradient-rose-gold text-white shadow-soft">
@@ -783,27 +783,27 @@ export default async function CategoryPage({
         )}
 
         {/* Features */}
-        <section className="px-6 py-20">
+        <section className="px-5 sm:px-6 py-14 sm:py-20">
           <div className="mx-auto max-w-6xl">
-            <div className="mb-12 text-center">
-              <h2 className="font-serif text-[clamp(1.75rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
+            <div className="mb-10 sm:mb-12 text-center">
+              <h2 className="font-serif text-[clamp(1.5rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
                 {copy.featuresTitle}
               </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
+              <p className="mx-auto mt-3 max-w-2xl text-base sm:text-lg text-muted-foreground">
                 {copy.featuresSubtitle}
               </p>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature) => (
                 <div
                   key={feature.title}
-                  className="rounded-3xl border border-cream-200 bg-white p-7 shadow-card"
+                  className="rounded-2xl sm:rounded-3xl border border-cream-200 bg-white p-5 sm:p-7 shadow-card"
                 >
-                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-gold-50">
+                  <div className="mb-3 sm:mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-gold-50">
                     <Sparkles className="h-5 w-5 text-rose-gold-700" />
                   </div>
-                  <h3 className="mb-2 font-serif text-xl font-medium text-foreground">
+                  <h3 className="mb-2 font-serif text-lg sm:text-xl font-medium text-foreground">
                     {feature.title}
                   </h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
@@ -817,35 +817,35 @@ export default async function CategoryPage({
 
         {/* Sample gallery */}
         {galleryItems.length > 0 && (
-          <section className="px-6 py-20 bg-white">
+          <section className="px-5 sm:px-6 py-14 sm:py-20 bg-white">
             <div className="mx-auto max-w-6xl">
-              <div className="mb-10 text-center">
-                <h2 className="font-serif text-[clamp(1.75rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
+              <div className="mb-8 sm:mb-10 text-center">
+                <h2 className="font-serif text-[clamp(1.5rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
                   {copy.galleryTitle}
                 </h2>
                 {copy.gallerySubtitle && (
-                  <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
+                  <p className="mx-auto mt-3 max-w-2xl text-base sm:text-lg text-muted-foreground">
                     {copy.gallerySubtitle}
                   </p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
                 {galleryItems.map((item) => (
                   <div
                     key={item.label}
                     className={`group relative overflow-hidden rounded-2xl border border-rose-gold-100 bg-gradient-to-br ${palette.from} ${palette.to} aspect-[3/4] shadow-card transition-all hover:shadow-glow`}
                   >
                     <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-7xl opacity-50 transition-transform duration-500 group-hover:scale-110">
+                      <span className="text-6xl sm:text-7xl opacity-50 transition-transform duration-500 group-hover:scale-110">
                         {palette.emoji}
                       </span>
                     </div>
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent p-4">
-                      <div className="text-sm font-semibold text-white drop-shadow-sm">
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent p-3 sm:p-4">
+                      <div className="text-xs sm:text-sm font-semibold text-white drop-shadow-sm">
                         {item.label}
                       </div>
                       {item.hint && (
-                        <div className="mt-0.5 text-[11px] uppercase tracking-wider text-white/85">
+                        <div className="mt-0.5 text-[10px] sm:text-[11px] uppercase tracking-wider text-white/85">
                           {item.hint}
                         </div>
                       )}
@@ -859,26 +859,61 @@ export default async function CategoryPage({
 
         {/* Comparison table */}
         {comparisonRows.length > 0 && (
-          <section className="px-6 py-20">
+          <section className="px-5 sm:px-6 py-14 sm:py-20">
             <div className="mx-auto max-w-5xl">
-              <div className="mb-10 text-center">
-                <h2 className="font-serif text-[clamp(1.75rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
+              <div className="mb-8 sm:mb-10 text-center">
+                <h2 className="font-serif text-[clamp(1.5rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
                   {copy.comparisonTitle}
                 </h2>
                 {copy.comparisonSubtitle && (
-                  <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
+                  <p className="mx-auto mt-3 max-w-2xl text-base sm:text-lg text-muted-foreground">
                     {copy.comparisonSubtitle}
                   </p>
                 )}
               </div>
 
-              <div className="overflow-hidden rounded-3xl border border-cream-200 bg-white shadow-card">
+              {/* Mobile: stacked cards */}
+              <div className="space-y-3 sm:hidden">
+                {comparisonRows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="overflow-hidden rounded-2xl border border-cream-200 bg-white shadow-soft"
+                  >
+                    <div className="border-b border-cream-200 bg-cream-50/60 px-4 py-3 text-sm font-semibold text-foreground">
+                      {row.label}
+                    </div>
+                    <div className="grid grid-cols-2 divide-x divide-cream-200">
+                      <div className="px-3 py-3">
+                        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {copy.comparisonHeaderTrad}
+                        </div>
+                        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <XIcon className="mt-0.5 h-3 w-3 flex-shrink-0 text-muted-foreground/60" />
+                          <span>{row.trad}</span>
+                        </div>
+                      </div>
+                      <div className="bg-rose-gold-50/30 px-3 py-3">
+                        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-rose-gold-700">
+                          {copy.comparisonHeaderLum}
+                        </div>
+                        <div className="flex items-start gap-1.5 text-xs font-semibold text-rose-gold-800">
+                          <Check className="mt-0.5 h-3 w-3 flex-shrink-0 text-rose-gold-700" />
+                          <span>{row.lum}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tablet/desktop: 3-column table */}
+              <div className="hidden sm:block overflow-hidden rounded-3xl border border-cream-200 bg-white shadow-card">
                 <div className="grid grid-cols-3 border-b border-cream-200 bg-cream-50/60">
-                  <div className="px-4 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-6" />
-                  <div className="px-4 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
+                  <div className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" />
+                  <div className="px-6 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {copy.comparisonHeaderTrad}
                   </div>
-                  <div className="px-4 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-rose-gold-700 sm:px-6">
+                  <div className="px-6 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-rose-gold-700">
                     {copy.comparisonHeaderLum}
                   </div>
                 </div>
@@ -887,14 +922,14 @@ export default async function CategoryPage({
                     key={row.label}
                     className={`grid grid-cols-3 ${idx > 0 ? 'border-t border-cream-200' : ''}`}
                   >
-                    <div className="px-4 py-4 text-sm font-medium text-foreground sm:px-6">
+                    <div className="px-6 py-4 text-sm font-medium text-foreground">
                       {row.label}
                     </div>
-                    <div className="flex items-center justify-center gap-2 px-4 py-4 text-sm text-muted-foreground sm:px-6">
+                    <div className="flex items-center justify-center gap-2 px-6 py-4 text-sm text-muted-foreground">
                       <XIcon className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/60" />
                       <span>{row.trad}</span>
                     </div>
-                    <div className="flex items-center justify-center gap-2 bg-rose-gold-50/30 px-4 py-4 text-sm font-semibold text-rose-gold-800 sm:px-6">
+                    <div className="flex items-center justify-center gap-2 bg-rose-gold-50/30 px-6 py-4 text-sm font-semibold text-rose-gold-800">
                       <Check className="h-3.5 w-3.5 flex-shrink-0 text-rose-gold-700" />
                       <span>{row.lum}</span>
                     </div>
@@ -906,16 +941,16 @@ export default async function CategoryPage({
         )}
 
         {/* Use cases */}
-        <section className="px-6 py-16 bg-cream-50/40">
+        <section className="px-5 sm:px-6 py-12 sm:py-16 bg-cream-50/40">
           <div className="mx-auto max-w-5xl">
-            <h2 className="mb-8 max-w-2xl font-serif text-[clamp(1.5rem,3vw,2.2rem)] font-medium tracking-tight text-foreground">
+            <h2 className="mb-6 sm:mb-8 max-w-2xl font-serif text-[clamp(1.375rem,3vw,2.2rem)] font-medium tracking-tight text-foreground">
               {copy.useCaseTitle}
             </h2>
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {useCases.map((useCase) => (
                 <li
                   key={useCase}
-                  className="flex items-start gap-3 rounded-xl border border-cream-200 bg-white p-4"
+                  className="flex items-start gap-3 rounded-xl border border-cream-200 bg-white p-3.5 sm:p-4"
                 >
                   <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-gold-100">
                     <Check className="h-3 w-3 text-rose-gold-700" />
@@ -929,25 +964,25 @@ export default async function CategoryPage({
 
         {/* Testimonials */}
         {testimonials.length > 0 && (
-          <section className="px-6 py-20 bg-white">
+          <section className="px-5 sm:px-6 py-14 sm:py-20 bg-white">
             <div className="mx-auto max-w-6xl">
-              <div className="mb-12 text-center">
-                <h2 className="font-serif text-[clamp(1.75rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
+              <div className="mb-10 sm:mb-12 text-center">
+                <h2 className="font-serif text-[clamp(1.5rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
                   {copy.testimonialsTitle}
                 </h2>
                 {copy.testimonialsSubtitle && (
-                  <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
+                  <p className="mx-auto mt-3 max-w-2xl text-base sm:text-lg text-muted-foreground">
                     {copy.testimonialsSubtitle}
                   </p>
                 )}
               </div>
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
                 {testimonials.map((t) => (
                   <figure
                     key={t.author}
-                    className="relative rounded-3xl border border-cream-200 bg-cream-50/40 p-7 shadow-soft"
+                    className="relative rounded-2xl sm:rounded-3xl border border-cream-200 bg-cream-50/40 p-5 sm:p-7 shadow-soft"
                   >
-                    <Quote className="absolute right-5 top-5 h-6 w-6 text-rose-gold-200" />
+                    <Quote className="absolute right-4 top-4 sm:right-5 sm:top-5 h-5 w-5 sm:h-6 sm:w-6 text-rose-gold-200" />
                     <div className="mb-3 flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((i) => (
                         <Star key={i} className="h-3.5 w-3.5 fill-rose-gold-500 text-rose-gold-500" />
@@ -956,7 +991,7 @@ export default async function CategoryPage({
                     <blockquote className="text-sm leading-relaxed text-foreground">
                       “{t.quote}”
                     </blockquote>
-                    <figcaption className="mt-5 border-t border-cream-200 pt-4">
+                    <figcaption className="mt-4 sm:mt-5 border-t border-cream-200 pt-3 sm:pt-4">
                       <div className="text-sm font-semibold text-foreground">{t.author}</div>
                       <div className="mt-0.5 text-xs text-muted-foreground">{t.role}</div>
                     </figcaption>
@@ -969,27 +1004,27 @@ export default async function CategoryPage({
 
         {/* Pricing snapshot */}
         {pricingTiers.length > 0 && (
-          <section className="px-6 py-20">
+          <section className="px-5 sm:px-6 py-14 sm:py-20">
             <div className="mx-auto max-w-6xl">
-              <div className="mb-12 text-center">
-                <h2 className="font-serif text-[clamp(1.75rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
+              <div className="mb-10 sm:mb-12 text-center">
+                <h2 className="font-serif text-[clamp(1.5rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
                   {copy.pricingTitle}
                 </h2>
                 {copy.pricingSubtitle && (
-                  <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
+                  <p className="mx-auto mt-3 max-w-2xl text-base sm:text-lg text-muted-foreground">
                     {copy.pricingSubtitle}
                   </p>
                 )}
               </div>
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
                 {pricingTiers.map((tier) => {
                   const isFeatured = Boolean(tier.badge)
                   return (
                     <div
                       key={tier.name}
-                      className={`relative rounded-3xl border p-7 shadow-card transition-all ${
+                      className={`relative rounded-2xl sm:rounded-3xl border p-5 sm:p-7 shadow-card transition-all ${
                         isFeatured
-                          ? 'border-rose-gold-300 bg-gradient-to-br from-white to-rose-gold-50 shadow-glow scale-[1.02]'
+                          ? 'border-rose-gold-300 bg-gradient-to-br from-white to-rose-gold-50 shadow-glow sm:scale-[1.02]'
                           : 'border-cream-200 bg-white'
                       }`}
                     >
@@ -998,18 +1033,18 @@ export default async function CategoryPage({
                           {tier.badge}
                         </span>
                       )}
-                      <h3 className="font-serif text-xl font-medium text-foreground">
+                      <h3 className="font-serif text-lg sm:text-xl font-medium text-foreground">
                         {tier.name}
                       </h3>
                       <div className="mt-3 flex items-baseline gap-1">
-                        <span className="font-serif text-4xl font-semibold text-foreground">
+                        <span className="font-serif text-3xl sm:text-4xl font-semibold text-foreground">
                           {tier.price}
                         </span>
                         {tier.period && (
                           <span className="text-sm text-muted-foreground">{tier.period}</span>
                         )}
                       </div>
-                      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                      <p className="mt-3 sm:mt-4 text-sm leading-relaxed text-muted-foreground">
                         {tier.desc}
                       </p>
                     </div>
@@ -1017,12 +1052,12 @@ export default async function CategoryPage({
                 })}
               </div>
               {copy.pricingCta && (
-                <div className="mt-10 text-center">
-                  <Link href="/#pricing">
+                <div className="mt-8 sm:mt-10 text-center">
+                  <Link href="/#pricing" className="block sm:inline-block">
                     <Button
                       variant="outline"
                       size="lg"
-                      className="h-12 border-cream-200 bg-white px-7 text-foreground hover:border-rose-gold-200 hover:text-rose-gold-700"
+                      className="h-12 border-cream-200 bg-white px-6 sm:px-7 text-foreground hover:border-rose-gold-200 hover:text-rose-gold-700 w-full sm:w-auto"
                     >
                       {copy.pricingCta}
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -1035,18 +1070,18 @@ export default async function CategoryPage({
         )}
 
         {/* FAQ */}
-        <section className="px-6 py-20 bg-cream-50/40">
+        <section className="px-5 sm:px-6 py-14 sm:py-20 bg-cream-50/40">
           <div className="mx-auto max-w-3xl">
-            <h2 className="mb-8 text-center font-serif text-[clamp(1.75rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
+            <h2 className="mb-6 sm:mb-8 text-center font-serif text-[clamp(1.5rem,3.5vw,2.5rem)] font-medium tracking-tight text-foreground">
               {copy.faqTitle}
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {faqs.map((faq) => (
                 <details
                   key={faq.q}
-                  className="group rounded-2xl border border-cream-200 bg-white p-6 shadow-soft"
+                  className="group rounded-xl sm:rounded-2xl border border-cream-200 bg-white p-4 sm:p-6 shadow-soft"
                 >
-                  <summary className="cursor-pointer list-none text-base font-semibold text-foreground transition-colors group-hover:text-rose-gold-700">
+                  <summary className="cursor-pointer list-none text-sm sm:text-base font-semibold text-foreground transition-colors group-hover:text-rose-gold-700 min-h-[28px] flex items-start">
                     {faq.q}
                   </summary>
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -1059,21 +1094,21 @@ export default async function CategoryPage({
         </section>
 
         {/* Final CTA */}
-        <section className="px-6 pb-24">
+        <section className="px-5 sm:px-6 pb-16 sm:pb-24">
           <div className="mx-auto max-w-4xl">
-            <div className="relative overflow-hidden rounded-[2rem] border border-rose-gold-200 bg-gradient-to-br from-rose-gold-50 via-white to-cream-100 p-10 text-center shadow-card sm:p-14">
+            <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] border border-rose-gold-200 bg-gradient-to-br from-rose-gold-50 via-white to-cream-100 p-6 sm:p-10 lg:p-14 text-center shadow-card">
               <div aria-hidden className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-gold-200/40 blur-3xl" />
-              <h2 className="relative font-serif text-[clamp(1.6rem,3.2vw,2.4rem)] font-medium tracking-tight text-foreground">
+              <h2 className="relative font-serif text-[clamp(1.375rem,3.2vw,2.4rem)] font-medium tracking-tight text-foreground">
                 {copy.ctaTitle}
               </h2>
-              <p className="relative mt-3 text-base text-muted-foreground">
+              <p className="relative mt-3 text-sm sm:text-base text-muted-foreground">
                 {copy.ctaSub}
               </p>
-              <div className="relative mt-6 inline-flex">
-                <Link href="/register">
+              <div className="relative mt-5 sm:mt-6">
+                <Link href="/register" className="block sm:inline-block">
                   <Button
                     size="lg"
-                    className="group h-12 bg-primary px-8 text-white shadow-soft transition-all duration-300 hover:bg-rose-gold-600 hover:shadow-glow"
+                    className="group h-12 bg-primary px-6 sm:px-8 text-white shadow-soft transition-all duration-300 hover:bg-rose-gold-600 hover:shadow-glow w-full sm:w-auto"
                   >
                     {copy.ctaButton}
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -1087,9 +1122,12 @@ export default async function CategoryPage({
 
       {/* Sticky mobile CTA */}
       {copy.stickyCtaText && copy.stickyCtaButton && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-cream-200 bg-white/95 px-4 py-3 shadow-card backdrop-blur sm:hidden">
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-cream-200 bg-white/95 px-4 pt-3 shadow-card backdrop-blur sm:hidden"
+          style={{ paddingBottom: 'calc(0.75rem + var(--safe-bottom, 0px))' }}
+        >
           <div className="mx-auto flex max-w-md items-center justify-between gap-3">
-            <span className="flex-1 text-xs font-medium text-foreground">
+            <span className="flex-1 text-xs font-medium text-foreground line-clamp-2">
               {copy.stickyCtaText}
             </span>
             <Link href="/register" className="flex-shrink-0">

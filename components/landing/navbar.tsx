@@ -76,8 +76,9 @@ export function Navbar() {
           ? 'bg-[#FAF9F6]/90 backdrop-blur-md border-b border-[#E5DDD1] shadow-soft'
           : 'bg-transparent'
       }`}
+      style={{ paddingTop: 'var(--safe-top, 0px)' }}
     >
-      <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <nav className="max-w-6xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-7 h-7 rounded-lg gradient-rose-gold flex items-center justify-center">
@@ -217,7 +218,11 @@ export function Navbar() {
               <span className="sr-only">{t('openMenu')}</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="bg-[#FAF9F6] border-l border-cream-200 w-[min(288px,90vw)]">
+          <SheetContent
+            side="right"
+            className="bg-[#FAF9F6] border-l border-cream-200 w-[min(320px,90vw)] overflow-y-auto"
+            style={{ paddingTop: 'calc(var(--safe-top, 0px) + 1.5rem)', paddingBottom: 'calc(var(--safe-bottom, 0px) + 1.5rem)' }}
+          >
             <SheetHeader className="text-left mb-6">
               <SheetTitle className="font-serif text-lg font-semibold text-foreground">
                 {t('menu')}

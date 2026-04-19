@@ -18,7 +18,7 @@ export function FaqSection() {
   return (
     <FaqAccordion
       id="faq"
-      className="scroll-mt-20 px-6 py-24"
+      className="scroll-mt-20 px-5 sm:px-6 py-16 sm:py-24"
       items={faqs}
       overline={t('overline')}
       title={t('title')}

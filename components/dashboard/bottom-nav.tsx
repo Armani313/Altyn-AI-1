@@ -42,14 +42,14 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-t border-cream-200 lg:hidden">
+    <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/90 backdrop-blur-xl border-t border-cream-200 lg:hidden">
       <div
         className="flex items-end justify-around px-1"
         style={{ paddingBottom: 'var(--safe-bottom, 0px)' }}
       >
         {items.map(({ href, icon: Icon, label, hardNav }) => {
           const active = isActive(href)
-          const cls = `flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-w-[48px] min-h-[48px] transition-colors duration-150 touch-feedback ${
+          const cls = `flex flex-col items-center justify-center gap-1 pt-2.5 pb-2 flex-1 min-w-[48px] min-h-[52px] transition-colors duration-150 touch-feedback ${
             active
               ? 'text-primary'
               : 'text-muted-foreground active:text-foreground'
@@ -62,7 +62,7 @@ export function BottomNav() {
                 {label}
               </span>
               {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-primary" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary" />
               )}
             </>
           )

@@ -30,29 +30,29 @@ export function FaqAccordion({
   const [openIndex, setOpenIndex] = useState<number | null>(0)
 
   return (
-    <section id={id} className={className ?? 'px-6 py-24'}>
+    <section id={id} className={className ?? 'px-5 sm:px-6 py-16 sm:py-24'}>
       <div className="mx-auto max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="mb-12 text-center"
+          className="mb-10 sm:mb-12 text-center"
         >
           <span className="mb-3 inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500">
             {overline}
           </span>
-          <h2 className="font-serif text-[clamp(1.75rem,4vw,2.45rem)] font-medium tracking-tight text-foreground">
+          <h2 className="font-serif text-[clamp(1.625rem,4vw,2.45rem)] font-medium tracking-tight text-foreground">
             {title}
           </h2>
           {description && (
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+            <p className="mx-auto mt-3 sm:mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-muted-foreground">
               {description}
             </p>
           )}
         </motion.div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           {items.map((faq, index) => {
             const isOpen = openIndex === index
             return (
@@ -65,7 +65,7 @@ export function FaqAccordion({
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between gap-4 rounded-2xl border border-cream-200 bg-white px-6 py-5 text-left transition-all duration-200 hover:border-rose-gold-200 hover:shadow-soft"
+                  className="flex w-full items-center justify-between gap-3 sm:gap-4 rounded-xl sm:rounded-2xl border border-cream-200 bg-white px-4 sm:px-6 py-4 sm:py-5 text-left transition-all duration-200 hover:border-rose-gold-200 hover:shadow-soft min-h-[56px]"
                   aria-expanded={isOpen}
                 >
                   <span className="text-sm font-medium leading-snug text-foreground">{faq.q}</span>
@@ -87,7 +87,7 @@ export function FaqAccordion({
                       transition={{ duration: 0.28, ease: EASE }}
                       className="overflow-hidden"
                     >
-                      <div className="-mt-2 rounded-b-2xl border border-t-0 border-cream-200 bg-white px-6 pb-5 pt-3 text-sm leading-relaxed text-muted-foreground">
+                      <div className="-mt-2 rounded-b-xl sm:rounded-b-2xl border border-t-0 border-cream-200 bg-white px-4 sm:px-6 pb-4 sm:pb-5 pt-3 text-sm leading-relaxed text-muted-foreground">
                         {faq.a}
                       </div>
                     </motion.div>

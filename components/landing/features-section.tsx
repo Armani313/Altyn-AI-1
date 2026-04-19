@@ -43,7 +43,7 @@ export function FeaturesSection() {
   ]
 
   return (
-    <section id="features" className="py-28 px-6 scroll-mt-20">
+    <section id="features" className="py-16 sm:py-24 lg:py-28 px-5 sm:px-6 scroll-mt-20">
       <div className="max-w-6xl mx-auto">
 
         {/* Section header */}
@@ -52,7 +52,7 @@ export function FeaturesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.65, ease: EASE }}
-          className="text-center mb-16"
+          className="text-center mb-12 sm:mb-16"
         >
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500 mb-3">
             {t('overline')}
@@ -71,7 +71,7 @@ export function FeaturesSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-60px' }}
-          className="grid md:grid-cols-3 gap-6"
+          className="grid md:grid-cols-3 gap-4 sm:gap-6"
         >
           {steps.map((step) => (
             <motion.div key={step.number} variants={cardVariants}>
@@ -111,7 +111,7 @@ function StepCard({
   accent: string
 }) {
   return (
-    <div className="group relative bg-white border border-cream-200 rounded-2xl p-7 hover:border-rose-gold-200 hover:shadow-card transition-all duration-350 overflow-hidden">
+    <div className="group relative bg-white border border-cream-200 rounded-2xl p-5 sm:p-7 hover:border-rose-gold-200 hover:shadow-card transition-all duration-350 overflow-hidden">
       <span
         aria-hidden
         className="absolute top-4 right-5 font-serif text-7xl font-bold text-cream-200 leading-none select-none group-hover:text-rose-gold-100 transition-colors duration-300"

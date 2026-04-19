@@ -17,9 +17,9 @@ export function MultiDeviceSection() {
   ]
 
   return (
-    <section className="py-24 px-6">
+    <section className="py-16 sm:py-24 px-5 sm:px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-10 sm:gap-12 lg:gap-16 items-center">
           {/* Visual — device mockups */}
           <motion.div
             initial={{ opacity: 0, x: -32 }}
@@ -65,14 +65,14 @@ export function MultiDeviceSection() {
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
           >
-            <h2 className="font-serif text-[clamp(1.75rem,4vw,2.75rem)] font-medium text-foreground leading-tight mb-5 tracking-tight">
+            <h2 className="font-serif text-[clamp(1.625rem,4vw,2.75rem)] font-medium text-foreground leading-tight mb-4 sm:mb-5 tracking-tight">
               {t('title')}
             </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
+            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8 max-w-lg">
               {t('description')}
             </p>
 
-            <div className="flex flex-wrap gap-3 mb-8">
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8">
               {features.map(({ icon: Icon, label }) => (
                 <span
                   key={label}
@@ -84,10 +84,10 @@ export function MultiDeviceSection() {
               ))}
             </div>
 
-            <Link href="/register">
+            <Link href="/register" className="block w-full sm:inline-block sm:w-auto">
               <Button
                 size="lg"
-                className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow group transition-all duration-300 h-12 px-7"
+                className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow group transition-all duration-300 h-12 px-7 w-full sm:w-auto"
               >
                 {t('cta')}
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />

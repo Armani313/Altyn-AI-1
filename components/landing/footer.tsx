@@ -41,8 +41,8 @@ export function Footer() {
 
   return (
     <footer className="bg-cream-100 border-t border-cream-200">
-      <div className="max-w-6xl mx-auto px-6 py-14">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
+      <div className="max-w-6xl mx-auto px-5 sm:px-6 py-10 sm:py-14">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10 mb-8 sm:mb-10">
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group">

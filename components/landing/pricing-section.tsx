@@ -105,22 +105,22 @@ export function PricingSection() {
   ]
 
   return (
-    <section id="pricing" className="scroll-mt-20 bg-gradient-to-b from-cream-200/30 to-[#FAF9F6] px-6 py-28">
+    <section id="pricing" className="scroll-mt-20 bg-gradient-to-b from-cream-200/30 to-[#FAF9F6] px-5 sm:px-6 py-16 sm:py-24 lg:py-28">
       <div className="mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.65, ease: EASE }}
-          className="mb-14 text-center"
+          className="mb-10 sm:mb-14 text-center"
         >
           <span className="mb-3 inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500">
             {tPricing('overline')}
           </span>
-          <h2 className="mb-4 font-serif text-[clamp(1.75rem,4vw,2.75rem)] font-medium tracking-tight text-foreground">
+          <h2 className="mb-3 sm:mb-4 font-serif text-[clamp(1.625rem,4vw,2.75rem)] font-medium tracking-tight text-foreground">
             {tPricing('title')}
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-base sm:text-lg text-muted-foreground">
             {tPricing('sub')}
           </p>
         </motion.div>
@@ -130,31 +130,31 @@ export function PricingSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.7, ease: EASE }}
-          className="relative mb-8 overflow-hidden rounded-[2rem] border border-cream-200 bg-white p-6 shadow-card sm:p-8"
+          className="relative mb-6 sm:mb-8 overflow-hidden rounded-2xl sm:rounded-[2rem] border border-cream-200 bg-white p-5 shadow-card sm:p-8"
         >
           <div aria-hidden className="pointer-events-none absolute inset-0">
             <div className="absolute -left-10 top-0 h-48 w-48 rounded-full bg-rose-gold-100/70 blur-3xl" />
             <div className="absolute bottom-0 right-0 h-56 w-56 rounded-full bg-cream-200/70 blur-3xl" />
           </div>
 
-          <div className="relative grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="relative grid gap-6 sm:gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-rose-gold-200 bg-rose-gold-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-gold-700">
+              <span className="inline-flex items-center gap-2 rounded-full border border-rose-gold-200 bg-rose-gold-50/70 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-rose-gold-700">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 {bannerCopy.eyebrow}
               </span>
-              <h3 className="mt-5 max-w-xl font-serif text-[clamp(1.65rem,3vw,2.35rem)] font-medium leading-tight tracking-tight text-foreground">
+              <h3 className="mt-4 sm:mt-5 max-w-xl font-serif text-[clamp(1.375rem,3vw,2.35rem)] font-medium leading-tight tracking-tight text-foreground">
                 {bannerCopy.title}
               </h3>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+              <p className="mt-3 sm:mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-muted-foreground">
                 {bannerCopy.body}
               </p>
-              <p className="mt-4 text-sm font-medium text-foreground/80">
+              <p className="mt-3 sm:mt-4 text-xs sm:text-sm font-medium text-foreground/80">
                 {bannerCopy.note}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               {PLAN_ORDER.map((planKey) => {
                 const Icon = PLAN_ICONS[planKey]
                 const meta = PLAN_META[planKey]
@@ -169,27 +169,27 @@ export function PricingSection() {
                 return (
                   <div
                     key={planKey}
-                    className={`rounded-2xl border p-4 ${
+                    className={`rounded-xl sm:rounded-2xl border p-3 sm:p-4 ${
                       planKey === 'pro'
                         ? 'border-rose-gold-300 bg-gradient-to-br from-rose-gold-500 to-rose-gold-600 text-white shadow-glow'
                         : 'border-cream-200 bg-white/85'
                     }`}
                   >
-                    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${
+                    <div className={`mb-2 sm:mb-3 flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg sm:rounded-xl ${
                       planKey === 'pro' ? 'bg-white/20' : 'bg-rose-gold-100'
                     }`}>
-                      <Icon className={`h-4.5 w-4.5 ${planKey === 'pro' ? 'text-white' : 'text-rose-gold-700'}`} />
+                      <Icon className={`h-4 w-4 sm:h-4.5 sm:w-4.5 ${planKey === 'pro' ? 'text-white' : 'text-rose-gold-700'}`} />
                     </div>
-                    <p className={`text-sm font-semibold ${planKey === 'pro' ? 'text-white' : 'text-foreground'}`}>
+                    <p className={`text-xs sm:text-sm font-semibold ${planKey === 'pro' ? 'text-white' : 'text-foreground'}`}>
                       {label}
                     </p>
-                    <p className={`mt-1 font-serif text-2xl font-bold ${planKey === 'pro' ? 'text-white' : 'text-foreground'}`}>
+                    <p className={`mt-1 font-serif text-xl sm:text-2xl font-bold ${planKey === 'pro' ? 'text-white' : 'text-foreground'}`}>
                       ${meta.monthlyPriceUsd}
                     </p>
-                    <p className={`mt-1 text-xs ${planKey === 'pro' ? 'text-white/80' : 'text-muted-foreground'}`}>
+                    <p className={`mt-1 text-[10px] sm:text-xs leading-tight ${planKey === 'pro' ? 'text-white/80' : 'text-muted-foreground'}`}>
                       {planKey === 'free'
                         ? tBilling('freeForever')
-                        : `${meta.credits} ${locale === 'ru' ? 'генераций / мес' : 'generations / mo'}`}
+                        : `${meta.credits} ${locale === 'ru' ? 'ген / мес' : 'gen / mo'}`}
                     </p>
                   </div>
                 )
@@ -198,7 +198,7 @@ export function PricingSection() {
           </div>
         </motion.div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.key}
@@ -285,9 +285,9 @@ function PlanCard({
             : 'border border-cream-200 bg-white hover:border-rose-gold-200 hover:shadow-card'
         }`}
       >
-        <div className="flex flex-1 flex-col p-7">
-          <div className="mb-5">
-            <h3 className={`mb-1.5 font-serif text-2xl font-medium ${highlighted ? 'text-white' : 'text-foreground'}`}>
+        <div className="flex flex-1 flex-col p-6 sm:p-7 lg:p-5 xl:p-7">
+          <div className="mb-4 sm:mb-5">
+            <h3 className={`mb-1.5 font-serif text-xl sm:text-2xl lg:text-xl xl:text-2xl font-medium ${highlighted ? 'text-white' : 'text-foreground'}`}>
               {name}
             </h3>
             <p className={`text-sm leading-relaxed ${highlighted ? 'text-white/75' : 'text-muted-foreground'}`}>
@@ -296,7 +296,7 @@ function PlanCard({
           </div>
 
           <div className="mb-3 flex items-baseline gap-1.5">
-            <span className={`font-serif text-[2.5rem] font-bold leading-none tracking-tight ${highlighted ? 'text-white' : 'text-foreground'}`}>
+            <span className={`font-serif text-[2.25rem] sm:text-[2.5rem] lg:text-[2rem] xl:text-[2.5rem] font-bold leading-none tracking-tight ${highlighted ? 'text-white' : 'text-foreground'}`}>
               {price}
             </span>
             <span className={`text-sm ${highlighted ? 'text-white/65' : 'text-muted-foreground'}`}>
@@ -304,13 +304,13 @@ function PlanCard({
             </span>
           </div>
 
-          <span className={`mb-6 inline-block self-start rounded-full px-3 py-1 text-xs font-semibold ${
+          <span className={`mb-5 sm:mb-6 inline-block self-start rounded-full px-3 py-1 text-xs font-semibold ${
             highlighted ? 'bg-white/20 text-white' : 'bg-rose-gold-50 text-rose-gold-700'
           }`}>
             {credits}
           </span>
 
-          <ul className="mb-7 flex-1 space-y-3">
+          <ul className="mb-6 sm:mb-7 flex-1 space-y-3">
             {features.map((feature) => (
               <li key={feature} className="flex items-start gap-3">
                 <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${

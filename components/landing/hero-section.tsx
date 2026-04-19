@@ -36,21 +36,21 @@ export function HeroSection() {
   ]
 
   return (
-    <section className="relative pt-24 pb-14 sm:pb-20 lg:min-h-screen lg:flex lg:items-center overflow-hidden">
+    <section className="relative pt-20 sm:pt-24 pb-12 sm:pb-20 lg:min-h-screen lg:flex lg:items-center overflow-hidden">
       {/* Background decoration */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-rose-gold-100/50 via-rose-gold-50/30 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-cream-200/60 to-transparent rounded-full blur-3xl" />
       </div>
 
-      <div className="relative max-w-6xl mx-auto px-6 w-full">
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-16 items-center">
+      <div className="relative max-w-6xl mx-auto px-5 sm:px-6 w-full">
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8 sm:gap-10 lg:gap-16 items-center">
 
           {/* ── Text content ─────────────────────────────── */}
           <div>
             {/* Badge */}
             <motion.div {...fadeUp(0)}>
-              <span className="inline-flex items-center gap-2 bg-rose-gold-100 text-rose-gold-700 text-xs font-semibold px-4 py-1.5 rounded-full mb-6 tracking-wide uppercase">
+              <span className="inline-flex items-center gap-2 bg-rose-gold-100 text-rose-gold-700 text-[11px] sm:text-xs font-semibold px-3 sm:px-4 py-1.5 rounded-full mb-5 sm:mb-6 tracking-wide uppercase">
                 <Sparkles className="w-3.5 h-3.5" />
                 {t('badge')}
               </span>
@@ -59,7 +59,7 @@ export function HeroSection() {
             {/* Headline */}
             <motion.h1
               {...fadeUp(0.08)}
-              className="font-serif text-[clamp(1.75rem,5vw,3rem)] font-medium text-foreground leading-[1.15] tracking-tight mb-5 sm:mb-6"
+              className="font-serif text-[clamp(1.875rem,5vw,3rem)] font-medium text-foreground leading-[1.15] tracking-tight mb-4 sm:mb-6"
             >
               {t('headline')}{' '}
               <em className="text-primary not-italic">{t('headlineEm')}</em>
@@ -68,13 +68,13 @@ export function HeroSection() {
             {/* Subheadline */}
             <motion.p
               {...fadeUp(0.16)}
-              className="text-lg text-muted-foreground leading-relaxed mb-6 max-w-[520px]"
+              className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-5 sm:mb-6 max-w-[520px]"
             >
               {t('sub')}
             </motion.p>
 
             {/* Category pills */}
-            <motion.div {...fadeUp(0.2)} className="flex flex-wrap gap-2 mb-8" aria-label="Supported product categories">
+            <motion.div {...fadeUp(0.2)} className="flex flex-wrap gap-2 mb-6 sm:mb-8" aria-label="Supported product categories">
               {categoryPills.map(({ icon: Icon, label }) => (
                 <span
                   key={label}
@@ -87,18 +87,18 @@ export function HeroSection() {
             </motion.div>
 
             {/* Stats row */}
-            <motion.div {...fadeUp(0.24)} className="flex items-center gap-6 mb-8">
+            <motion.div {...fadeUp(0.24)} className="flex flex-wrap items-center gap-x-4 gap-y-3 sm:gap-6 mb-6 sm:mb-8">
               {[
                 { icon: Zap,   label: t('statSpeed'), sub: t('statSpeedSub') },
                 { icon: Clock, label: t('statSave'),  sub: t('statSaveSub')  },
               ].map(({ icon: Icon, label, sub }) => (
-                <div key={label} className="flex items-center gap-2.5">
+                <div key={label} className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-rose-gold-100 flex items-center justify-center flex-shrink-0">
                     <Icon className="w-4 h-4 text-rose-gold-600" />
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground leading-none">{label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground leading-none truncate">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>
                   </div>
                 </div>
               ))}
@@ -106,7 +106,7 @@ export function HeroSection() {
 
             {/* CTAs */}
             <motion.div {...fadeUp(0.3)} className="flex flex-col sm:flex-row gap-3">
-              <Link href="/register">
+              <Link href="/register" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow group transition-all duration-300 h-12 px-6 w-full sm:w-auto"
@@ -115,13 +115,15 @@ export function HeroSection() {
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
                 </Button>
               </Link>
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-cream-300 text-muted-foreground hover:bg-cream-200 hover:text-foreground h-12 px-6 w-full sm:w-auto"
-              >
-                {t('examples')}
-              </Button>
+              <Link href="/categories/apparel" className="w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-cream-300 text-muted-foreground hover:bg-cream-200 hover:text-foreground h-12 px-6 w-full sm:w-auto"
+                >
+                  {t('examples')}
+                </Button>
+              </Link>
             </motion.div>
 
             <motion.p {...fadeUp(0.38)} className="mt-4 text-xs text-muted-foreground">
@@ -134,7 +136,7 @@ export function HeroSection() {
             initial={{ opacity: 0, x: 48, scale: 0.96 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
-            className="w-full max-w-sm mx-auto lg:max-w-none"
+            className="w-full max-w-sm mx-auto lg:max-w-none mt-4 sm:mt-6 lg:mt-0"
           >
             <BeforeAfterCard />
           </motion.div>
@@ -143,15 +145,15 @@ export function HeroSection() {
         {/* ── Platform trust bar ─────────────────────────── */}
         <motion.div
           {...fadeUp(0.5)}
-          className="mt-14 sm:mt-20 flex flex-col items-center gap-4 text-center"
+          className="mt-16 sm:mt-20 flex flex-col items-center gap-3 sm:gap-4 text-center"
         >
-          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
             <Store className="w-3.5 h-3.5 text-rose-gold-500" />
             {t('platformsTitle')}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-semibold text-foreground/70">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-2 sm:gap-y-3 text-xs sm:text-sm font-semibold text-foreground/70">
             {platforms.map((p, i) => (
-              <span key={p} className="inline-flex items-center gap-6">
+              <span key={p} className="inline-flex items-center gap-3 sm:gap-6">
                 <span className="tracking-wide">{p}</span>
                 {i < platforms.length - 1 && (
                   <span aria-hidden className="h-1 w-1 rounded-full bg-rose-gold-300 hidden sm:inline-block" />

@@ -52,7 +52,7 @@ export function CategoriesSection() {
   const ActiveIcon = activeCategory.icon
 
   return (
-    <section className="py-24 px-6 bg-gradient-to-b from-[#FAF9F6] via-cream-50/40 to-[#FAF9F6]">
+    <section className="py-16 sm:py-24 px-5 sm:px-6 bg-gradient-to-b from-[#FAF9F6] via-cream-50/40 to-[#FAF9F6]">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div
@@ -60,7 +60,7 @@ export function CategoriesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.65, ease: EASE }}
-          className="text-center mb-12"
+          className="text-center mb-10 sm:mb-12"
         >
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500 mb-3">
             {t('overline')}
@@ -68,7 +68,7 @@ export function CategoriesSection() {
           <h2 className="font-serif text-[clamp(1.75rem,4vw,2.75rem)] font-medium text-foreground leading-tight tracking-tight mb-4 max-w-3xl mx-auto">
             {t('title')}
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             {t('subtitle')}
           </p>
         </motion.div>
@@ -79,7 +79,7 @@ export function CategoriesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.55, ease: EASE }}
-          className="flex flex-wrap justify-center gap-2 mb-10"
+          className="flex flex-wrap justify-center gap-2 mb-8 sm:mb-10"
           role="tablist"
           aria-label="Product category"
         >
@@ -93,7 +93,7 @@ export function CategoriesSection() {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActive(cat.key)}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                className={`inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 min-h-[44px] ${
                   isActive
                     ? 'bg-primary text-white shadow-glow'
                     : 'bg-white border border-cream-200 text-foreground/70 hover:text-foreground hover:border-rose-gold-200 hover:bg-cream-50'
@@ -118,21 +118,21 @@ export function CategoriesSection() {
           >
             <div aria-hidden className="absolute -inset-4 bg-gradient-to-br from-rose-gold-100/40 via-rose-gold-50/20 to-cream-200/30 rounded-[2rem] blur-2xl" />
 
-            <div className="relative grid lg:grid-cols-[1.05fr_0.95fr] gap-8 lg:gap-12 items-center bg-white rounded-3xl border border-cream-200 shadow-card p-8 sm:p-10 lg:p-12">
+            <div className="relative grid lg:grid-cols-[1.05fr_0.95fr] gap-7 sm:gap-8 lg:gap-12 items-center bg-white rounded-2xl sm:rounded-3xl border border-cream-200 shadow-card p-6 sm:p-10 lg:p-12">
               {/* Content */}
               <div>
-                <span className="inline-flex items-center gap-2 bg-rose-gold-50 text-rose-gold-700 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5">
+                <span className="inline-flex items-center gap-2 bg-rose-gold-50 text-rose-gold-700 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4 sm:mb-5">
                   <ActiveIcon className="w-3.5 h-3.5" />
                   {activeCategory.tag}
                 </span>
-                <h3 className="font-serif text-[clamp(1.65rem,3.2vw,2.25rem)] font-medium text-foreground leading-tight tracking-tight mb-4">
+                <h3 className="font-serif text-[clamp(1.5rem,3.2vw,2.25rem)] font-medium text-foreground leading-tight tracking-tight mb-3 sm:mb-4">
                   {activeCategory.title}
                 </h3>
-                <p className="text-base text-muted-foreground leading-relaxed mb-7 max-w-xl">
+                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 sm:mb-7 max-w-xl">
                   {activeCategory.desc}
                 </p>
 
-                <ul className="space-y-3 mb-8">
+                <ul className="space-y-3 mb-6 sm:mb-8">
                   {activeCategory.bullets.map((bullet) => (
                     <li key={bullet} className="flex items-start gap-3">
                       <span className="mt-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-rose-gold-100 flex-shrink-0">
@@ -143,21 +143,21 @@ export function CategoriesSection() {
                   ))}
                 </ul>
 
-                <div className="flex flex-wrap gap-3">
-                  <Link href="/register">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+                  <Link href="/register" className="w-full sm:w-auto">
                     <Button
                       size="lg"
-                      className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow group transition-all duration-300 h-12 px-7"
+                      className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow group transition-all duration-300 h-12 px-6 sm:px-7 w-full sm:w-auto"
                     >
                       {t('cta')}
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
                     </Button>
                   </Link>
-                  <Link href={`/categories/${active}`}>
+                  <Link href={`/categories/${active}`} className="w-full sm:w-auto">
                     <Button
                       variant="outline"
                       size="lg"
-                      className="h-12 border-cream-200 bg-white text-foreground hover:border-rose-gold-200 hover:text-rose-gold-700 px-7"
+                      className="h-12 border-cream-200 bg-white text-foreground hover:border-rose-gold-200 hover:text-rose-gold-700 px-6 sm:px-7 w-full sm:w-auto"
                     >
                       {t('learnMore')}
                     </Button>

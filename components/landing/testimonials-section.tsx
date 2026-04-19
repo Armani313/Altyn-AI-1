@@ -39,7 +39,7 @@ export function TestimonialsSection() {
   ]
 
   return (
-    <section className="py-24 px-6 bg-cream-50 border-y border-cream-200">
+    <section className="py-16 sm:py-24 px-5 sm:px-6 bg-cream-50 border-y border-cream-200">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div
@@ -47,7 +47,7 @@ export function TestimonialsSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.65, ease: EASE }}
-          className="text-center mb-14"
+          className="text-center mb-10 sm:mb-14"
         >
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-rose-gold-500 mb-3">
             {t('overline')}
@@ -58,7 +58,7 @@ export function TestimonialsSection() {
         </motion.div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
           {stories.map((story, i) => {
             const Icon = story.icon
             return (
@@ -70,7 +70,7 @@ export function TestimonialsSection() {
                 transition={{ duration: 0.6, delay: i * 0.1, ease: EASE }}
               >
                 <div
-                  className={`relative rounded-2xl border border-cream-200 p-7 h-full flex flex-col ${story.bg}`}
+                  className={`relative rounded-2xl border border-cream-200 p-5 sm:p-7 h-full flex flex-col ${story.bg}`}
                 >
                   {/* Category tag */}
                   <div className="flex items-center justify-between mb-4">

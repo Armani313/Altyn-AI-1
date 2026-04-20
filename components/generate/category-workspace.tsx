@@ -8,6 +8,7 @@ import { Header }         from '@/components/dashboard/header'
 import { UploadZone }     from '@/components/generate/upload-zone'
 import { ModelPickerModal } from '@/components/generate/model-picker-modal'
 import { ResultViewer } from '@/components/generate/result-viewer'
+import { trackAmplitudeEvent } from '@/lib/analytics/amplitude'
 import { createClient }   from '@/lib/supabase/client'
 import type { ProductType } from '@/lib/constants'
 import { useDashboardProfile } from '@/components/dashboard/dashboard-profile-provider'
@@ -62,6 +63,8 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const aspectRatio = workspace.aspectRatio
   const generationResults = workspace.results
   const userPrompt = workspace.userPrompt
+  const selectedTemplateCount = selectedTemplates.length
+  const hasCustomPrompt = userPrompt.trim().length > 0
   const creditsRemaining = localCreditsRemaining ?? providerCreditsRemaining
 
   useEffect(() => {
@@ -139,27 +142,39 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
 
   const handleGenerate = useCallback(async () => {
     setMobileStep(3)
+    void trackAmplitudeEvent('image_generation_requested', {
+      product_type: productType,
+      aspect_ratio: aspectRatio,
+      selected_template_count: selectedTemplateCount,
+      has_custom_prompt: hasCustomPrompt,
+      credits_remaining: creditsRemaining,
+    })
     await store.startGeneration(productType, creditsRemaining, {
       generationError: t('errorGeneration'),
       connectionError: t('errorConnection'),
       insufficientCredits: (needed, available) =>
         t('errorInsufficientCredits', { needed, available }),
     })
-  }, [creditsRemaining, productType, store, t])
+  }, [aspectRatio, creditsRemaining, hasCustomPrompt, productType, selectedTemplateCount, store, t])
 
   const handleRetryFailed = useCallback(async () => {
+    void trackAmplitudeEvent('image_generation_retry_requested', {
+      product_type: productType,
+      selected_template_count: selectedTemplateCount,
+      credits_remaining: creditsRemaining,
+    })
     await store.retryFailed(productType, creditsRemaining, {
       generationError: t('errorGeneration'),
       connectionError: t('errorConnection'),
       insufficientCredits: (needed, available) =>
         t('errorInsufficientCredits', { needed, available }),
     })
-  }, [creditsRemaining, productType, store, t])
+  }, [creditsRemaining, productType, selectedTemplateCount, store, t])
 
   const isAnyGenerating = generationResults.some((r) => r.status === 'generating')
-  const canGenerate     = !!previewUrl && !isAnyGenerating && selectedTemplates.length > 0
+  const canGenerate     = !!previewUrl && !isAnyGenerating && selectedTemplateCount > 0
   const step1Done = !!previewUrl
-  const step2Done = selectedTemplates.length > 0
+  const step2Done = selectedTemplateCount > 0
 
   const uploadLabel = t(`uploadLabel_${productType}` as Parameters<typeof t>[0])
   const uploadHint  = t(`uploadHint_${productType}` as Parameters<typeof t>[0])

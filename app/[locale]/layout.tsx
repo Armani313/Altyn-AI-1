@@ -3,6 +3,7 @@ import Script from 'next/script'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
+import { AmplitudeAnalytics } from '@/components/analytics/amplitude-analytics'
 import { ConditionalGoogleAnalytics } from '@/components/analytics/conditional-google-analytics'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://luminify.app'
@@ -163,6 +164,7 @@ export default async function LocaleLayout({
       <NextIntlClientProvider locale={locale} messages={messages}>
         {children}
       </NextIntlClientProvider>
+      <AmplitudeAnalytics />
       {process.env.NEXT_PUBLIC_GA_ID && (
         <ConditionalGoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
       )}

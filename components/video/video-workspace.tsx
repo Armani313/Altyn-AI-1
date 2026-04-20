@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Header } from '@/components/dashboard/header'
 import { UploadZone } from '@/components/generate/upload-zone'
 import { Button } from '@/components/ui/button'
+import { trackAmplitudeEvent } from '@/lib/analytics/amplitude'
 import { createClient } from '@/lib/supabase/client'
 import { useDashboardProfile } from '@/components/dashboard/dashboard-profile-provider'
 import { fetchVideoGenerationStatus } from '@/lib/video/poll-video-generation'
@@ -214,6 +215,16 @@ export function VideoWorkspace() {
   const handleGenerate = useCallback(async () => {
     if (!uploadedFile || !effectiveSelectedTemplateId || isGenerating) return
 
+    void trackAmplitudeEvent('video_generation_requested', {
+      template_id: effectiveSelectedTemplateId,
+      aspect_ratio: videoSettings.aspectRatio,
+      duration_seconds: videoSettings.durationSeconds,
+      resolution: videoSettings.resolution,
+      voice_mode: videoSettings.voiceMode,
+      credits_cost: creditsCost,
+      credits_remaining: creditsRemaining,
+    })
+
     const formData = new FormData()
     formData.append('image', uploadedFile)
     formData.append('template_id', effectiveSelectedTemplateId)
@@ -244,6 +255,10 @@ export function VideoWorkspace() {
       if (!response.ok || !data.generationId) {
         setGenerationStatus('failed')
         setGenerationError(data.error ?? t('errorGeneration'))
+        void trackAmplitudeEvent('video_generation_failed', {
+          template_id: effectiveSelectedTemplateId,
+          reason: data.error ?? 'generation_error',
+        })
         return
       }
 
@@ -258,8 +273,12 @@ export function VideoWorkspace() {
     } catch {
       setGenerationStatus('failed')
       setGenerationError(t('errorConnection'))
+      void trackAmplitudeEvent('video_generation_failed', {
+        template_id: effectiveSelectedTemplateId,
+        reason: 'connection_error',
+      })
     }
-  }, [effectiveSelectedTemplateId, isGenerating, pollGeneration, setDashboardCreditsRemaining, t, uploadedFile, videoSettings])
+  }, [creditsCost, creditsRemaining, effectiveSelectedTemplateId, isGenerating, pollGeneration, setDashboardCreditsRemaining, t, uploadedFile, videoSettings])
 
   const handleRetry = useCallback(() => {
     void handleGenerate()
@@ -268,6 +287,7 @@ export function VideoWorkspace() {
   const canGenerate = !!uploadedFile && !!effectiveSelectedTemplateId && !isGenerating
 
   const handleSelectTemplate = useCallback((id: string) => {
+    void trackAmplitudeEvent('video_template_selected', { template_id: id })
     setSelectedTemplateId(id)
     setGenerationError(null)
     setGenerationStatus(null)

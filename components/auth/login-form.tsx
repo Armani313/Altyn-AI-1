@@ -10,6 +10,7 @@ import { Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { trackAmplitudeEvent } from '@/lib/analytics/amplitude'
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema, type LoginInput } from '@/lib/validations'
 
@@ -23,6 +24,7 @@ export function LoginForm() {
   const handleGoogleLogin = async () => {
     setServerError('')
     setGoogleLoading(true)
+    void trackAmplitudeEvent('login_google_clicked', { provider: 'google' })
     const supabase = createClient()
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -33,6 +35,10 @@ export function LoginForm() {
     })
 
     if (error) {
+      void trackAmplitudeEvent('login_failed', {
+        method: 'google',
+        reason: 'oauth_error',
+      })
       setServerError(t('errorGeneric'))
       setGoogleLoading(false)
     }
@@ -48,6 +54,7 @@ export function LoginForm() {
 
   const onSubmit = async (data: LoginInput) => {
     setServerError('')
+    void trackAmplitudeEvent('login_submitted', { method: 'password' })
     const supabase = createClient()
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -56,6 +63,12 @@ export function LoginForm() {
     })
 
     if (error) {
+      void trackAmplitudeEvent('login_failed', {
+        method: 'password',
+        reason: error.message.includes('Invalid login credentials')
+          ? 'invalid_credentials'
+          : 'unknown',
+      })
       setServerError(
         error.message.includes('Invalid login credentials')
           ? t('errorInvalidCredentials')
@@ -70,6 +83,7 @@ export function LoginForm() {
       console.warn('[Auth] Trial claim skipped after login:', claimError)
     }
 
+    void trackAmplitudeEvent('login_succeeded', { method: 'password' })
     router.push('/dashboard')
     router.refresh()
   }

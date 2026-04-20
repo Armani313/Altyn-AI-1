@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Clock, Zap, ShoppingBag, Store, Gem, Flower2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { trackAmplitudeEvent } from '@/lib/analytics/amplitude'
 import { EASE } from '@/lib/motion'
 
 const BeforeAfterCard = dynamic(() => Promise.resolve(BeforeAfterCardInner), { ssr: false })
@@ -106,7 +107,16 @@ export function HeroSection() {
 
             {/* CTAs */}
             <motion.div {...fadeUp(0.3)} className="flex flex-col sm:flex-row gap-3">
-              <Link href="/register" className="w-full sm:w-auto">
+              <Link
+                href="/register"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  void trackAmplitudeEvent('landing_cta_clicked', {
+                    cta: 'start_free',
+                    location: 'hero',
+                  })
+                }}
+              >
                 <Button
                   size="lg"
                   className="bg-primary hover:bg-rose-gold-600 text-white shadow-soft hover:shadow-glow group transition-all duration-300 h-12 px-6 w-full sm:w-auto"
@@ -115,7 +125,16 @@ export function HeroSection() {
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
                 </Button>
               </Link>
-              <Link href="/categories/apparel" className="w-full sm:w-auto">
+              <Link
+                href="/categories/apparel"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  void trackAmplitudeEvent('landing_examples_clicked', {
+                    location: 'hero',
+                    category: 'apparel',
+                  })
+                }}
+              >
                 <Button
                   variant="outline"
                   size="lg"

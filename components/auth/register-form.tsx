@@ -11,6 +11,7 @@ import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { trackAmplitudeEvent } from '@/lib/analytics/amplitude'
 import { createClient } from '@/lib/supabase/client'
 import { registerSchema, type RegisterInput } from '@/lib/validations'
 
@@ -26,6 +27,7 @@ export function RegisterForm() {
   const handleGoogleRegister = async () => {
     setServerError('')
     setGoogleLoading(true)
+    void trackAmplitudeEvent('register_google_clicked', { provider: 'google' })
     const supabase = createClient()
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -36,6 +38,10 @@ export function RegisterForm() {
     })
 
     if (error) {
+      void trackAmplitudeEvent('register_failed', {
+        method: 'google',
+        reason: 'oauth_error',
+      })
       setServerError(t('errorGeneric'))
       setGoogleLoading(false)
     }
@@ -51,6 +57,7 @@ export function RegisterForm() {
 
   const onSubmit = async (data: RegisterInput) => {
     setServerError('')
+    void trackAmplitudeEvent('register_submitted', { method: 'password' })
     const supabase = createClient()
 
     const { data: authData, error } = await supabase.auth.signUp({
@@ -59,6 +66,12 @@ export function RegisterForm() {
     })
 
     if (error) {
+      void trackAmplitudeEvent('register_failed', {
+        method: 'password',
+        reason: error.message.includes('already registered')
+          ? 'already_registered'
+          : 'unknown',
+      })
       setServerError(
         error.message.includes('already registered')
           ? t('errorAlreadyRegistered')
@@ -71,6 +84,10 @@ export function RegisterForm() {
       // Email confirmation disabled — session ready, redirect immediately
       setHasSession(true)
       setSuccess(true)
+      void trackAmplitudeEvent('register_succeeded', {
+        method: 'password',
+        confirmation_required: false,
+      })
 
       try {
         await fetch('/api/auth/claim-trial', { method: 'POST' })
@@ -86,6 +103,10 @@ export function RegisterForm() {
       // Email confirmation enabled — show "check your email" message
       setHasSession(false)
       setSuccess(true)
+      void trackAmplitudeEvent('register_succeeded', {
+        method: 'password',
+        confirmation_required: true,
+      })
     }
   }
 

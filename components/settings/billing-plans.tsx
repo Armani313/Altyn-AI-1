@@ -7,6 +7,7 @@ import { Check, Zap, Crown, Sparkles, AlertCircle, ExternalLink, Building2, Lock
 import { Button } from '@/components/ui/button'
 import { PolarEmbedCheckout } from '@polar-sh/checkout/embed'
 import type { Plan } from '@/types/database.types'
+import { trackAmplitudeEvent } from '@/lib/analytics/amplitude'
 import { CREDIT_PACK_META, CREDIT_PACK_KEYS, PLAN_META, type CreditPackKey } from '@/lib/config/plans'
 
 interface BillingPlansProps {
@@ -91,6 +92,12 @@ export function BillingPlans({
     setError('')
     setLoading(loadingKey)
 
+    const eventProperties = payload.plan
+      ? { checkout_kind: 'plan', sku: payload.plan }
+      : { checkout_kind: 'credit_pack', sku: payload.pack ?? String(loadingKey) }
+
+    void trackAmplitudeEvent('checkout_started', eventProperties)
+
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
@@ -114,6 +121,7 @@ export function BillingPlans({
       const instance = await checkout
 
       instance.addEventListener('success', () => {
+        void trackAmplitudeEvent('checkout_succeeded', eventProperties)
         router.push(`/${locale}/settings/billing?status=success`)
       })
 
@@ -123,6 +131,10 @@ export function BillingPlans({
       })
     } catch (err) {
       console.error('Checkout error:', err)
+      void trackAmplitudeEvent('checkout_failed', {
+        ...eventProperties,
+        error: err instanceof Error ? err.message : 'unknown_error',
+      })
       setError(err instanceof Error ? err.message : t('checkoutError'))
       setLoading(null)
     }
@@ -183,7 +195,12 @@ export function BillingPlans({
             {currentPlan !== 'free' && (
               <button
                 type="button"
-                onClick={() => window.location.assign('/api/portal')}
+                onClick={() => {
+                  void trackAmplitudeEvent('billing_portal_opened', {
+                    current_plan: currentPlan,
+                  })
+                  window.location.assign('/api/portal')
+                }}
                 className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline underline-offset-2 mt-2"
               >
                 {t('manageSubscription')}

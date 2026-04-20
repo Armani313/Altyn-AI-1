@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { Playfair_Display, Inter } from 'next/font/google'
 import { routing } from '@/i18n/routing'
+import { WebMcpProvider } from '@/components/agent-ready/webmcp-provider'
 import './globals.css'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://luminify.app'
@@ -39,7 +40,10 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       className={`${playfair.variable} ${inter.variable}`}
     >
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <WebMcpProvider />
+        {children}
+      </body>
     </html>
   )
 }

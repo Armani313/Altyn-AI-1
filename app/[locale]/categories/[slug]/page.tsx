@@ -6,6 +6,12 @@ import {
   ShoppingBag,
   Flower2,
   Gem,
+  Shirt,
+  Glasses,
+  Feather,
+  Scissors,
+  Watch,
+  Briefcase,
   Check,
   Sparkles,
   ArrowRight,
@@ -28,26 +34,74 @@ import {
   type SeoLocale,
 } from '@/lib/seo'
 
-type CategorySlug = 'apparel' | 'cosmetics' | 'jewelry'
+type CategorySlug =
+  | 'apparel'
+  | 'cosmetics'
+  | 'jewelry'
+  | 'outerwear'
+  | 'headwear'
+  | 'scarves'
+  | 'bottomwear'
+  | 'watches'
+  | 'bags'
 
-const CATEGORY_SLUGS: CategorySlug[] = ['apparel', 'cosmetics', 'jewelry']
+const CATEGORY_SLUGS: CategorySlug[] = [
+  'apparel',
+  'cosmetics',
+  'jewelry',
+  'outerwear',
+  'headwear',
+  'scarves',
+  'bottomwear',
+  'watches',
+  'bags',
+]
 
 const CATEGORY_ICONS: Record<CategorySlug, typeof ShoppingBag> = {
   apparel: ShoppingBag,
   cosmetics: Flower2,
   jewelry: Gem,
+  outerwear: Shirt,
+  headwear: Glasses,
+  scarves: Feather,
+  bottomwear: Scissors,
+  watches: Watch,
+  bags: Briefcase,
 }
 
 const CATEGORY_PALETTE: Record<CategorySlug, { from: string; to: string; emoji: string; accent: string }> = {
   apparel: { from: 'from-rose-gold-100', to: 'to-rose-gold-200', emoji: '👗', accent: 'bg-rose-gold-400' },
   cosmetics: { from: 'from-rose-gold-50', to: 'to-cream-200', emoji: '💄', accent: 'bg-rose-gold-300' },
   jewelry: { from: 'from-cream-100', to: 'to-rose-gold-100', emoji: '💍', accent: 'bg-rose-gold-500' },
+  outerwear: { from: 'from-rose-gold-100', to: 'to-cream-200', emoji: '🧥', accent: 'bg-rose-gold-400' },
+  headwear: { from: 'from-cream-50', to: 'to-rose-gold-100', emoji: '🕶️', accent: 'bg-rose-gold-300' },
+  scarves: { from: 'from-cream-50', to: 'to-rose-gold-50', emoji: '🧣', accent: 'bg-rose-gold-300' },
+  bottomwear: { from: 'from-rose-gold-50', to: 'to-cream-100', emoji: '👖', accent: 'bg-rose-gold-400' },
+  watches: { from: 'from-cream-200', to: 'to-rose-gold-100', emoji: '⌚', accent: 'bg-rose-gold-500' },
+  bags: { from: 'from-rose-gold-100', to: 'to-cream-100', emoji: '👜', accent: 'bg-rose-gold-400' },
 }
 
-const SEO_KEY: Record<CategorySlug, 'category-apparel' | 'category-cosmetics' | 'category-jewelry'> = {
+const SEO_KEY: Record<
+  CategorySlug,
+  | 'category-apparel'
+  | 'category-cosmetics'
+  | 'category-jewelry'
+  | 'category-outerwear'
+  | 'category-headwear'
+  | 'category-scarves'
+  | 'category-bottomwear'
+  | 'category-watches'
+  | 'category-bags'
+> = {
   apparel: 'category-apparel',
   cosmetics: 'category-cosmetics',
   jewelry: 'category-jewelry',
+  outerwear: 'category-outerwear',
+  headwear: 'category-headwear',
+  scarves: 'category-scarves',
+  bottomwear: 'category-bottomwear',
+  watches: 'category-watches',
+  bags: 'category-bags',
 }
 
 interface CategoryCopy {
@@ -498,7 +552,19 @@ export default async function CategoryPage({
           ? 'DTC apparel and fashion brands'
           : slug === 'cosmetics'
             ? 'Indie beauty and cosmetics brands'
-            : 'Fine, demi-fine, and fashion jewelry brands',
+            : slug === 'outerwear'
+              ? 'DTC outerwear, coats, and seasonal apparel brands'
+              : slug === 'headwear'
+                ? 'DTC eyewear, hats, and hair accessories brands'
+                : slug === 'scarves'
+                  ? 'Silk scarf, shawl, and wrap brands'
+                  : slug === 'bottomwear'
+                    ? 'DTC denim, skirts, pants, and activewear brands'
+                    : slug === 'watches'
+                      ? 'Watch brands and marketplaces'
+                      : slug === 'bags'
+                        ? 'Handbag, clutch, and backpack brands'
+                        : 'Fine, demi-fine, and fashion jewelry brands',
     },
     ...(testimonials.length > 0 && {
       aggregateRating: {

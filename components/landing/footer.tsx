@@ -17,7 +17,7 @@ export function Footer() {
     { label: t('catApparel'), href: '/categories/apparel' },
     { label: t('catCosmetics'), href: '/categories/cosmetics' },
     { label: t('catJewelry'), href: '/categories/jewelry' },
-    { label: t('catBags'), href: '/categories/apparel' },
+    { label: t('catBags'), href: '/categories/bags' },
     { label: t('catMarketplaces'), href: '/categories/apparel' },
   ]
 

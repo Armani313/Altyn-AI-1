@@ -28,6 +28,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/categories/apparel', changeFrequency: 'weekly', priority: 0.9, localized: true },
     { path: '/categories/cosmetics', changeFrequency: 'weekly', priority: 0.85, localized: true },
     { path: '/categories/jewelry', changeFrequency: 'weekly', priority: 0.85, localized: true },
+    { path: '/categories/outerwear', changeFrequency: 'weekly', priority: 0.8, localized: true },
+    { path: '/categories/headwear', changeFrequency: 'weekly', priority: 0.8, localized: true },
+    { path: '/categories/scarves', changeFrequency: 'weekly', priority: 0.8, localized: true },
+    { path: '/categories/bottomwear', changeFrequency: 'weekly', priority: 0.8, localized: true },
+    { path: '/categories/watches', changeFrequency: 'weekly', priority: 0.8, localized: true },
+    { path: '/categories/bags', changeFrequency: 'weekly', priority: 0.8, localized: true },
     { path: '/privacy', changeFrequency: 'yearly', priority: 0.3, localized: false },
     { path: '/terms', changeFrequency: 'yearly', priority: 0.3, localized: false },
   ]

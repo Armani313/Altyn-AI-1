@@ -34,6 +34,43 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.VPS_PORT }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
+      - name: Pre-flight cleanup on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            echo "=== Disk before cleanup ==="
+            df -h /
+
+            # Build cache is the main offender — accumulates ~18GB between cleanups
+            docker builder prune -af || true
+            # Stopped containers and dangling images (keeps tagged rollback image)
+            docker container prune -f || true
+            docker image prune -f || true
+            # Truncate runaway container logs
+            for cid in $(docker ps -q); do
+              logpath=$(docker inspect --format='{{.LogPath}}' "$cid" 2>/dev/null || true)
+              if [ -n "$logpath" ] && [ -f "$logpath" ]; then
+                sudo truncate -s 0 "$logpath" || true
+              fi
+            done
+            # Journal logs cap
+            sudo journalctl --vacuum-size=200M || true
+
+            echo "=== Disk after cleanup ==="
+            df -h /
+
+            # Hard guard: abort early if still under 5GB free
+            avail_kb=$(df -P / | awk 'NR==2{print $4}')
+            if [ "$avail_kb" -lt 5242880 ]; then
+              echo "ERROR: less than 5GB free after cleanup — aborting before rsync"
+              exit 1
+            fi
+
       - name: Sync files to server
         run: |
           rsync -azv --delete \

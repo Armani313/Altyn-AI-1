@@ -3,6 +3,7 @@ import {
   applyAgentHeaders,
   getApiCatalogDocument,
   getAppUrl,
+  getRequestOrigin,
 } from '@/lib/agent-ready'
 
 export const runtime = 'nodejs'
@@ -25,7 +26,7 @@ function buildHeaders(origin = getAppUrl()) {
 }
 
 export async function GET(request: Request) {
-  const origin = request.url ? new URL(request.url).origin : getAppUrl()
+  const origin = getRequestOrigin(request)
   const headers = buildHeaders(origin)
 
   return new Response(JSON.stringify(getApiCatalogDocument(origin), null, 2), {
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function HEAD(request: Request) {
-  const origin = request.url ? new URL(request.url).origin : getAppUrl()
+  const origin = getRequestOrigin(request)
   return new Response(null, {
     status: 200,
     headers: buildHeaders(origin),
@@ -43,7 +44,7 @@ export async function HEAD(request: Request) {
 }
 
 export async function OPTIONS(request: Request) {
-  const origin = request.url ? new URL(request.url).origin : getAppUrl()
+  const origin = getRequestOrigin(request)
   return new Response(null, {
     status: 204,
     headers: buildHeaders(origin),

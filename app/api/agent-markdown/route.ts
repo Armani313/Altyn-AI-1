@@ -29,9 +29,13 @@ export async function GET(request: Request) {
       headers: buildMarkdownHeaders(tokens, sourceUrl.origin),
     })
   } catch (error) {
+    const message = error instanceof Error && error.message
+      ? error.message
+      : 'Unable to generate markdown.'
+    console.error('[agent-markdown] Failed to generate markdown:', error)
     return Response.json(
-      { error: error instanceof Error ? error.message : 'Unable to generate markdown.' },
-      { status: 400 }
+      { error: message },
+      { status: 502 }
     )
   }
 }

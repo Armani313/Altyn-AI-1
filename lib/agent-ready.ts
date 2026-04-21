@@ -186,6 +186,38 @@ export function getAppUrl() {
   return trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL?.trim() || DEFAULT_APP_URL)
 }
 
+function firstHeaderValue(headers: Headers, name: string) {
+  const value = headers.get(name)?.split(',')[0]?.trim()
+  return value || null
+}
+
+export function getRequestOrigin(request: Request) {
+  const forwardedHost = firstHeaderValue(request.headers, 'x-forwarded-host')
+  const host = forwardedHost || firstHeaderValue(request.headers, 'host')
+  const forwardedProto = firstHeaderValue(request.headers, 'x-forwarded-proto')
+
+  if (host) {
+    const protocol = (forwardedProto || 'https').replace(/:$/, '')
+    const hostname = host.toLowerCase()
+    const isLoopback = /^(?:0\.0\.0\.0|127\.0\.0\.1|localhost)(?::\d+)?$/.test(hostname)
+
+    if (!isLoopback) {
+      return `${protocol}://${host}`
+    }
+  }
+
+  try {
+    const fromUrl = new URL(request.url).origin
+    if (!/^https?:\/\/(?:0\.0\.0\.0|127\.0\.0\.1|localhost)(?::\d+)?$/.test(fromUrl)) {
+      return fromUrl
+    }
+  } catch {
+    // Fall through to getAppUrl fallback.
+  }
+
+  return getAppUrl()
+}
+
 export function getAgentDiscoveryLinkHeader(origin = getAppUrl()) {
   return `<${toAbsoluteUrl(origin, '/.well-known/api-catalog')}>; rel="api-catalog"; type="application/linkset+json"; profile="${API_CATALOG_PROFILE}"`
 }

@@ -1,10 +1,10 @@
-import { applyAgentHeaders } from '@/lib/agent-ready'
+import { applyAgentHeaders, getRequestOrigin } from '@/lib/agent-ready'
 import { getAgentSkillsIndex } from '@/lib/agent-skills'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
-  const origin = new URL(request.url).origin
+  const origin = getRequestOrigin(request)
   const headers = new Headers()
 
   applyAgentHeaders(headers, {

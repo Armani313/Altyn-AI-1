@@ -1,8 +1,6 @@
-import http from 'node:http'
-import https from 'node:https'
 import { load } from 'cheerio'
 import { NodeHtmlMarkdown } from 'node-html-markdown'
-import { applyAgentHeaders } from '@/lib/agent-ready'
+import { applyAgentHeaders, getRequestOrigin as getOrigin } from '@/lib/agent-ready'
 
 const markdownConverter = new NodeHtmlMarkdown({
   bulletMarker: '-',
@@ -11,30 +9,10 @@ const markdownConverter = new NodeHtmlMarkdown({
   strongDelimiter: '**',
 })
 
-function getForwardedHeaderValue(headers: Headers, name: string) {
-  const value = headers.get(name)?.split(',')[0]?.trim()
-  return value || null
-}
+const HTML_FETCH_TIMEOUT_MS = 15000
 
 export function getRequestOrigin(request: Request) {
-  const requestUrl = new URL(request.url)
-  const forwardedProto = getForwardedHeaderValue(request.headers, 'x-forwarded-proto')
-  const forwardedHost = getForwardedHeaderValue(request.headers, 'x-forwarded-host')
-  const forwardedPort = getForwardedHeaderValue(request.headers, 'x-forwarded-port')
-  const host = forwardedHost || getForwardedHeaderValue(request.headers, 'host')
-
-  if (!host) {
-    return requestUrl.origin
-  }
-
-  const protocol = (forwardedProto || requestUrl.protocol || 'https:').replace(/:$/, '')
-  const hasExplicitPort = host.includes(':')
-  const shouldAppendPort =
-    Boolean(forwardedPort)
-    && !hasExplicitPort
-    && !((protocol === 'http' && forwardedPort === '80') || (protocol === 'https' && forwardedPort === '443'))
-
-  return `${protocol}://${shouldAppendPort ? `${host}:${forwardedPort}` : host}`
+  return getOrigin(request)
 }
 
 function normalizeMarkdown(markdown: string) {
@@ -154,51 +132,6 @@ function extractMainHtml(html: string, baseUrl: string) {
   }
 }
 
-async function requestHtmlSource(sourceUrl: URL, headers: Record<string, string>) {
-  const client = sourceUrl.protocol === 'https:' ? https : http
-
-  return new Promise<{ response: Response, setCookieHeaders: string[] }>((resolve, reject) => {
-    const upstreamRequest = client.request(
-      sourceUrl,
-      {
-        method: 'GET',
-        headers,
-      },
-      (upstreamResponse) => {
-        const chunks: Buffer[] = []
-
-        upstreamResponse.on('data', (chunk) => {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-        })
-        upstreamResponse.on('error', reject)
-        upstreamResponse.on('end', () => {
-          const headers = new Headers()
-          const setCookieHeaders = upstreamResponse.headers['set-cookie'] ?? []
-
-          Object.entries(upstreamResponse.headers).forEach(([name, value]) => {
-            if (!value) return
-
-            headers.set(name, Array.isArray(value) ? value.join(', ') : value)
-          })
-
-          resolve(
-            {
-              response: new Response(Buffer.concat(chunks), {
-                status: upstreamResponse.statusCode ?? 500,
-                headers,
-              }),
-              setCookieHeaders: Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders],
-            }
-          )
-        })
-      }
-    )
-
-    upstreamRequest.on('error', reject)
-    upstreamRequest.end()
-  })
-}
-
 async function fetchHtmlSource(
   request: Request,
   sourceUrl: URL,
@@ -208,6 +141,7 @@ async function fetchHtmlSource(
   const languageHeader = request.headers.get('accept-language')
   const requestHeaders: Record<string, string> = {
     accept: 'text/html,application/xhtml+xml',
+    'user-agent': 'LuminifyAgentMarkdown/1.0 (+https://luminify.app)',
     'x-agent-markdown-source': '1',
   }
 
@@ -220,8 +154,30 @@ async function fetchHtmlSource(
     requestHeaders['accept-language'] = languageHeader
   }
 
-  const { response, setCookieHeaders } = await requestHtmlSource(sourceUrl, requestHeaders)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), HTML_FETCH_TIMEOUT_MS)
+
+  let response: Response
+  try {
+    response = await fetch(sourceUrl, {
+      method: 'GET',
+      headers: requestHeaders,
+      redirect: 'manual',
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Timed out fetching HTML source after ${HTML_FETCH_TIMEOUT_MS}ms (${sourceUrl.toString()}).`)
+    }
+    const message = error instanceof Error && error.message ? error.message : 'network error'
+    throw new Error(`Unable to fetch HTML source (${message}) for ${sourceUrl.toString()}.`)
+  } finally {
+    clearTimeout(timer)
+  }
+
+  const setCookieHeaders = response.headers.getSetCookie?.() ?? []
   mergeSetCookieHeaders(cookieJar, setCookieHeaders)
+
   const isRedirect = response.status >= 300 && response.status < 400
   const location = response.headers.get('location')
 

@@ -2,6 +2,7 @@
 
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { usePathname } from 'next/navigation'
+import Script from 'next/script'
 
 const ONNX_PAGES = new Set([
   '/editor',
@@ -25,5 +26,15 @@ export function ConditionalGoogleAnalytics({ gaId }: { gaId: string }) {
     return null
   }
 
-  return <GoogleAnalytics gaId={gaId} />
+  return (
+    <>
+      <Script id="ga-disable-signals" strategy="afterInteractive">
+        {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('set', 'allow_google_signals', false);
+gtag('set', 'allow_ad_personalization_signals', false);`}
+      </Script>
+      <GoogleAnalytics gaId={gaId} />
+    </>
+  )
 }

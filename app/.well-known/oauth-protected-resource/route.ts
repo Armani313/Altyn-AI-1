@@ -1,9 +1,9 @@
-import { applyAgentHeaders, getProtectedResourceMetadata } from '@/lib/agent-ready'
+import { applyAgentHeaders, getProtectedResourceMetadata, getRequestOrigin } from '@/lib/agent-ready'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
-  const origin = new URL(request.url).origin
+  const origin = getRequestOrigin(request)
   const headers = new Headers()
 
   applyAgentHeaders(headers, {

@@ -50,3 +50,23 @@ export async function trackAmplitudeEvent(
     console.error(`[Amplitude] Failed to track ${eventName}`, error)
   }
 }
+
+export async function setAmplitudeUser(userId: string) {
+  if (typeof window === 'undefined') return
+  try {
+    await initAmplitude()
+    amplitude.setUserId(userId)
+  } catch (error) {
+    console.error('[Amplitude] Failed to set user id', error)
+  }
+}
+
+export async function resetAmplitudeUser() {
+  if (typeof window === 'undefined') return
+  try {
+    await initAmplitude()
+    amplitude.reset()
+  } catch (error) {
+    console.error('[Amplitude] Failed to reset user', error)
+  }
+}

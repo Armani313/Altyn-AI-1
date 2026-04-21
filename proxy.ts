@@ -18,12 +18,12 @@ function buildContentSecurityPolicy() {
   return [
     "default-src 'self'",
     isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com"
-      : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com",
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com https://cdn.amplitude.com"
+      : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://static.cloudflareinsights.com https://cdn.amplitude.com",
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https://*.supabase.co https://www.google-analytics.com https://www.googletagmanager.com${isDev ? ` ${devLocalImgSrc}` : ''}`,
     "font-src 'self' https://fonts.gstatic.com",
-    `connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://region1.google-analytics.com${isDev ? ` ${devLocalConnectSrc}` : ''}`,
+    `connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://region1.google-analytics.com https://*.amplitude.com wss://*.amplitude.com${isDev ? ` ${devLocalConnectSrc}` : ''}`,
     "frame-src https://polar.sh https://*.polar.sh",
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",

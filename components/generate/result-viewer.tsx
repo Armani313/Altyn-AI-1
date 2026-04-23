@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2, ChevronDown, Wand2, ScanLine } from 'lucide-react'
+import { Download, Sparkles, ImageIcon, RefreshCw, Loader2, AlertCircle, Zap, Maximize2, ChevronDown, Wand2, ScanLine, FileText, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import { useRouter } from '@/i18n/navigation'
@@ -10,6 +10,13 @@ import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex, isMacroShotId } 
 import { saveUpscaleSourceImage } from '@/lib/tools/upscale-transfer'
 
 type AspectRatio = '1:1' | '9:16'
+type MarketplaceCopyVariantId = 'short' | 'detailed' | 'bullets'
+
+interface MarketplaceCopyState {
+  status: 'idle' | 'generating' | 'done' | 'error'
+  variants: Record<MarketplaceCopyVariantId, string> | null
+  error: string | null
+}
 
 export interface GenerationResult {
   modelId:   string
@@ -29,6 +36,8 @@ interface ResultViewerProps {
   customModelUrls?:    string[]
   userPrompt:          string
   onUserPromptChange:  (v: string) => void
+  marketplaceCopy:     MarketplaceCopyState
+  onRegenerateMarketplaceCopy: () => void
   selectedCount?:      number
 }
 
@@ -168,6 +177,166 @@ function ResultCard({
   )
 }
 
+function MarketplaceCopyPanel({
+  copy,
+  onRegenerate,
+  canRegenerate,
+}: {
+  copy: MarketplaceCopyState
+  onRegenerate: () => void
+  canRegenerate: boolean
+}) {
+  const t = useTranslations('resultViewer')
+  const [selectedVariant, setSelectedVariant] = useState<MarketplaceCopyVariantId>('short')
+  const [copied, setCopied] = useState(false)
+  const activeText = copy.variants?.[selectedVariant] ?? ''
+  const hasText = !!copy.variants
+
+  if (copy.status === 'idle') return null
+
+  const variants: Array<{ id: MarketplaceCopyVariantId; label: string }> = [
+    { id: 'short', label: t('copyVariantShort') },
+    { id: 'detailed', label: t('copyVariantDetailed') },
+    { id: 'bullets', label: t('copyVariantBullets') },
+  ]
+
+  const handleCopy = async () => {
+    if (!activeText) return
+    try {
+      await navigator.clipboard.writeText(activeText)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-cream-200 bg-white overflow-hidden">
+      <div className="flex items-start justify-between gap-3 px-3.5 py-3 border-b border-cream-100">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-rose-gold-500 flex-shrink-0" />
+            <p className="text-sm font-semibold text-foreground">
+              {t('marketplaceCopyTitle')}
+            </p>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t('marketplaceCopySubtitle')}
+          </p>
+        </div>
+
+        <span className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold whitespace-nowrap ${
+          copy.status === 'done'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
+            : copy.status === 'error'
+              ? 'border-red-200 bg-red-50 text-red-600'
+              : 'border-blue-200 bg-blue-50 text-blue-600'
+        }`}>
+          {copy.status === 'generating' && <Loader2 className="w-3 h-3 animate-spin" />}
+          {copy.status === 'done'
+            ? t('marketplaceCopyReady')
+            : copy.status === 'error'
+              ? t('marketplaceCopyFailed')
+              : t('marketplaceCopyGenerating')}
+        </span>
+      </div>
+
+      <div className="p-3.5 space-y-3">
+        {copy.status === 'generating' && !hasText && (
+          <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+            <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+            {t('marketplaceCopyWait')}
+          </div>
+        )}
+
+        {copy.status === 'error' && copy.error && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <AlertCircle className="mt-0.5 w-3.5 h-3.5 flex-shrink-0" />
+            <p>{copy.error}</p>
+          </div>
+        )}
+
+        {hasText && (
+          <>
+            <div className="flex gap-1 p-1 bg-cream-100 rounded-xl">
+              {variants.map((variant) => {
+                const active = selectedVariant === variant.id
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    onClick={() => setSelectedVariant(variant.id)}
+                    className={`flex-1 min-h-[40px] rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-colors ${
+                      active
+                        ? 'bg-white text-foreground shadow-soft'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {variant.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <textarea
+              value={activeText}
+              readOnly
+              rows={8}
+              className="w-full resize-y rounded-lg border border-cream-200 bg-cream-50 px-3 py-2 text-sm leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-rose-gold-300"
+            />
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                onClick={handleCopy}
+                disabled={!activeText}
+                className="flex-1 h-10 bg-primary hover:bg-rose-gold-600 text-white"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 mr-1.5" />
+                    {t('marketplaceCopyCopied')}
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 mr-1.5" />
+                    {t('marketplaceCopyCopy')}
+                  </>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onRegenerate}
+                disabled={copy.status === 'generating' || !canRegenerate}
+                className="h-10 border-cream-200"
+              >
+                <RefreshCw className="w-4 h-4 mr-1.5" />
+                {t('marketplaceCopyRegenerate')}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {!hasText && copy.status === 'error' && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRegenerate}
+            disabled={!canRegenerate}
+            className="w-full h-10 border-cream-200"
+          >
+            <RefreshCw className="w-4 h-4 mr-1.5" />
+            {t('marketplaceCopyRetry')}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ── Main ResultViewer ───────────────────────────────────────────────────── */
 export function ResultViewer({
   results,
@@ -180,6 +349,8 @@ export function ResultViewer({
   customModelUrls,
   userPrompt,
   onUserPromptChange,
+  marketplaceCopy,
+  onRegenerateMarketplaceCopy,
   selectedCount = 0,
 }: ResultViewerProps) {
   const t = useTranslations('resultViewer')
@@ -196,9 +367,25 @@ export function ResultViewer({
   const isAnyGenerating  = results.some((r) => r.status === 'generating')
   const hasResults       = results.length > 0
   const failedCount      = results.filter((r) => r.status === 'error').length
-  const requiredCredits  = Math.max(1, selectedCount)
+  const requiredCredits  = selectedCount > 0 ? selectedCount + 1 : 1
   const enoughCredits    = creditsRemaining == null || creditsRemaining >= requiredCredits
+  const enoughCopyCredits = creditsRemaining == null || creditsRemaining >= 1
   const currentRatio     = RATIOS.find((r) => r.id === aspectRatio)!
+  const orderedResults   = useMemo(() => {
+    const statusOrder: Record<GenerationResult['status'], number> = {
+      done: 0,
+      generating: 1,
+      error: 2,
+    }
+
+    return results
+      .map((result, index) => ({ result, index }))
+      .sort((a, b) => {
+        const statusDelta = statusOrder[a.result.status] - statusOrder[b.result.status]
+        return statusDelta !== 0 ? statusDelta : a.index - b.index
+      })
+      .map(({ result }) => result)
+  }, [results])
   const promptPresets = [
     {
       label: t('presetKeepScaleLabel'),
@@ -218,7 +405,7 @@ export function ResultViewer({
     },
   ]
 
-  const lightboxImages: LightboxImage[] = results
+  const lightboxImages: LightboxImage[] = orderedResults
     .filter((r) => r.status === 'done' && r.resultUrl)
     .map((r) => ({ url: r.resultUrl! }))
 
@@ -405,10 +592,16 @@ export function ResultViewer({
         </Button>
       )}
 
+      <MarketplaceCopyPanel
+        copy={marketplaceCopy}
+        onRegenerate={onRegenerateMarketplaceCopy}
+        canRegenerate={!isAnyGenerating && enoughCopyCredits}
+      />
+
       {/* Results */}
       {hasResults ? (
-        <div className={`grid gap-3 ${results.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-          {results.map((result) => (
+        <div className={`grid gap-3 ${orderedResults.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {orderedResults.map((result) => (
             <ResultCard
               key={result.modelId}
               result={result}

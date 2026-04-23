@@ -1768,12 +1768,6 @@
     "errorSize": "Максимальный размер файла — {size} МБ"
   },
   "templatePicker": {
-    "tabAll": "Все",
-    "tabNecklaces": "Колье",
-    "tabEarrings": "Серьги",
-    "tabRings": "Кольца",
-    "tabOuterwear": "Верх",
-    "tabBottomwear": "Низ",
     "subjectAll": "Все типы",
     "subjectWomen": "Женские",
     "subjectMen": "Мужские",
@@ -1870,7 +1864,20 @@
     "macroLabel": "Макро",
     "myModelLabel": "Моя модель",
     "myModelLabelN": "Моя модель {n}",
-    "yourModel": "Ваша модель"
+    "yourModel": "Ваша модель",
+    "marketplaceCopyTitle": "Описание для маркетплейса",
+    "marketplaceCopySubtitle": "Готовые варианты текста списывают 1 кредит и генерируются параллельно с фото",
+    "marketplaceCopyGenerating": "Пишем",
+    "marketplaceCopyReady": "Готово",
+    "marketplaceCopyFailed": "Ошибка",
+    "marketplaceCopyWait": "AI готовит несколько вариантов описания товара.",
+    "copyVariantShort": "Короткий",
+    "copyVariantDetailed": "Развёрнутый",
+    "copyVariantBullets": "Пункты",
+    "marketplaceCopyCopy": "Скопировать",
+    "marketplaceCopyCopied": "Скопировано",
+    "marketplaceCopyRegenerate": "Ещё вариант · 1 кр.",
+    "marketplaceCopyRetry": "Повторить текст · 1 кр."
   },
   "profileForm": {
     "emailReadOnly": "Email изменить нельзя — он используется для входа",

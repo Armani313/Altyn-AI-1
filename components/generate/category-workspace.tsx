@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Check, ArrowRight, Sparkles, Zap, ShieldCheck, Camera, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header }         from '@/components/dashboard/header'
@@ -27,6 +27,7 @@ interface CategoryWorkspaceProps {
 
 export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const t = useTranslations('dashboard')
+  const locale = useLocale()
   const store = getLifestyleGenerationStore(productType)
   const dashboardProfile = useDashboardProfile()
   const currentPlan = dashboardProfile?.profile?.plan ?? 'free'
@@ -63,6 +64,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
   const aspectRatio = workspace.aspectRatio
   const generationResults = workspace.results
   const userPrompt = workspace.userPrompt
+  const marketplaceCopy = workspace.marketplaceCopy
   const selectedTemplateCount = selectedTemplates.length
   const hasCustomPrompt = userPrompt.trim().length > 0
   const creditsRemaining = localCreditsRemaining ?? providerCreditsRemaining
@@ -149,13 +151,13 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
       has_custom_prompt: hasCustomPrompt,
       credits_remaining: creditsRemaining,
     })
-    await store.startGeneration(productType, creditsRemaining, {
+    await store.startGeneration(productType, creditsRemaining, locale, {
       generationError: t('errorGeneration'),
       connectionError: t('errorConnection'),
       insufficientCredits: (needed, available) =>
         t('errorInsufficientCredits', { needed, available }),
     })
-  }, [aspectRatio, creditsRemaining, hasCustomPrompt, productType, selectedTemplateCount, store, t])
+  }, [aspectRatio, creditsRemaining, hasCustomPrompt, locale, productType, selectedTemplateCount, store, t])
 
   const handleRetryFailed = useCallback(async () => {
     void trackAmplitudeEvent('image_generation_retry_requested', {
@@ -170,6 +172,19 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
         t('errorInsufficientCredits', { needed, available }),
     })
   }, [creditsRemaining, productType, selectedTemplateCount, store, t])
+
+  const handleRegenerateMarketplaceCopy = useCallback(async () => {
+    void trackAmplitudeEvent('marketplace_copy_generation_requested', {
+      product_type: productType,
+      credits_remaining: creditsRemaining,
+    })
+    await store.regenerateMarketplaceCopy(productType, creditsRemaining, locale, {
+      generationError: t('errorGeneration'),
+      connectionError: t('errorConnection'),
+      insufficientCredits: (needed, available) =>
+        t('errorInsufficientCredits', { needed, available }),
+    })
+  }, [creditsRemaining, locale, productType, store, t])
 
   const isAnyGenerating = generationResults.some((r) => r.status === 'generating')
   const canGenerate     = !!previewUrl && !isAnyGenerating && selectedTemplateCount > 0
@@ -349,6 +364,8 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
               customModelUrls={customModelUrls}
               userPrompt={userPrompt}
               onUserPromptChange={(value) => store.setUserPrompt(value)}
+              marketplaceCopy={marketplaceCopy}
+              onRegenerateMarketplaceCopy={handleRegenerateMarketplaceCopy}
               selectedCount={selectedTemplates.length}
             />
           </div>

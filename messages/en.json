@@ -1768,12 +1768,6 @@
     "errorSize": "Maximum file size — {size} MB"
   },
   "templatePicker": {
-    "tabAll": "All",
-    "tabNecklaces": "Necklaces",
-    "tabEarrings": "Earrings",
-    "tabRings": "Rings",
-    "tabOuterwear": "Tops",
-    "tabBottomwear": "Bottoms",
     "subjectAll": "All types",
     "subjectWomen": "Women",
     "subjectMen": "Men",
@@ -1870,7 +1864,20 @@
     "macroLabel": "Macro",
     "myModelLabel": "My model",
     "myModelLabelN": "My model {n}",
-    "yourModel": "Your model"
+    "yourModel": "Your model",
+    "marketplaceCopyTitle": "Marketplace description",
+    "marketplaceCopySubtitle": "Paste-ready copy costs 1 credit and is generated alongside the photos",
+    "marketplaceCopyGenerating": "Writing",
+    "marketplaceCopyReady": "Ready",
+    "marketplaceCopyFailed": "Error",
+    "marketplaceCopyWait": "AI is preparing several product description options.",
+    "copyVariantShort": "Short",
+    "copyVariantDetailed": "Detailed",
+    "copyVariantBullets": "Bullets",
+    "marketplaceCopyCopy": "Copy",
+    "marketplaceCopyCopied": "Copied",
+    "marketplaceCopyRegenerate": "New version · 1 cr.",
+    "marketplaceCopyRetry": "Retry text · 1 cr."
   },
   "profileForm": {
     "emailReadOnly": "Email cannot be changed — it is used to sign in",

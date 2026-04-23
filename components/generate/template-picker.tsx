@@ -5,14 +5,13 @@ import { useTranslations } from 'next-intl'
 import { Sparkles, Lock, Check, Upload, Loader2, User, X, ScanLine } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import {
-  MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelCategory, type ModelSubjectType, type ProductType,
+  MODEL_PHOTOS, MODEL_PHOTO_MAP, type ModelSubjectType, type ProductType,
   MAX_CUSTOM_MODELS, makeCustomModelId, isCustomModelId,
   MACRO_SHOT_ID, AI_FREE_LIFESTYLE_ID,
 } from '@/lib/constants'
 import { canAccessPremiumTemplates, isPremiumTemplateLocked } from '@/lib/config/plans'
 import type { Plan } from '@/types/database.types'
 
-type TabCategory = 'all' | ModelCategory
 type SubjectFilter = 'all' | ModelSubjectType
 
 /** Maps model_id → jewelry category. Used by dashboard page. */
@@ -46,7 +45,6 @@ export function TemplatePicker({
     key: 'subjectAll' | 'subjectWomen' | 'subjectMen' | 'subjectKids' | 'subjectMannequins',
     fallback: string,
   ) => (t.has(key) ? t(key) : fallback)
-  const [activeTab,    setActiveTab]    = useState<TabCategory>('all')
   const [activeSubject, setActiveSubject] = useState<SubjectFilter>('all')
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const [deletingIdx,  setDeletingIdx]  = useState<number | null>(null)
@@ -54,20 +52,6 @@ export function TemplatePicker({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<'new' | number>('new')
   const premiumUnlocked = canAccessPremiumTemplates(currentPlan)
-
-  const getTabLabel = (
-    key: 'tabOuterwear' | 'tabBottomwear',
-    fallback: string,
-  ) => (t.has(key) ? t(key) : fallback)
-
-  const TABS: { id: TabCategory; label: string }[] = [
-    { id: 'all',        label: t('tabAll')      },
-    { id: 'necklaces',  label: t('tabNecklaces') },
-    { id: 'earrings',   label: t('tabEarrings')  },
-    { id: 'rings',      label: t('tabRings')     },
-    { id: 'outerwear',  label: getTabLabel('tabOuterwear',  'Верх')  },
-    { id: 'bottomwear', label: getTabLabel('tabBottomwear', 'Низ')   },
-  ]
 
   const SUBJECTS: { id: SubjectFilter; label: string }[] = [
     { id: 'all',        label: getSubjectLabel('subjectAll', 'All types') },
@@ -80,15 +64,9 @@ export function TemplatePicker({
   const isScarves = productType === 'scarves'
   const atMax     = selectedIds.length >= maxSelect
 
-  const categoryFiltered = isScarves
-    ? MODEL_PHOTOS
-    : activeTab === 'all'
-      ? MODEL_PHOTOS
-      : MODEL_PHOTOS.filter((m) => m.category === activeTab)
-
   const filtered = activeSubject === 'all'
-    ? categoryFiltered
-    : categoryFiltered.filter((model) => model.subjectType === activeSubject)
+    ? MODEL_PHOTOS
+    : MODEL_PHOTOS.filter((model) => model.subjectType === activeSubject)
 
   const toggle = (id: string) => {
     if (disabled) return
@@ -229,25 +207,6 @@ export function TemplatePicker({
             </span>
             {t('ofMax', { max: maxSelect })}
           </div>
-        </div>
-      )}
-
-      {/* Filter tabs — only for jewelry mode */}
-      {!isScarves && (
-        <div className="flex gap-1 p-1 bg-cream-100 rounded-xl mb-4 overflow-x-auto scrollbar-hide">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[60px] py-2.5 px-2 min-h-[44px] rounded-lg text-xs font-semibold transition-all duration-200 touch-feedback whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-white text-foreground shadow-soft'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
         </div>
       )}
 

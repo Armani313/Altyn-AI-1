@@ -132,7 +132,7 @@ export function ModelPickerModal({
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
               {hasSelection
                 ? safeT('modelsPickedHint', 'Нажмите, чтобы изменить выбор или добавить свою модель.')
-                : safeT('modelsPickHint', 'Откройте галерею моделей, AI-подборку или загрузите своё лицо.')}
+                : safeT('modelsPickHint', 'Откройте галерею моделей или загрузите своё лицо.')}
             </p>
           </div>
 
@@ -214,7 +214,7 @@ export function ModelPickerModal({
             <span className="text-[11px] text-muted-foreground">
               {safeT(
                 'modelsLibraryHint',
-                '40+ моделей · AI-подборка · свой загруженный образ',
+                '40+ моделей · свой загруженный образ',
               )}
             </span>
           </div>
@@ -233,7 +233,7 @@ export function ModelPickerModal({
               <DialogDescription className="mt-1 text-xs sm:text-sm text-muted-foreground">
                 {safeT(
                   'modelsModalSubtitle',
-                  'Подберите до {max} моделей или дайте AI подобрать автоматически. Загрузите свою модель, чтобы получить персональный образ.',
+                  'Подберите до {max} моделей и при желании загрузите свою модель для персонального образа.',
                   { max: maxSelect },
                 )}
               </DialogDescription>

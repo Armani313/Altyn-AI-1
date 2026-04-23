@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
-import { Gem, Wind, Glasses, Shirt, Layers, Watch, ShoppingBag, ArrowRight, Clapperboard, Sparkles } from 'lucide-react'
+import { Gem, Wind, Glasses, Shirt, Layers, Watch, ShoppingBag, ArrowRight } from 'lucide-react'
 import { Header } from '@/components/dashboard/header'
 import type { ProductType } from '@/lib/constants'
 
@@ -33,44 +33,6 @@ export default function DashboardPage() {
 
       <div className="flex-1 p-4 sm:p-6 xl:p-8">
         <div className="max-w-[1200px] mx-auto">
-          <Link
-            href="/video"
-            className="group relative mb-5 sm:mb-6 block overflow-hidden rounded-2xl sm:rounded-[30px] border border-rose-gold-200 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.85),_rgba(255,247,240,0.95)_42%,_rgba(228,189,162,0.35)_100%)] p-5 shadow-soft transition-all duration-300 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-card sm:p-7"
-          >
-            <div
-              aria-hidden
-              className="absolute inset-0 opacity-40"
-              style={{
-                backgroundImage: 'linear-gradient(135deg, rgba(196,131,79,0.16) 0%, rgba(255,255,255,0) 40%), radial-gradient(circle at 80% 20%, rgba(196,131,79,0.18), rgba(255,255,255,0) 35%)',
-              }}
-            />
-            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <div className="max-w-xl">
-                <div className="inline-flex items-center gap-2 rounded-full border border-rose-gold-200 bg-white/80 px-3 py-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-gold-600 backdrop-blur">
-                  <Clapperboard className="h-3.5 w-3.5" />
-                  {t('videoCtaEyebrow')}
-                </div>
-                <h2 className="mt-3 sm:mt-4 font-serif text-xl sm:text-2xl font-semibold tracking-tight text-foreground sm:text-[30px]">
-                  {t('videoCtaTitle')}
-                </h2>
-                <p className="mt-2 sm:mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-                  {t('videoCtaDesc')}
-                </p>
-              </div>
-
-              <div className="flex shrink-0 flex-col gap-2.5 sm:gap-3">
-                <div className="flex items-center gap-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/75 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-foreground shadow-soft backdrop-blur">
-                  <Sparkles className="h-4 w-4 text-rose-gold-500 flex-shrink-0" />
-                  {t('videoCtaMeta')}
-                </div>
-                <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-all duration-200 group-hover:gap-3">
-                  {t('videoCtaButton')}
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-              </div>
-            </div>
-          </Link>
-
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {CATEGORIES.map(({ id, icon: Icon, gradient, iconColor }) => (
               <Link

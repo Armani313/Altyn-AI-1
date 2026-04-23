@@ -50,6 +50,16 @@ interface PromptModerationOptions {
   maxLength?: number
 }
 
+export function buildNoGeneratedTextDirective(): string {
+  return (
+    '\n\nTEXT SAFETY RULES:\n' +
+    '• Do NOT generate any new letters, words, numbers, slogans, captions, subtitles, badges, labels, logos, watermarks, UI text, packaging copy, signs, stamps, or decorative typography anywhere in the image.\n' +
+    '• The only allowed visible text is text that already exists as a real physical part of the reference product itself, such as engravings, dial numerals, printed artwork, woven labels, stitched lettering, embossed marks, or existing brand details on the item.\n' +
+    '• If the reference product contains text, preserve it faithfully without translating, rewriting, cleaning up, replacing, inventing, extending, or stylizing the characters.\n' +
+    '• If product text is too small or unclear in the reference, keep it subtle and physically plausible instead of inventing crisp fake words.\n'
+  )
+}
+
 /**
  * Sanitize raw user input:
  *   - Trim whitespace

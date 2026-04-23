@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Film, Play, Sparkles } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Film, Play, Sparkles } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/dashboard/header'
 import { UploadZone } from '@/components/generate/upload-zone'
@@ -305,106 +305,127 @@ export function VideoWorkspace() {
       />
 
       <div className="flex-1 p-3 sm:p-5 xl:p-6">
-        <div className="mx-auto grid h-full max-w-[1100px] grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-          {/* Left column: Upload + Settings */}
-          <div className="flex flex-col gap-4">
-            <SectionLabel step="01" title={t('step1')} />
-            <UploadZone
-              previewUrl={previewUrl}
-              onUpload={handleUpload}
-              onRemove={handleRemove}
-              dragLabel={t('dragLabel')}
-            />
-
-            <SectionLabel step="02" title={selectedTemplate ? t('step2Selected') : t('step2')} />
-
-            {/* Template trigger card */}
-            <button
-              type="button"
-              onClick={() => setTemplateDialogOpen(true)}
-              disabled={isGenerating}
-              className="group w-full rounded-2xl border border-cream-200 bg-white p-3 text-left shadow-soft transition-all hover:border-rose-gold-200 hover:shadow-card disabled:cursor-not-allowed disabled:opacity-50 sm:p-4"
-            >
-              {selectedTemplate ? (
-                <div className="flex items-center gap-3">
-                  <div className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-cream-100">
-                    <video
-                      src={selectedTemplate.demoVideoUrl}
-                      poster={selectedTemplate.coverImageUrl}
-                      className="h-full w-full object-cover"
-                      muted
-                      playsInline
-                      preload="metadata"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <Play className="h-3.5 w-3.5 fill-white text-white" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {selectedTemplateName}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {t('changeTemplate')}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-16 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-cream-100">
-                    <Sparkles className="h-5 w-5 text-rose-gold-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      {t('chooseTemplate')}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {t('chooseTemplateHint')}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </div>
-              )}
-            </button>
-
-            {/* Settings panel */}
-            <VideoSettingsPanel
-              value={videoSettings}
-              onChange={handleSettingsChange}
-              disabled={isGenerating}
-            />
-
-            {/* Cost summary */}
-            <div className="rounded-2xl border border-cream-200 bg-cream-50 px-4 py-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <Film className="h-4 w-4 text-rose-gold-500" />
-                  <span className="font-medium text-foreground">{t('costLabel')}</span>
-                </div>
-                <span className="text-sm font-semibold text-foreground">
-                  {t('costValue', { n: creditsCost })}
+        <div className="mx-auto flex h-full max-w-[1100px] flex-col gap-4 sm:gap-6">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-4 shadow-soft sm:px-5">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100">
+                <AlertTriangle className="h-4 w-4 text-amber-700" />
+              </div>
+              <div className="min-w-0">
+                <span className="inline-flex rounded-full border border-amber-200 bg-white/80 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-900">
+                  {t('testingBadge')}
                 </span>
+                <p className="mt-2 text-sm font-semibold text-amber-950 sm:text-[15px]">
+                  {t('testingTitle')}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-amber-900/85">
+                  {t('testingDesc')}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Right column: Result */}
-          <div className="flex flex-col gap-4">
-            <SectionLabel step="03" title={t('step3')} />
-            <VideoResultViewer
-              selectedTemplate={selectedTemplate}
-              status={generationStatus}
-              outputVideoUrl={outputVideoUrl}
-              posterUrl={posterUrl}
-              error={generationError}
-              onGenerate={handleGenerate}
-              onRetry={handleRetry}
-              canGenerate={canGenerate}
-              creditsRemaining={creditsRemaining}
-              creditsCost={creditsCost}
-              settings={videoSettings}
-            />
+          <div className="grid flex-1 grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+            {/* Left column: Upload + Settings */}
+            <div className="flex flex-col gap-4">
+              <SectionLabel step="01" title={t('step1')} />
+              <UploadZone
+                previewUrl={previewUrl}
+                onUpload={handleUpload}
+                onRemove={handleRemove}
+                dragLabel={t('dragLabel')}
+              />
+
+              <SectionLabel step="02" title={selectedTemplate ? t('step2Selected') : t('step2')} />
+
+              {/* Template trigger card */}
+              <button
+                type="button"
+                onClick={() => setTemplateDialogOpen(true)}
+                disabled={isGenerating}
+                className="group w-full rounded-2xl border border-cream-200 bg-white p-3 text-left shadow-soft transition-all hover:border-rose-gold-200 hover:shadow-card disabled:cursor-not-allowed disabled:opacity-50 sm:p-4"
+              >
+                {selectedTemplate ? (
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-cream-100">
+                      <video
+                        src={selectedTemplate.demoVideoUrl}
+                        poster={selectedTemplate.coverImageUrl}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <Play className="h-3.5 w-3.5 fill-white text-white" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {selectedTemplateName}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {t('changeTemplate')}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-16 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-cream-100">
+                      <Sparkles className="h-5 w-5 text-rose-gold-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t('chooseTemplate')}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {t('chooseTemplateHint')}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                )}
+              </button>
+
+              {/* Settings panel */}
+              <VideoSettingsPanel
+                value={videoSettings}
+                onChange={handleSettingsChange}
+                disabled={isGenerating}
+              />
+
+              {/* Cost summary */}
+              <div className="rounded-2xl border border-cream-200 bg-cream-50 px-4 py-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <Film className="h-4 w-4 text-rose-gold-500" />
+                    <span className="font-medium text-foreground">{t('costLabel')}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
+                    {t('costValue', { n: creditsCost })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right column: Result */}
+            <div className="flex flex-col gap-4">
+              <SectionLabel step="03" title={t('step3')} />
+              <VideoResultViewer
+                selectedTemplate={selectedTemplate}
+                status={generationStatus}
+                outputVideoUrl={outputVideoUrl}
+                posterUrl={posterUrl}
+                error={generationError}
+                onGenerate={handleGenerate}
+                onRetry={handleRetry}
+                canGenerate={canGenerate}
+                creditsRemaining={creditsRemaining}
+                creditsCost={creditsCost}
+                settings={videoSettings}
+              />
+            </div>
           </div>
         </div>
       </div>

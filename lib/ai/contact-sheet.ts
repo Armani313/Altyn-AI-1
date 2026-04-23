@@ -13,7 +13,7 @@
  */
 
 import type { ProductType, ModelSubjectType } from '@/lib/constants'
-import { buildUserPromptSuffix } from '@/lib/ai/moderation'
+import { buildNoGeneratedTextDirective, buildUserPromptSuffix } from '@/lib/ai/moderation'
 import {
   buildCardProductInfoBlock,
   buildCardTextLocalizationDirective,
@@ -119,6 +119,7 @@ export function buildCompositeContactSheetPrompt(
   subjectInstruction?: string,
 ): string {
   const suffix = userPrompt ? buildUserPromptSuffix(userPrompt) : ''
+  const noGeneratedText = buildNoGeneratedTextDirective()
 
   // Composite quadrant descriptions vary by product type
   const panels = getCompositeQuadrants(productType)
@@ -151,7 +152,8 @@ export function buildCompositeContactSheetPrompt(
     '• The subject\'s face or display appearance must be recognizably the SAME across all 4 panels\n' +
     '• No text labels or captions on the image\n' +
     '• 8K resolution, luxury editorial photography quality' +
-    suffix
+    suffix +
+    noGeneratedText
   )
 }
 
@@ -327,6 +329,7 @@ export function buildFreeLifestyleContactSheetPrompt(
   userPrompt?: string,
 ): string {
   const suffix = userPrompt ? buildUserPromptSuffix(userPrompt) : ''
+  const noGeneratedText = buildNoGeneratedTextDirective()
 
   const wearable = [
     'jewelry', 'scarves', 'headwear', 'outerwear', 'bottomwear', 'watches', 'bags',
@@ -349,7 +352,8 @@ export function buildFreeLifestyleContactSheetPrompt(
     '• Full-bleed panels, no empty margins\n' +
     '• No text or labels on the image\n' +
     '• Premium marketplace photography, realistic lighting, sharp natural detail' +
-    suffix
+    suffix +
+    noGeneratedText
   )
 }
 
@@ -441,6 +445,7 @@ export function buildPromptOnlyTemplateContactSheetPrompt(
 ): string {
   const q = getPromptOnlyQuadrants(productType)
   const suffix = userPrompt ? buildUserPromptSuffix(userPrompt) : ''
+  const noGeneratedText = buildNoGeneratedTextDirective()
   const poseLine = options.pose ? `Preferred framing: ${options.pose}.` : null
   const hintLine = options.promptHint ? `Template cue: ${options.promptHint}.` : null
 
@@ -462,7 +467,8 @@ export function buildPromptOnlyTemplateContactSheetPrompt(
     '• No text or labels on the image\n' +
     '• Clean premium marketplace style\n' +
     '• Realistic lighting and natural detail' +
-    suffix
+    suffix +
+    noGeneratedText
   )
 }
 
@@ -476,6 +482,7 @@ export function buildContactSheetPrompt(
 ): string {
   const q      = getQuadrants(productType)
   const suffix = userPrompt ? buildUserPromptSuffix(userPrompt) : ''
+  const noGeneratedText = buildNoGeneratedTextDirective()
 
   return (
     'You are a professional fashion and luxury product photographer.\n\n' +
@@ -501,6 +508,7 @@ export function buildContactSheetPrompt(
     '• Each quadrant fills its area completely — no empty space\n' +
     '• No text labels or captions on the image\n' +
     '• Maximum photographic quality, sharp focus, 8K resolution' +
-    suffix
+    suffix +
+    noGeneratedText
   )
 }

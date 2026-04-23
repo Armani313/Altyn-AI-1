@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useLocale } from 'next-intl'
-import { Sparkles, Lock, Check, Upload, X, Wand2 } from 'lucide-react'
+import { Lock, Check, Upload, X, Wand2 } from 'lucide-react'
 import {
   type CardTemplate,
   MAX_CARD_TEMPLATES,
@@ -38,7 +38,6 @@ export function CardTemplatePicker({
   const premiumUnlocked = canAccessPremiumTemplates(currentPlan)
   const copy = locale === 'ru'
     ? {
-        aiPick: 'Пусть ИИ выберет',
         ofMax: `из ${maxSelect}`,
         customAlt: 'Мой шаблон',
         uploadTemplate: 'Загрузить свой шаблон',
@@ -53,7 +52,6 @@ export function CardTemplatePicker({
         reset: 'Сбросить',
       }
     : {
-        aiPick: 'Let AI pick',
         ofMax: `of ${maxSelect}`,
         customAlt: 'My template',
         uploadTemplate: 'Upload your template',
@@ -92,14 +90,6 @@ export function CardTemplatePicker({
     }
   }
 
-  const handleAIPick = () => {
-    if (disabled) return
-    const pool     = templates.filter((t) => !isPremiumTemplateLocked(currentPlan, t.premium))
-    const shuffled = [...pool].sort(() => Math.random() - 0.5)
-    const picks    = shuffled.slice(0, Math.min(2, maxSelect)).map((t) => t.id)
-    onSelect(picks)
-  }
-
   const handleCustomUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -133,26 +123,16 @@ export function CardTemplatePicker({
         onChange={handleCustomUpload}
       />
 
-      {/* AI Pick + counter */}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={handleAIPick}
-        disabled={disabled}
-        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
-      >
-        <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
-        {copy.aiPick}
-      </button>
-
-        {selectedIds.length > 0 && (
+      {selectedIds.length > 0 && (
+        <div className="mb-4 flex justify-end">
           <div className="flex items-center gap-1.5 bg-cream-100 border border-cream-200 rounded-xl px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">
             <span className="w-4 h-4 rounded-full gradient-rose-gold flex items-center justify-center text-white text-[9px] font-bold">
               {selectedIds.length}
             </span>
             {copy.ofMax}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
 
       {/* Template grid */}

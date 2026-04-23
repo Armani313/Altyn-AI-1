@@ -14,7 +14,7 @@
  */
 
 import type { ProductType, ModelSubjectType } from '@/lib/constants'
-import { buildUserPromptSuffix } from '@/lib/ai/moderation'
+import { buildNoGeneratedTextDirective, buildUserPromptSuffix } from '@/lib/ai/moderation'
 import { buildContactSheetPrompt } from '@/lib/ai/contact-sheet'
 import {
   buildCardProductInfoBlock,
@@ -688,6 +688,7 @@ export async function generateJewelryPhoto(
   let parts: object[]
 
   const promptSuffix = params.userPrompt ? buildUserPromptSuffix(params.userPrompt) : ''
+  const noGeneratedTextDirective = buildNoGeneratedTextDirective()
   const subjectInstruction = buildModelSubjectInstruction(
     params.modelSubjectType,
     params.modelPose,
@@ -799,19 +800,19 @@ export async function generateJewelryPhoto(
     // Macro mode: standalone close-up product shot, never uses a model image
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },
-      { text: MACRO_PROMPT + subjectInstruction + promptSuffix },
+      { text: MACRO_PROMPT + subjectInstruction + promptSuffix + noGeneratedTextDirective },
     ]
   } else if (params.modelImageBuffer && params.modelMimeType) {
     const modelBase64 = params.modelImageBuffer.toString('base64')
     parts = [
       { inlineData: { mimeType: params.modelMimeType, data: modelBase64 } },
       { inlineData: { mimeType: productMimeType,      data: productBase64 } },
-      { text: COMPOSITE_PROMPTS[productType] + subjectInstruction + promptSuffix },
+      { text: COMPOSITE_PROMPTS[productType] + subjectInstruction + promptSuffix + noGeneratedTextDirective },
     ]
   } else {
     parts = [
       { inlineData: { mimeType: productMimeType, data: productBase64 } },
-      { text: STANDALONE_PROMPTS[productType] + subjectInstruction + promptSuffix },
+      { text: STANDALONE_PROMPTS[productType] + subjectInstruction + promptSuffix + noGeneratedTextDirective },
     ]
   }
 

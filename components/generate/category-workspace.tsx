@@ -222,7 +222,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
 
       {/* ── Selling hero strip ─────────────────────────────────────────── */}
       <section
-        className="px-3 sm:px-5 xl:px-6 pt-4"
+        className="hidden px-3 sm:px-5 xl:px-6 pt-4 lg:block"
         aria-labelledby="workspace-selling-title"
       >
         <div className="max-w-[1400px] mx-auto">
@@ -266,7 +266,7 @@ export function CategoryWorkspace({ productType }: CategoryWorkspaceProps) {
       </section>
 
       {/* ── Mobile step tabs ──────────────────────────────────────────── */}
-      <div className="lg:hidden sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-cream-200 flex mt-3">
+      <div className="lg:hidden sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-cream-200 flex">
         {MOBILE_STEPS.map((step) => {
           const done   = step.id === 1 ? step1Done : step.id === 2 ? step2Done : false
           const active = mobileStep === step.id

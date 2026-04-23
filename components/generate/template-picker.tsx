@@ -110,15 +110,6 @@ export function TemplatePicker({
     }
   }, [currentPlan, onSelect, selectedIds])
 
-  const handleAIPick = () => {
-    if (disabled) return
-    const pool = (filtered.length > 0 ? filtered : MODEL_PHOTOS)
-      .filter((m) => !isPremiumTemplateLocked(currentPlan, m.premium))
-    const shuffled = [...pool].sort(() => Math.random() - 0.5)
-    const picks = shuffled.slice(0, Math.min(3, maxSelect)).map((m) => m.id)
-    onSelect(picks)
-  }
-
   const openFilePicker = (target: 'new' | number) => {
     if (disabled || uploadingIdx !== null) return
     uploadTargetRef.current = target
@@ -230,26 +221,16 @@ export function TemplatePicker({
         onChange={handleFileChange}
       />
 
-      {/* AI Pick + selection counter */}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={handleAIPick}
-          disabled={disabled}
-          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 min-h-[48px] rounded-xl border border-dashed border-rose-gold-300 bg-rose-gold-50 text-rose-gold-700 text-sm font-semibold hover:bg-rose-gold-100 hover:border-rose-gold-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed touch-feedback"
-        >
-          <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
-          {t('aiPick')}
-        </button>
-
-        {selectedIds.length > 0 && (
+      {selectedIds.length > 0 && (
+        <div className="mb-4 flex justify-end">
           <div className="flex items-center gap-1.5 bg-cream-100 border border-cream-200 rounded-xl px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">
             <span className="w-4 h-4 rounded-full gradient-rose-gold flex items-center justify-center text-white text-[9px] font-bold">
               {selectedIds.length}
             </span>
             {t('ofMax', { max: maxSelect })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Filter tabs — only for jewelry mode */}
       {!isScarves && (

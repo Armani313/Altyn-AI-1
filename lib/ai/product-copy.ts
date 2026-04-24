@@ -1,6 +1,7 @@
 import type { ProductType } from '@/lib/constants'
 
 const DEFAULT_TEXT_MODEL = 'gemini-2.5-flash'
+const FALLBACK_TEXT_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash'] as const
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const GEMINI_TEXT_TIMEOUT_MS = 60_000
 
@@ -29,6 +30,17 @@ interface GeminiPart {
 interface GeminiResponse {
   candidates?: Array<{ content?: { parts?: GeminiPart[] } }>
   error?: { message?: string; code?: number }
+}
+
+class GeminiTextError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+    readonly status?: number,
+  ) {
+    super(message)
+    this.name = 'GeminiTextError'
+  }
 }
 
 const PRODUCT_LABELS: Record<ProductCopyLocale, Record<ProductType, string>> = {
@@ -60,10 +72,54 @@ export async function generateProductMarketplaceCopy(
     throw new Error('Сервис генерации текста временно недоступен. Обратитесь в поддержку.')
   }
 
-  const model = resolveTextModel()
+  const models = resolveTextModels()
   const productBase64 = params.imageBuffer.toString('base64')
   const prompt = buildPrompt(params)
+  let lastRetryableError: GeminiTextError | null = null
 
+  for (const model of models) {
+    try {
+      const text = await requestGeminiText({
+        apiKey,
+        model,
+        productBase64,
+        mimeType: params.mimeType,
+        prompt,
+      })
+
+      return normalizeVariants(parseVariants(text))
+    } catch (error) {
+      if (!(error instanceof GeminiTextError) || !error.retryable) {
+        throw error
+      }
+
+      lastRetryableError = error
+      const hasFallback = models.indexOf(model) < models.length - 1
+      console.warn(
+        '[ProductCopy] Gemini text model retryable error:',
+        model,
+        error.status,
+        hasFallback ? 'trying fallback' : 'no fallback left'
+      )
+    }
+  }
+
+  throw lastRetryableError ?? new Error('Ошибка при генерации текста. Попробуйте снова.')
+}
+
+async function requestGeminiText({
+  apiKey,
+  model,
+  productBase64,
+  mimeType,
+  prompt,
+}: {
+  apiKey: string
+  model: string
+  productBase64: string
+  mimeType: string
+  prompt: string
+}): Promise<string> {
   let response: Response
   try {
     response = await fetch(
@@ -74,7 +130,7 @@ export async function generateProductMarketplaceCopy(
         body: JSON.stringify({
           contents: [{
             parts: [
-              { inlineData: { mimeType: params.mimeType, data: productBase64 } },
+              { inlineData: { mimeType, data: productBase64 } },
               { text: prompt },
             ],
           }],
@@ -90,7 +146,10 @@ export async function generateProductMarketplaceCopy(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (message.toLowerCase().includes('timeout')) {
-      throw new Error('Генерация текста заняла слишком много времени. Попробуйте снова.')
+      throw new GeminiTextError(
+        'Генерация текста заняла слишком много времени. Попробуйте снова.',
+        true
+      )
     }
     throw error
   }
@@ -101,24 +160,41 @@ export async function generateProductMarketplaceCopy(
     data = JSON.parse(rawText) as GeminiResponse
   } catch {
     console.error(`[ProductCopy] Gemini non-JSON response (${response.status})`)
-    throw new Error(`Ошибка генерации текста (${response.status}). Попробуйте снова.`)
+    throw new GeminiTextError(
+      `Ошибка генерации текста (${response.status}). Попробуйте снова.`,
+      response.status >= 500,
+      response.status,
+    )
   }
 
   if (!response.ok) {
+    const upstreamMessage = data.error?.message ?? ''
     console.error(
       '[ProductCopy] Gemini API error:',
       response.status,
       data.error?.code,
-      (data.error?.message ?? '').slice(0, 100)
+      upstreamMessage.slice(0, 100)
     )
 
     if (response.status === 429) {
-      throw new Error('Превышен лимит запросов к AI. Подождите 1-2 минуты и попробуйте снова.')
+      const lowerMessage = upstreamMessage.toLowerCase()
+      if (lowerMessage.includes('quota') || lowerMessage.includes('daily')) {
+        throw new GeminiTextError('Дневной лимит AI исчерпан. Попробуйте завтра.', false, response.status)
+      }
+      throw new GeminiTextError(
+        'Превышен лимит запросов к AI. Подождите 1-2 минуты и попробуйте снова.',
+        true,
+        response.status,
+      )
     }
     if (response.status === 500 || response.status === 503) {
-      throw new Error('AI сервис временно недоступен. Попробуйте через несколько секунд.')
+      throw new GeminiTextError(
+        'AI сервис временно недоступен. Попробуйте через несколько секунд.',
+        true,
+        response.status,
+      )
     }
-    throw new Error('Ошибка при генерации текста. Попробуйте снова.')
+    throw new GeminiTextError('Ошибка при генерации текста. Попробуйте снова.', false, response.status)
   }
 
   const text = data.candidates?.[0]?.content?.parts
@@ -130,12 +206,13 @@ export async function generateProductMarketplaceCopy(
     throw new Error('Модель не вернула текст. Попробуйте другое фото.')
   }
 
-  return normalizeVariants(parseVariants(text))
+  return text
 }
 
-function resolveTextModel() {
+function resolveTextModels() {
   const rawModel = (process.env.GEMINI_TEXT_MODEL || DEFAULT_TEXT_MODEL).trim()
-  return /^[a-zA-Z0-9._-]+$/.test(rawModel) ? rawModel : DEFAULT_TEXT_MODEL
+  const primary = /^[a-zA-Z0-9._-]+$/.test(rawModel) ? rawModel : DEFAULT_TEXT_MODEL
+  return Array.from(new Set([primary, ...FALLBACK_TEXT_MODELS]))
 }
 
 function buildPrompt(params: ProductCopyParams) {

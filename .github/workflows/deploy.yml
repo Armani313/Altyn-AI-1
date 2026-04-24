@@ -27,6 +27,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node 20 (matches Docker build image)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Validate lockfile
+        run: |
+          node scripts/check-lockfile.mjs
+          npm ci --legacy-peer-deps --ignore-scripts
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh

@@ -41,6 +41,7 @@ services:
       # Google Gemini AI
       GEMINI_API_KEY:              ${GEMINI_API_KEY}
       GEMINI_MODEL:                ${GEMINI_MODEL:-}
+      GEMINI_TEXT_MODEL:           ${GEMINI_TEXT_MODEL:-}
       # Topaz Labs Image API
       TOPAZ_API_KEY:               ${TOPAZ_API_KEY}
       # Polar (Billing)

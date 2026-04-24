@@ -47,6 +47,25 @@ export async function runIntegrityChecks(): Promise<IntegrityReport> {
     )
   )
 
+  const geminiApiKey = process.env.GEMINI_API_KEY?.trim()
+  checks.push(
+    buildResult(
+      'gemini_api_key',
+      Boolean(geminiApiKey),
+      geminiApiKey ? undefined : 'GEMINI_API_KEY is missing'
+    )
+  )
+
+  const geminiTextModel = process.env.GEMINI_TEXT_MODEL?.trim()
+  const geminiTextModelLooksValid = !geminiTextModel || /^[a-zA-Z0-9._-]+$/.test(geminiTextModel)
+  checks.push(
+    buildResult(
+      'gemini_text_model',
+      geminiTextModelLooksValid,
+      geminiTextModelLooksValid ? undefined : 'GEMINI_TEXT_MODEL contains invalid characters'
+    )
+  )
+
   let supabase: ReturnType<typeof createServiceClient>
   try {
     supabase = createServiceClient()

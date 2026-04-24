@@ -17,6 +17,9 @@ jobs:
     environment: production
     env:
       NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      GEMINI_TEXT_MODEL: ${{ vars.GEMINI_TEXT_MODEL }}
       TOPAZ_API_KEY: ${{ secrets.TOPAZ_API_KEY }}
       POLAR_ENVIRONMENT: ${{ secrets.POLAR_ENVIRONMENT }}
       POLAR_PRODUCT_ID_TOPUP_25: ${{ secrets.POLAR_PRODUCT_ID_TOPUP_25 }}
@@ -98,6 +101,9 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
+          GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ env.GEMINI_MODEL }}
+          GEMINI_TEXT_MODEL: ${{ env.GEMINI_TEXT_MODEL }}
           TOPAZ_API_KEY: ${{ env.TOPAZ_API_KEY }}
           POLAR_ENVIRONMENT: ${{ env.POLAR_ENVIRONMENT }}
           POLAR_PRODUCT_ID_TOPUP_25: ${{ env.POLAR_PRODUCT_ID_TOPUP_25 }}
@@ -108,7 +114,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          envs: NEXT_PUBLIC_APP_URL,TOPAZ_API_KEY,POLAR_ENVIRONMENT,POLAR_PRODUCT_ID_TOPUP_25,POLAR_PRODUCT_ID_TOPUP_100,POLAR_PRODUCT_ID_TOPUP_250
+          envs: NEXT_PUBLIC_APP_URL,GEMINI_API_KEY,GEMINI_MODEL,GEMINI_TEXT_MODEL,TOPAZ_API_KEY,POLAR_ENVIRONMENT,POLAR_PRODUCT_ID_TOPUP_25,POLAR_PRODUCT_ID_TOPUP_100,POLAR_PRODUCT_ID_TOPUP_250
           script: |
             set -e
             cd /home/ubuntu/luminify
@@ -127,7 +133,18 @@ jobs:
               mv "$tmp_file" .env
             }
 
+            upsert_env_if_present() {
+              key="$1"
+              value="$2"
+              if [ -n "$value" ]; then
+                upsert_env "$key" "$value"
+              fi
+            }
+
             upsert_env NEXT_PUBLIC_APP_URL "$NEXT_PUBLIC_APP_URL"
+            upsert_env_if_present GEMINI_API_KEY "$GEMINI_API_KEY"
+            upsert_env_if_present GEMINI_MODEL "$GEMINI_MODEL"
+            upsert_env_if_present GEMINI_TEXT_MODEL "$GEMINI_TEXT_MODEL"
             upsert_env TOPAZ_API_KEY "$TOPAZ_API_KEY"
             upsert_env POLAR_ENVIRONMENT "$POLAR_ENVIRONMENT"
             upsert_env POLAR_PRODUCT_ID_TOPUP_25 "$POLAR_PRODUCT_ID_TOPUP_25"

@@ -1,9 +1,10 @@
 import type { ProductType } from '@/lib/constants'
 
-const DEFAULT_TEXT_MODEL = 'gemini-2.5-flash'
-const FALLBACK_TEXT_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash'] as const
+const DEFAULT_TEXT_MODEL = 'gemini-2.5-flash-lite'
+const FALLBACK_TEXT_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash'] as const
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const GEMINI_TEXT_TIMEOUT_MS = 60_000
+const GEMINI_TEXT_MAX_ATTEMPTS_PER_MODEL = 2
 
 export type ProductCopyLocale = 'ru' | 'en'
 
@@ -77,30 +78,39 @@ export async function generateProductMarketplaceCopy(
   const prompt = buildPrompt(params)
   let lastRetryableError: GeminiTextError | null = null
 
-  for (const model of models) {
-    try {
-      const text = await requestGeminiText({
-        apiKey,
-        model,
-        productBase64,
-        mimeType: params.mimeType,
-        prompt,
-      })
+  for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
+    const model = models[modelIndex]
 
-      return normalizeVariants(parseVariants(text))
-    } catch (error) {
-      if (!(error instanceof GeminiTextError) || !error.retryable) {
-        throw error
+    for (let attempt = 1; attempt <= GEMINI_TEXT_MAX_ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        const text = await requestGeminiText({
+          apiKey,
+          model,
+          productBase64,
+          mimeType: params.mimeType,
+          prompt,
+        })
+
+        return normalizeVariants(parseVariants(text))
+      } catch (error) {
+        if (!(error instanceof GeminiTextError) || !error.retryable) {
+          throw error
+        }
+
+        lastRetryableError = error
+        const canRetrySameModel = attempt < GEMINI_TEXT_MAX_ATTEMPTS_PER_MODEL
+        const hasFallback = modelIndex < models.length - 1
+        console.warn(
+          '[ProductCopy] Gemini text model retryable error:',
+          model,
+          error.status,
+          canRetrySameModel ? 'retrying same model' : hasFallback ? 'trying fallback' : 'no fallback left'
+        )
+
+        if (canRetrySameModel) {
+          await delay(750 * attempt)
+        }
       }
-
-      lastRetryableError = error
-      const hasFallback = models.indexOf(model) < models.length - 1
-      console.warn(
-        '[ProductCopy] Gemini text model retryable error:',
-        model,
-        error.status,
-        hasFallback ? 'trying fallback' : 'no fallback left'
-      )
     }
   }
 
@@ -213,6 +223,10 @@ function resolveTextModels() {
   const rawModel = (process.env.GEMINI_TEXT_MODEL || DEFAULT_TEXT_MODEL).trim()
   const primary = /^[a-zA-Z0-9._-]+$/.test(rawModel) ? rawModel : DEFAULT_TEXT_MODEL
   return Array.from(new Set([primary, ...FALLBACK_TEXT_MODELS]))
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function buildPrompt(params: ProductCopyParams) {

@@ -13,6 +13,7 @@ import { useLocale } from 'next-intl'
 import { Download, Loader2, ZoomIn, CheckCircle2 } from 'lucide-react'
 import { Lightbox } from '@/components/ui/lightbox'
 import { PANEL_NAMES_EN, PANEL_NAMES_RU } from '@/lib/ai/contact-sheet'
+import { downloadMedia } from '@/lib/download-media'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,24 +33,6 @@ export interface PanelVariant {
 interface ContactSheetViewerProps {
   generationId: string
   panels:       PanelVariant[]
-}
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-
-async function downloadImage(url: string, name: string) {
-  try {
-    const res  = await fetch(url)
-    const blob = await res.blob()
-    const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
-    const tmp  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = tmp
-    a.download = `${name}.${ext}`
-    a.click()
-    URL.revokeObjectURL(tmp)
-  } catch {
-    window.open(url, '_blank')
-  }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -196,7 +179,7 @@ function DownloadButton({
   const [busy, setBusy] = useState(false)
   return (
     <button
-      onClick={async () => { setBusy(true); await downloadImage(url, name); setBusy(false) }}
+      onClick={async () => { setBusy(true); await downloadMedia(url, name); setBusy(false) }}
       disabled={busy}
       className="flex items-center gap-1.5 bg-white border border-cream-200 hover:border-rose-gold-200 text-foreground text-xs font-semibold px-3 py-2 rounded-xl shadow-soft hover:shadow-card transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70"
     >

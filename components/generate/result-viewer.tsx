@@ -8,6 +8,7 @@ import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import { useRouter } from '@/i18n/navigation'
 import { MODEL_PHOTO_MAP, isCustomModelId, getCustomModelIndex, isMacroShotId } from '@/lib/constants'
 import { saveUpscaleSourceImage } from '@/lib/tools/upscale-transfer'
+import { downloadMedia } from '@/lib/download-media'
 
 type AspectRatio = '1:1' | '9:16'
 type MarketplaceCopyVariantId = 'short' | 'detailed' | 'bullets'
@@ -41,22 +42,6 @@ interface ResultViewerProps {
   selectedCount?:      number
 }
 
-async function downloadImage(url: string, name: string) {
-  try {
-    const res  = await fetch(url)
-    const blob = await res.blob()
-    const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
-    const tmp  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = tmp
-    a.download = `${name}.${ext}`
-    a.click()
-    URL.revokeObjectURL(tmp)
-  } catch {
-    window.open(url, '_blank')
-  }
-}
-
 /* ── Single result card ──────────────────────────────────────────────────── */
 function ResultCard({
   result,
@@ -79,7 +64,7 @@ function ResultCard({
   const handleDownload = async () => {
     if (!result.resultUrl || isDownloading) return
     setIsDownloading(true)
-    await downloadImage(result.resultUrl, `luminify-${result.modelId}-${Date.now()}`)
+    await downloadMedia(result.resultUrl, `luminify-${result.modelId}-${Date.now()}`)
     setIsDownloading(false)
   }
 

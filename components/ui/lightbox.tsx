@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { X, ChevronLeft, ChevronRight, Download, Loader2, Sparkles } from 'lucide-react'
+import { downloadMedia } from '@/lib/download-media'
 
 export interface LightboxImage {
   url:    string
@@ -16,22 +17,6 @@ interface LightboxProps {
   onClose:             () => void
   primaryActionLabel?: string
   onPrimaryAction?:    (image: LightboxImage) => void
-}
-
-async function downloadImage(url: string, name: string) {
-  try {
-    const res  = await fetch(url)
-    const blob = await res.blob()
-    const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
-    const tmp  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = tmp
-    a.download = `${name}.${ext}`
-    a.click()
-    URL.revokeObjectURL(tmp)
-  } catch {
-    window.open(url, '_blank')
-  }
 }
 
 export function Lightbox({
@@ -80,7 +65,7 @@ export function Lightbox({
   const handleDownload = async () => {
     if (!current?.url || isDownloading) return
     setIsDownloading(true)
-    await downloadImage(current.url, `luminify-${currentIndex + 1}-${Date.now()}`)
+    await downloadMedia(current.url, `luminify-${currentIndex + 1}-${Date.now()}`)
     setIsDownloading(false)
   }
 

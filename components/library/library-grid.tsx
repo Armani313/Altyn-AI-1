@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { saveUpscaleSourceImage } from '@/lib/tools/upscale-transfer'
 import type { LibraryDisplayCard } from '@/lib/library/display-items'
+import { downloadMedia } from '@/lib/download-media'
 
 const STATUS_CLASSES: Record<LibraryDisplayCard['status'], string> = {
   queued:     'bg-amber-50 text-amber-600 border-amber-200',
@@ -20,26 +21,6 @@ const STATUS_CLASSES: Record<LibraryDisplayCard['status'], string> = {
   processing: 'bg-blue-50 text-blue-600 border-blue-200',
   completed:  'bg-emerald-50 text-emerald-600 border-emerald-200',
   failed:     'bg-red-50 text-red-600 border-red-200',
-}
-
-async function downloadMedia(url: string, name: string, extension: 'jpg' | 'mp4') {
-  try {
-    const res  = await fetch(url)
-    const blob = await res.blob()
-    const ext  = extension === 'mp4'
-      ? 'mp4'
-      : blob.type === 'image/png'
-        ? 'png'
-        : 'jpg'
-    const tmp  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = tmp
-    a.download = `${name}.${ext}`
-    a.click()
-    URL.revokeObjectURL(tmp)
-  } catch {
-    window.open(url, '_blank')
-  }
 }
 
 interface LibraryGridProps {
@@ -180,7 +161,7 @@ export function LibraryGrid({ items }: LibraryGridProps) {
                           : item.panelId
                             ? `luminify-${item.generationId.slice(0, 8)}-panel-${item.panelId}`
                             : `luminify-${item.generationId.slice(0, 8)}`,
-                        item.mediaType === 'video' ? 'mp4' : 'jpg'
+                        item.mediaType === 'video' ? 'video' : 'image'
                       )}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-cream-100 hover:bg-rose-gold-50 hover:text-rose-gold-700 text-foreground/70 text-[10px] font-semibold py-3 rounded-lg transition-colors touch-manipulation min-h-[40px]"
                       aria-label={t('download')}

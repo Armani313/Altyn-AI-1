@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Lightbox, type LightboxImage } from '@/components/ui/lightbox'
 import { type CardTemplate, CUSTOM_CARD_TEMPLATE_ID } from '@/lib/card-templates'
 import type { CardResult } from '@/lib/cards-generation-store'
+import { downloadMedia } from '@/lib/download-media'
 
 export type { CardResult }
 
@@ -32,22 +33,6 @@ const RATIOS: { id: AspectRatio; label: string; cls: string }[] = [
   { id: '4:5',  label: '4:5',  cls: 'aspect-[4/5]'  },
   { id: '9:16', label: '9:16', cls: 'aspect-[9/16]' },
 ]
-
-async function downloadImage(url: string, name: string) {
-  try {
-    const res  = await fetch(url)
-    const blob = await res.blob()
-    const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
-    const tmp  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = tmp
-    a.download = `${name}.${ext}`
-    a.click()
-    URL.revokeObjectURL(tmp)
-  } catch {
-    window.open(url, '_blank')
-  }
-}
 
 // ── Display item: one card in the grid ──────────────────────────────────────
 
@@ -152,7 +137,7 @@ function DoneCard({
   const handleDownload = async () => {
     if (isDownloading) return
     setIsDownloading(true)
-    await downloadImage(imageUrl, `luminify-card-${Date.now()}`)
+    await downloadMedia(imageUrl, `luminify-card-${Date.now()}`)
     setIsDownloading(false)
   }
 

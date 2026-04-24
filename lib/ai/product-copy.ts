@@ -33,6 +33,8 @@ interface GeminiResponse {
   error?: { message?: string; code?: number }
 }
 
+type UnknownRecord = Record<string, unknown>
+
 class GeminiTextError extends Error {
   constructor(
     message: string,
@@ -276,22 +278,201 @@ function parseVariants(text: string): unknown {
 }
 
 function normalizeVariants(value: unknown): ProductCopyVariants {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+  const raw = unwrapVariantRecord(value)
+  if (!raw) {
     throw new Error('AI вернул текст в неверном формате. Попробуйте снова.')
   }
 
-  const raw = value as Partial<Record<keyof ProductCopyVariants, unknown>>
-  const variants = {
-    short: normalizeText(raw.short, 900),
-    detailed: normalizeText(raw.detailed, 2200),
-    bullets: normalizeText(raw.bullets, 1400),
+  let short = firstNormalized(raw, [
+    'short',
+    'shortDescription',
+    'short_description',
+    'brief',
+    'summary',
+    'title',
+    'headline',
+  ], 900)
+
+  let detailed = firstNormalized(raw, [
+    'detailed',
+    'detailedDescription',
+    'detailed_description',
+    'longDescription',
+    'long_description',
+    'full',
+    'fullDescription',
+    'full_description',
+    'description',
+    'body',
+  ], 2200)
+
+  let bullets = firstNormalized(raw, [
+    'bullets',
+    'bulletPoints',
+    'bullet_points',
+    'bulletList',
+    'bullet_list',
+    'keyPoints',
+    'key_points',
+    'sellingPoints',
+    'selling_points',
+    'benefits',
+    'features',
+    'points',
+  ], 1400, true)
+
+  if (!short && detailed) {
+    short = deriveShortText(detailed, 900)
+  }
+  if (!detailed && short) {
+    detailed = short
+  }
+  if (!bullets && (detailed || short)) {
+    bullets = deriveBulletText(detailed || short, 1400)
   }
 
-  if (!variants.short || !variants.detailed || !variants.bullets) {
+  if (!short || !detailed || !bullets) {
     throw new Error('AI вернул неполный текст. Попробуйте снова.')
   }
 
-  return variants
+  return { short, detailed, bullets }
+}
+
+function unwrapVariantRecord(value: unknown): UnknownRecord | null {
+  if (!isRecord(value)) return null
+
+  if (hasAnyVariantKey(value)) return value
+
+  for (const key of [
+    'copy',
+    'productCopy',
+    'product_copy',
+    'marketplaceCopy',
+    'marketplace_copy',
+    'variants',
+    'result',
+    'content',
+    'output',
+  ]) {
+    const nested = value[key]
+    if (isRecord(nested) && hasAnyVariantKey(nested)) return nested
+  }
+
+  return value
+}
+
+function hasAnyVariantKey(value: UnknownRecord) {
+  const keys = new Set(Object.keys(value))
+  return [
+    'short',
+    'shortDescription',
+    'short_description',
+    'detailed',
+    'detailedDescription',
+    'detailed_description',
+    'description',
+    'bullets',
+    'bulletPoints',
+    'bullet_points',
+    'benefits',
+    'features',
+  ].some((key) => keys.has(key))
+}
+
+function firstNormalized(
+  value: UnknownRecord,
+  keys: string[],
+  maxLength: number,
+  bulletize = false,
+) {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      const normalized = normalizeTextValue(value[key], maxLength, bulletize)
+      if (normalized) return normalized
+    }
+  }
+
+  return ''
+}
+
+function normalizeTextValue(value: unknown, maxLength: number, bulletize = false): string {
+  if (typeof value === 'string') return normalizeText(value, maxLength)
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => normalizeTextValue(item, maxLength))
+      .filter(Boolean)
+
+    const text = bulletize
+      ? parts.map((part) => part.replace(/^[•*\-]\s*/, '')).map((part) => `• ${part}`).join('\n')
+      : parts.join('\n')
+
+    return normalizeText(text, maxLength)
+  }
+
+  if (isRecord(value)) {
+    const preferredKeys = [
+      'title',
+      'headline',
+      'heading',
+      'text',
+      'description',
+      'body',
+      'paragraph',
+      'summary',
+      'items',
+      'bullets',
+      'bulletPoints',
+      'bullet_points',
+      'benefits',
+      'features',
+    ]
+
+    const preferredParts = preferredKeys
+      .filter((key) => Object.prototype.hasOwnProperty.call(value, key))
+      .map((key) => normalizeTextValue(value[key], maxLength, bulletize))
+      .filter(Boolean)
+
+    const parts = preferredParts.length > 0
+      ? preferredParts
+      : Object.values(value)
+          .map((item) => normalizeTextValue(item, maxLength, bulletize))
+          .filter(Boolean)
+
+    return normalizeText(parts.join('\n'), maxLength)
+  }
+
+  return ''
+}
+
+function deriveShortText(source: string, maxLength: number) {
+  const paragraphs = source
+    .split(/\n+/)
+    .map((line) => line.replace(/^[•*\-]\s*/, '').trim())
+    .filter(Boolean)
+
+  return normalizeText(paragraphs.slice(0, 3).join('\n'), maxLength)
+}
+
+function deriveBulletText(source: string, maxLength: number) {
+  const lines = source
+    .split(/\n+/)
+    .map((line) => line.replace(/^[•*\-]\s*/, '').trim())
+    .filter(Boolean)
+
+  const parts = lines.length >= 2
+    ? lines.slice(0, 7)
+    : source
+        .split(/(?<=[.!?])\s+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 7)
+
+  return normalizeText(parts.map((part) => `• ${part}`).join('\n'), maxLength)
+}
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 function normalizeText(value: unknown, maxLength: number) {

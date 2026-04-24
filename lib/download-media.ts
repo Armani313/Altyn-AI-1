@@ -10,29 +10,19 @@ function extFor(blob: Blob, fallback: string): string {
 }
 
 function isIOS(): boolean {
-  if (typeof navigator === 'undefined') return false
+  if (typeof navigator === 'undefined' || typeof document === 'undefined') return false
   const ua = navigator.userAgent
   return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document)
 }
 
-async function tryWebShare(blob: Blob, filename: string): Promise<boolean> {
+function isAndroid(): boolean {
   if (typeof navigator === 'undefined') return false
-  const nav = navigator as Navigator & {
-    canShare?: (data: ShareData) => boolean
-    share?:    (data: ShareData) => Promise<void>
-  }
-  if (!nav.share || !nav.canShare) return false
+  return /Android/i.test(navigator.userAgent)
+}
 
-  try {
-    const file = new File([blob], filename, { type: blob.type })
-    const data: ShareData = { files: [file] }
-    if (!nav.canShare(data)) return false
-    await nav.share(data)
-    return true
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') return true
-    return false
-  }
+function openInNewTab(url: string): void {
+  const w = window.open(url, '_blank', 'noopener,noreferrer')
+  if (!w) window.location.href = url
 }
 
 function triggerBlobDownload(blob: Blob, filename: string): void {
@@ -52,21 +42,22 @@ export async function downloadMedia(
   name: string,
   kind: 'image' | 'video' = 'image',
 ): Promise<void> {
+  if (isIOS()) {
+    openInNewTab(url)
+    return
+  }
+
   const fallbackExt = kind === 'video' ? 'mp4' : 'jpg'
 
   try {
-    const res  = await fetch(url, { credentials: 'omit' })
+    const res = await fetch(url, { credentials: 'omit' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const blob = await res.blob()
     const filename = `${name}.${extFor(blob, fallbackExt)}`
-
-    const shared = await tryWebShare(blob, filename)
-    if (shared) return
-
     triggerBlobDownload(blob, filename)
   } catch {
-    if (isIOS()) {
-      window.location.href = url
+    if (isAndroid()) {
+      openInNewTab(url)
     } else {
       window.open(url, '_blank', 'noopener')
     }

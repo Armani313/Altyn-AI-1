@@ -6,11 +6,12 @@
  */
 
 import { NextResponse } from 'next/server'
+import sharp from 'sharp'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { refundByWithRetry } from '@/lib/utils/refund'
-import { assertSafeImageBytes } from '@/lib/utils/security'
+import { assertSafeImageBytes, detectImageMimeType } from '@/lib/utils/security'
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_IMAGE_BYTES,
@@ -81,22 +82,32 @@ export async function POST(request: Request) {
       return err('Файл изображения не найден. Пожалуйста, загрузите фото.', 400)
     }
 
-    if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(imageFile.type)) {
-      return err(
-        `Неподдерживаемый формат: ${imageFile.type}. Используйте JPG, PNG, WebP или HEIC.`,
-        400
-      )
-    }
-
     if (imageFile.size > MAX_IMAGE_BYTES) {
       return err(`Файл ${(imageFile.size / 1024 / 1024).toFixed(1)} МБ превышает лимит 10 МБ.`, 413)
     }
 
     const fileBytes = await imageFile.arrayBuffer()
+    const detectedMimeType = detectImageMimeType(new Uint8Array(fileBytes))
+    const effectiveMimeType = detectedMimeType || imageFile.type || ''
+    if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(effectiveMimeType)) {
+      return err(
+        `Неподдерживаемый формат: ${effectiveMimeType || 'unknown'}. Используйте JPG, PNG, WebP или HEIC.`,
+        400
+      )
+    }
+
     try {
       assertSafeImageBytes(new Uint8Array(fileBytes))
     } catch (e) {
       return err(e instanceof Error ? e.message : 'Недопустимый формат файла.', 400)
+    }
+
+    let normalizedImage: { buffer: Buffer; mimeType: string }
+    try {
+      normalizedImage = await normalizeForTextGeneration(Buffer.from(fileBytes))
+    } catch (e) {
+      console.warn('[ProductCopy] image normalization failed:', e)
+      return err('Не удалось подготовить изображение для генерации текста. Попробуйте JPG или PNG.', 400)
     }
 
     const serviceSupabase = createServiceClient()
@@ -122,8 +133,8 @@ export async function POST(request: Request) {
 
     try {
       const copy = await generateProductMarketplaceCopy({
-        imageBuffer: Buffer.from(fileBytes),
-        mimeType: imageFile.type,
+        imageBuffer: normalizedImage.buffer,
+        mimeType: normalizedImage.mimeType,
         productType,
         locale,
         userPrompt: userPrompt || undefined,
@@ -159,4 +170,25 @@ export async function POST(request: Request) {
 
 function err(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })
+}
+
+async function normalizeForTextGeneration(imageBuffer: Buffer) {
+  const buffer = await sharp(imageBuffer, { failOn: 'error' })
+    .rotate()
+    .resize({
+      width: 1600,
+      height: 1600,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .jpeg({
+      quality: 85,
+      mozjpeg: true,
+    })
+    .toBuffer()
+
+  return {
+    buffer,
+    mimeType: 'image/jpeg',
+  }
 }

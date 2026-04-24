@@ -204,6 +204,13 @@ async function requestGeminiText({
         response.status,
       )
     }
+    if (response.status === 404) {
+      throw new GeminiTextError(
+        'Выбранная AI модель недоступна. Пробуем резервную модель.',
+        true,
+        response.status,
+      )
+    }
     throw new GeminiTextError('Ошибка при генерации текста. Попробуйте снова.', false, response.status)
   }
 

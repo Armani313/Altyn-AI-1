@@ -7,12 +7,14 @@ import {
   Type, Sticker, Layers, SlidersHorizontal, ChevronUp, ChevronDown,
   Sun, Contrast, Droplets, Move3d, Eye, Trash2, Palette,
   AlignLeft, AlignCenter, AlignRight, Paintbrush, ArrowLeft, X,
-  MoreHorizontal,
+  MoreHorizontal, ImageIcon, ZoomIn, ZoomOut, Maximize2, Copy,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useEditorHistory } from './use-editor-history'
 import { BADGES, type BadgeItem } from './badge-library'
 import { BackgroundPanel, DEFAULT_BG_CONFIG, type BgConfig } from './background-panel'
+import { updateGuidelineDimensions } from './guidelines'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +84,27 @@ const PANEL_ITEMS: { id: NonNullable<SidePanel>; icon: typeof Paintbrush; labelK
   { id: 'layers',     icon: Layers,            labelKey: 'layers'     },
 ]
 
+const ZOOM_MIN = 0.25
+const ZOOM_MAX = 3
+const ZOOM_STEP = 0.1
+
+// ─── Small visual ratio preview ───────────────────────────────────────────────
+
+function RatioPreview({ w, h, active }: { w: number; h: number; active: boolean }) {
+  const max = 14
+  const dw = w >= h ? max : Math.round(max * w / h)
+  const dh = w >= h ? Math.round(max * h / w) : max
+  return (
+    <span
+      aria-hidden
+      className={`inline-block rounded-[3px] border-[1.5px] transition-colors ${
+        active ? 'border-rose-gold-500 bg-rose-gold-100' : 'border-muted-foreground/40'
+      }`}
+      style={{ width: dw, height: dh }}
+    />
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
@@ -93,6 +116,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   const fabricRef = useRef<import('fabric').Canvas | null>(null)
   const productObjRef = useRef<import('fabric').FabricImage | null>(null)
   const blobProductUrlRef = useRef<string | null>(null)
+  const prevDimsRef = useRef<{ cw: number; ch: number } | null>(null)
 
   // State
   const [ratio, setRatio] = useState<(typeof RATIOS)[number]>(RATIOS[0])
@@ -100,6 +124,8 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   const [currentProductUrl, setCurrentProductUrl] = useState<string | null>(productBlobUrl ?? null)
   const [hasProduct, setHasProduct] = useState(Boolean(productBlobUrl))
   const [canvasReady, setCanvasReady] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const [showRatioMenu, setShowRatioMenu] = useState(false)
 
   // Background config
   const [bgConfig, setBgConfig] = useState<BgConfig>(DEFAULT_BG_CONFIG)
@@ -147,11 +173,15 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   // ── Canvas dimensions ─────────────────────────────────────────────────────
   const { cw, ch } = getDims(ratio.w, ratio.h)
 
+  // Load product into canvas — reads dims from canvas at call time so it's
+  // safe to call regardless of ratio changes.
   const loadProductToCanvas = useCallback(async (sourceUrl: string) => {
     const canvas = fabricRef.current
     if (!canvas || !sourceUrl) return
 
     const fabric = await import('fabric')
+    const w = canvas.getWidth()
+    const h = canvas.getHeight()
 
     if (productObjRef.current) {
       canvas.remove(productObjRef.current)
@@ -159,13 +189,13 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
     }
 
     const prodImg = await fabric.FabricImage.fromURL(sourceUrl, { crossOrigin: 'anonymous' })
-    const maxDim = Math.min(cw, ch) * 0.6
+    const maxDim = Math.min(w, h) * 0.6
     const scale = maxDim / Math.max(prodImg.width ?? 1, prodImg.height ?? 1)
     prodImg.set({
       scaleX: scale,
       scaleY: scale,
-      left: cw / 2,
-      top: ch / 2,
+      left: w / 2,
+      top: h / 2,
       originX: 'center',
       originY: 'center',
       name: PREFIX.product,
@@ -178,29 +208,20 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
     canvas.requestRenderAll()
     saveHistory()
     rerender()
-  }, [ch, cw, rerender, saveHistory])
+  }, [rerender, saveHistory])
 
-  // ── Initialize Fabric canvas ──────────────────────────────────────────────
-  useEffect(() => {
-    setCurrentProductUrl(productBlobUrl ?? null)
-    setHasProduct(Boolean(productBlobUrl))
-  }, [productBlobUrl])
-
+  // ── Initialize Fabric canvas (RUN ONCE) ───────────────────────────────────
   useEffect(() => {
     let mounted = true
-    setCanvasReady(false)
     const init = async () => {
       const fabric = await import('fabric')
       if (!mounted || !canvasElRef.current) return
 
-      // Dispose previous
-      if (fabricRef.current) {
-        fabricRef.current.dispose()
-      }
+      const initialDims = getDims(ratio.w, ratio.h)
 
       const canvas = new fabric.Canvas(canvasElRef.current, {
-        width: cw,
-        height: ch,
+        width: initialDims.cw,
+        height: initialDims.ch,
         backgroundColor: '#ffffff',
         preserveObjectStacking: true,
         selection: true,
@@ -208,6 +229,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       })
 
       fabricRef.current = canvas
+      prevDimsRef.current = { cw: initialDims.cw, ch: initialDims.ch }
 
       // Snapping guidelines
       const { initGuidelines } = await import('./guidelines')
@@ -227,10 +249,66 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
 
     return () => {
       mounted = false
+      if (fabricRef.current) {
+        fabricRef.current.dispose()
+        fabricRef.current = null
+      }
+      productObjRef.current = null
+      prevDimsRef.current = null
       setCanvasReady(false)
     }
-  }, [cw, ch, saveHistory, rerender])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
+  // ── React to ratio change: resize WITHOUT losing layers ───────────────────
+  useEffect(() => {
+    const canvas = fabricRef.current
+    if (!canvas || !canvasReady) return
+
+    const prev = prevDimsRef.current
+    if (!prev || (prev.cw === cw && prev.ch === ch)) return
+
+    // Scale factors per axis
+    const sx = cw / prev.cw
+    const sy = ch / prev.ch
+    // For object (X, Y) preserve aspect ratio with the smaller factor so
+    // nothing overflows.
+    const s = Math.min(sx, sy)
+
+    canvas.setDimensions({ width: cw, height: ch })
+
+    canvas.getObjects().forEach((obj) => {
+      const layerType = getLayerType(obj)
+      // Background objects are recreated by the bg effect on dim change.
+      if (layerType === 'background') return
+      // Skip guideline lines (excludeFromExport=true marker).
+      if ((obj as { excludeFromExport?: boolean }).excludeFromExport) return
+
+      const left = obj.left ?? 0
+      const top = obj.top ?? 0
+
+      obj.set({
+        left: left * sx,
+        top: top * sy,
+        scaleX: (obj.scaleX ?? 1) * s,
+        scaleY: (obj.scaleY ?? 1) * s,
+      })
+      obj.setCoords()
+    })
+
+    updateGuidelineDimensions(canvas)
+    prevDimsRef.current = { cw, ch }
+    canvas.requestRenderAll()
+    saveHistory()
+  }, [cw, ch, canvasReady, saveHistory])
+
+  // Sync prop changes to local state
+  useEffect(() => {
+    setCurrentProductUrl(productBlobUrl ?? null)
+    setHasProduct(Boolean(productBlobUrl))
+  }, [productBlobUrl])
+
+  // Load / unload product when URL changes (NOT on ratio change)
   useEffect(() => {
     if (!canvasReady) return
 
@@ -257,34 +335,24 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   useEffect(() => {
     const recalc = () => fabricRef.current?.calcOffset()
     window.addEventListener('resize', recalc)
-    window.addEventListener('scroll', recalc)
-    // Also recalc when orientation changes (mobile)
+    window.addEventListener('scroll', recalc, true)
     window.addEventListener('orientationchange', recalc)
     return () => {
       window.removeEventListener('resize', recalc)
-      window.removeEventListener('scroll', recalc)
+      window.removeEventListener('scroll', recalc, true)
       window.removeEventListener('orientationchange', recalc)
     }
   }, [])
 
-  // Close panel when tapping canvas on mobile
+  // Recalc offset when zoom changes (CSS scale impacts pointer math)
   useEffect(() => {
-    const canvas = fabricRef.current
-    if (!canvas) return
-    const handleMouseDown = () => {
-      // On mobile, if panel is open, close it to give more space
-      if (window.innerWidth < 1024 && panel) {
-        setPanel(null)
-      }
-    }
-    canvas.on('mouse:down', handleMouseDown)
-    return () => { canvas.off('mouse:down', handleMouseDown) }
-  }, [panel])
+    requestAnimationFrame(() => fabricRef.current?.calcOffset())
+  }, [zoom, panel])
 
   // ── Apply background config to canvas ─────────────────────────────────────
   useEffect(() => {
     const canvas = fabricRef.current
-    if (!canvas) return
+    if (!canvas || !canvasReady) return
 
     const applyBg = async () => {
       const fabric = await import('fabric')
@@ -365,7 +433,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       canvas.requestRenderAll()
     }
     applyBg()
-  }, [bgConfig, cw, ch])
+  }, [bgConfig, cw, ch, canvasReady])
 
   // ── Apply filters to product ──────────────────────────────────────────────
   useEffect(() => {
@@ -469,6 +537,23 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       setCurrentProductUrl(null)
       setHasProduct(false)
     }
+    saveHistory()
+    rerender()
+  }
+
+  const handleDuplicate = async () => {
+    const canvas = fabricRef.current
+    const obj = canvas?.getActiveObject()
+    if (!obj || getLayerType(obj) === 'background' || getLayerType(obj) === 'product') return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cloned = await (obj as any).clone()
+    cloned.set({
+      left: (obj.left ?? 0) + 20,
+      top: (obj.top ?? 0) + 20,
+    })
+    canvas!.add(cloned)
+    canvas!.setActiveObject(cloned)
+    canvas!.requestRenderAll()
     saveHistory()
     rerender()
   }
@@ -631,6 +716,12 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
 
   const togglePanel = (id: SidePanel) => setPanel(panel === id ? null : id)
 
+  // Zoom helpers
+  const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z))
+  const handleZoomIn = () => setZoom((z) => clampZoom(z + ZOOM_STEP))
+  const handleZoomOut = () => setZoom((z) => clampZoom(z - ZOOM_STEP))
+  const handleZoomReset = () => setZoom(1)
+
   // ── Panel content (shared between desktop sidebar and mobile sheet) ──────
   const panelContent = (
     <>
@@ -645,6 +736,12 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
             {t('colorCorrection')}
           </p>
+
+          {!activeObj && (
+            <p className="text-xs text-muted-foreground bg-cream-100 rounded-lg px-3 py-2">
+              {t('noSelection')}
+            </p>
+          )}
 
           {/* Brightness */}
           <div className="space-y-1.5">
@@ -917,7 +1014,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#FAF9F6]">
       <input
         ref={productInputRef}
         type="file"
@@ -927,103 +1024,163 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       />
 
       {/* ── Top toolbar ── */}
-      <div className="shrink-0 border-b border-cream-200 bg-white"
-        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-
-        {/* Row 1: Back + Undo/Redo + Ratios + Export */}
-        <div className="flex items-center justify-between px-2 lg:px-4 py-1.5 lg:py-2">
-          <div className="flex items-center gap-0.5 shrink-0">
+      <header
+        className="shrink-0 border-b border-cream-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
+        {/* Row 1: primary actions */}
+        <div className="flex items-center gap-1 px-2 lg:px-4 py-2">
+          {/* Left cluster */}
+          <div className="flex items-center gap-1 shrink-0">
             {onBack && (
-              <>
-                <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-                  onClick={onBack} title={t('backToUpload')}>
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-                <div className="w-px h-5 bg-cream-200 mx-0.5 shrink-0" />
-              </>
+              <Button variant="ghost" size="icon" className="w-9 h-9 shrink-0"
+                onClick={onBack} title={t('backToUpload')}>
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
             )}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 shrink-0 gap-1.5 px-2 text-xs"
+              className="h-9 shrink-0 gap-1.5 px-2.5 text-xs border-cream-300 hover:border-rose-gold-300 hover:bg-rose-gold-50"
               onClick={openProductPicker}
             >
-              <Palette className="w-3.5 h-3.5" />
-              {hasProduct ? t('replaceInEditor') : t('uploadToEditor')}
+              <ImageIcon className="w-3.5 h-3.5 text-rose-gold-600" />
+              <span className="hidden sm:inline">
+                {hasProduct ? t('replaceInEditor') : t('uploadToEditor')}
+              </span>
             </Button>
-            <div className="w-px h-5 bg-cream-200 mx-0.5 shrink-0" />
-            <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-              onClick={handleUndo} disabled={!canUndo()}>
+            <div className="w-px h-6 bg-cream-200 mx-1 shrink-0 hidden sm:block" />
+            <Button variant="ghost" size="icon" className="w-9 h-9 shrink-0"
+              onClick={handleUndo} disabled={!canUndo()} title="Undo">
               <Undo2 className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-              onClick={handleRedo} disabled={!canRedo()}>
+            <Button variant="ghost" size="icon" className="w-9 h-9 shrink-0"
+              onClick={handleRedo} disabled={!canRedo()} title="Redo">
               <Redo2 className="w-4 h-4" />
             </Button>
-
-            {/* Desktop-only: object actions inline */}
-            <div className="hidden lg:flex items-center gap-0.5">
-              <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
-              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-                onClick={() => handleFlip('x')} disabled={!activeObj} title={t('flipH')}>
-                <FlipHorizontal2 className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-                onClick={() => handleFlip('y')} disabled={!activeObj} title={t('flipV')}>
-                <FlipVertical2 className="w-4 h-4" />
-              </Button>
-              <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
-              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-                onClick={handleBringForward} disabled={!activeObj} title={t('bringForward')}>
-                <ChevronUp className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0"
-                onClick={handleSendBackward} disabled={!activeObj} title={t('sendBackward')}>
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-              <div className="w-px h-5 bg-cream-200 mx-1 shrink-0" />
-              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                onClick={handleDelete} disabled={!activeObj || activeType === 'background'} title={t('delete')}>
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Mobile-only: toggle object actions row */}
-            {activeObj && (
-              <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0 lg:hidden"
-                onClick={() => setShowMobileActions((v) => !v)}>
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            )}
           </div>
 
-          {/* Ratio presets */}
-          <div className="flex items-center gap-0.5 lg:gap-1 overflow-x-auto scrollbar-hide mx-1 lg:mx-2 flex-1 justify-center">
-            {RATIOS.map((r) => (
-              <button key={r.label}
-                onClick={() => setRatio(r)}
-                className={`px-1.5 lg:px-2.5 py-1 rounded-lg text-[10px] lg:text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
-                  ratio.label === r.label
-                    ? 'bg-rose-gold-100 text-rose-gold-700 border border-rose-gold-200'
-                    : 'text-muted-foreground hover:bg-cream-100'
-                }`}>
-                {r.label}
-                <span className="hidden lg:inline text-[10px] text-muted-foreground ml-1">{r.desc}</span>
+          {/* Center: Format picker (visual) */}
+          <div className="flex-1 flex justify-center min-w-0 px-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowRatioMenu((v) => !v)}
+                className="flex items-center gap-2 px-3 h-9 rounded-lg border border-cream-300 bg-white text-xs font-medium hover:border-rose-gold-300 transition-colors"
+              >
+                <RatioPreview w={ratio.w} h={ratio.h} active />
+                <span className="font-semibold">{ratio.label}</span>
+                <span className="hidden sm:inline text-muted-foreground">· {ratio.desc}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${showRatioMenu ? 'rotate-180' : ''}`} />
               </button>
-            ))}
+
+              {showRatioMenu && (
+                <>
+                  {/* invisible backdrop to close on outside click */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowRatioMenu(false)}
+                  />
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-[260px] z-50 rounded-xl border border-cream-200 bg-white shadow-card p-1.5">
+                    <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                      {t('format')}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {RATIOS.map((r) => {
+                        const isActive = ratio.label === r.label
+                        return (
+                          <button
+                            key={r.label}
+                            onClick={() => {
+                              setRatio(r)
+                              setShowRatioMenu(false)
+                            }}
+                            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all ${
+                              isActive
+                                ? 'bg-rose-gold-50 ring-1 ring-rose-gold-200'
+                                : 'hover:bg-cream-100'
+                            }`}
+                          >
+                            <RatioPreview w={r.w} h={r.h} active={isActive} />
+                            <div className="flex flex-col min-w-0">
+                              <span className={`text-xs font-semibold ${isActive ? 'text-rose-gold-700' : 'text-foreground'}`}>
+                                {r.label}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground truncate">
+                                {r.desc}
+                              </span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Export */}
+          {/* Right cluster: Mobile action toggle + Export */}
+          {activeObj && (
+            <Button variant="ghost" size="icon" className="w-9 h-9 shrink-0 lg:hidden"
+              onClick={() => setShowMobileActions((v) => !v)}
+              title={t('actions')}>
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          )}
+
           <Button onClick={handleExport} size="sm"
-            className="gradient-rose-gold text-white rounded-lg h-8 px-2 lg:px-3 text-xs gap-1 shrink-0">
+            className="gradient-rose-gold text-white rounded-lg h-9 px-3 lg:px-4 text-xs gap-1.5 shrink-0 shadow-soft">
             <Download className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('export')}</span>
           </Button>
         </div>
 
-        {/* Row 2 (mobile-only): Object actions — shown when an object is selected and toggled */}
+        {/* Row 2: contextual object actions (desktop, when selected) */}
+        {activeObj && (
+          <div className="hidden lg:flex items-center gap-0.5 px-4 pb-2 -mt-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mr-2">
+              {activeType === 'product' ? t('layerProduct')
+                : activeType === 'text' ? t('layerText')
+                : activeType === 'badge' ? t('layerBadge')
+                : t('actions')}
+            </span>
+            <Button variant="ghost" size="icon" className="w-8 h-8"
+              onClick={() => handleFlip('x')} title={t('flipH')}>
+              <FlipHorizontal2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="w-8 h-8"
+              onClick={() => handleFlip('y')} title={t('flipV')}>
+              <FlipVertical2 className="w-4 h-4" />
+            </Button>
+            <div className="w-px h-5 bg-cream-200 mx-1" />
+            <Button variant="ghost" size="icon" className="w-8 h-8"
+              onClick={handleBringForward} title={t('bringForward')}>
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="w-8 h-8"
+              onClick={handleSendBackward} title={t('sendBackward')}>
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+            {(activeType === 'text' || activeType === 'badge') && (
+              <>
+                <div className="w-px h-5 bg-cream-200 mx-1" />
+                <Button variant="ghost" size="icon" className="w-8 h-8"
+                  onClick={handleDuplicate} title={t('duplicate')}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+            <div className="w-px h-5 bg-cream-200 mx-1" />
+            <Button variant="ghost" size="icon" className="w-8 h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={handleDelete} disabled={activeType === 'background'} title={t('delete')}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Row 2 (mobile-only): Object actions when toggled */}
         {showMobileActions && activeObj && (
-          <div className="flex items-center justify-center gap-1 px-2 pb-1.5 lg:hidden border-t border-cream-100">
+          <div className="flex items-center justify-center gap-1 px-2 pb-2 lg:hidden border-t border-cream-100 pt-1.5">
             <Button variant="ghost" size="icon" className="w-9 h-9"
               onClick={() => handleFlip('x')} title={t('flipH')}>
               <FlipHorizontal2 className="w-4 h-4" />
@@ -1041,6 +1198,15 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
               onClick={handleSendBackward} title={t('sendBackward')}>
               <ChevronDown className="w-4 h-4" />
             </Button>
+            {(activeType === 'text' || activeType === 'badge') && (
+              <>
+                <div className="w-px h-5 bg-cream-200 mx-0.5" />
+                <Button variant="ghost" size="icon" className="w-9 h-9"
+                  onClick={handleDuplicate} title={t('duplicate')}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </>
+            )}
             <div className="w-px h-5 bg-cream-200 mx-0.5" />
             <Button variant="ghost" size="icon" className="w-9 h-9 text-red-500 hover:text-red-600 hover:bg-red-50"
               onClick={handleDelete} disabled={activeType === 'background'} title={t('delete')}>
@@ -1048,54 +1214,65 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
             </Button>
           </div>
         )}
-      </div>
+      </header>
 
       {/* ── Main area ── */}
       <div className="flex flex-1 overflow-hidden relative">
 
         {/* ── Desktop: vertical icon strip (lg+) ── */}
-        <div className="hidden lg:flex w-12 flex-shrink-0 bg-white border-r border-cream-200 flex-col items-center py-3 gap-1">
+        <nav className="hidden lg:flex w-14 flex-shrink-0 bg-white border-r border-cream-200 flex-col items-center py-3 gap-1">
           {PANEL_ITEMS.map(({ id, icon: Icon, labelKey }) => (
             <button key={id}
               onClick={() => togglePanel(id)}
-              className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all ${
+              className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all ${
                 panel === id
-                  ? 'bg-rose-gold-100 text-rose-gold-700'
+                  ? 'bg-rose-gold-100 text-rose-gold-700 shadow-soft'
                   : 'text-muted-foreground hover:bg-cream-100 hover:text-foreground'
               }`}
               title={t(labelKey)}>
-              <Icon className="w-4 h-4" />
-              <span className="text-[8px] font-medium leading-none">{t(labelKey)}</span>
+              <Icon className="w-4 h-4" strokeWidth={panel === id ? 2.2 : 1.8} />
+              <span className="text-[9px] font-medium leading-none">{t(labelKey)}</span>
             </button>
           ))}
-        </div>
+        </nav>
 
         {/* ── Desktop: side panel content (lg+) ── */}
         {panel && (
-          <div className="hidden lg:block w-[260px] flex-shrink-0 bg-white border-r border-cream-200 overflow-y-auto p-4 space-y-4">
+          <aside className="hidden lg:block w-[280px] flex-shrink-0 bg-white border-r border-cream-200 overflow-y-auto p-4 space-y-4">
             {panelContent}
-          </div>
+          </aside>
         )}
 
         {/* ── Canvas area ── */}
-        <div className="flex-1 flex items-center justify-center bg-[#FAF9F6] overflow-auto p-2 lg:p-4"
-          style={{ touchAction: 'none' }}>
-          <div className="relative">
+        <div
+          className="flex-1 flex items-center justify-center overflow-auto p-4 lg:p-8 relative"
+          style={{ touchAction: 'pan-x pan-y' }}
+        >
+          {!canvasReady && (
+            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground gap-2 text-xs">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t('loading')}
+            </div>
+          )}
+
+          <div className="relative inline-block">
             <canvas
               ref={canvasElRef}
-              className="rounded-xl shadow-card"
-              style={{
-                maxWidth: '100%',
-                maxHeight: 'calc(100dvh - 120px)',
-              }}
+              className="rounded-xl shadow-card ring-1 ring-cream-200/60"
+              style={
+                zoom === 1
+                  ? { maxWidth: '100%', maxHeight: 'calc(100dvh - 200px)', touchAction: 'none' }
+                  : { width: cw * zoom, height: ch * zoom, maxWidth: 'none', maxHeight: 'none', touchAction: 'none' }
+              }
             />
-            {!hasProduct && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-cream-300 bg-white/78 backdrop-blur-sm">
+            {!hasProduct && canvasReady && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-cream-300 bg-white/85 backdrop-blur-sm">
                 <div className="max-w-[280px] px-6 text-center">
+                  <ImageIcon className="w-10 h-10 mx-auto text-rose-gold-400/70 mb-3" />
                   <p className="text-base font-semibold text-foreground">
                     {t('emptyEditorTitle')}
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                     {t('emptyEditorSubtitle')}
                   </p>
                   <Button
@@ -1108,12 +1285,38 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
               </div>
             )}
           </div>
+
+          {/* Zoom controls */}
+          {canvasReady && (
+            <div className="absolute bottom-4 right-4 lg:bottom-6 lg:right-6 flex items-center gap-0.5 rounded-full bg-white/95 backdrop-blur shadow-card border border-cream-200 px-1 py-1 z-10">
+              <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full"
+                onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title={t('zoomOut')}>
+                <ZoomOut className="w-3.5 h-3.5" />
+              </Button>
+              <button
+                onClick={handleZoomReset}
+                className="text-[11px] font-mono font-medium px-1.5 min-w-[44px] text-center text-muted-foreground hover:text-foreground"
+                title={t('zoomFit')}
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full"
+                onClick={handleZoomIn} disabled={zoom >= ZOOM_MAX} title={t('zoomIn')}>
+                <ZoomIn className="w-3.5 h-3.5" />
+              </Button>
+              <div className="w-px h-4 bg-cream-200 mx-0.5" />
+              <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full"
+                onClick={handleZoomReset} title={t('zoomFit')}>
+                <Maximize2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* ── Mobile: backdrop when panel is open ── */}
         {panel && (
           <div
-            className="lg:hidden absolute inset-0 z-10 bg-black/20"
+            className="lg:hidden absolute inset-0 z-10 bg-black/30 transition-opacity"
             onClick={() => setPanel(null)}
           />
         )}
@@ -1121,15 +1324,16 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
         {/* ── Mobile: bottom sheet panel overlay (< lg) ── */}
         {panel && (
           <div className="lg:hidden absolute inset-x-0 bottom-0 z-20 flex flex-col animate-in slide-in-from-bottom duration-200"
-            style={{ maxHeight: '45dvh' }}>
+            style={{ maxHeight: '55dvh' }}>
             {/* Handle + close */}
-            <div className="relative flex items-center justify-center px-4 pt-2 pb-1 bg-white rounded-t-2xl border-t border-cream-200 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
-              <div className="w-8 h-1 rounded-full bg-cream-300" />
-              <button onClick={() => setPanel(null)} className="absolute right-3 top-1.5 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-cream-100">
+            <div className="relative flex items-center justify-center px-4 pt-2.5 pb-1.5 bg-white rounded-t-2xl border-t border-cream-200 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
+              <div className="w-10 h-1 rounded-full bg-cream-300" />
+              <button onClick={() => setPanel(null)}
+                className="absolute right-3 top-2 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-cream-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="bg-white overflow-y-auto p-3 space-y-3 overscroll-contain"
+            <div className="bg-white overflow-y-auto p-4 space-y-3 overscroll-contain"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)' }}>
               {panelContent}
             </div>
@@ -1138,7 +1342,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
       </div>
 
       {/* ── Mobile: horizontal bottom tool bar (< lg) ── */}
-      <div className="lg:hidden flex items-center justify-around bg-white border-t border-cream-200 shrink-0"
+      <nav className="lg:hidden flex items-center justify-around bg-white border-t border-cream-200 shrink-0"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {PANEL_ITEMS.map(({ id, icon: Icon, labelKey }) => (
           <button key={id}
@@ -1154,7 +1358,7 @@ export function MarketplaceEditor({ productBlobUrl, onBack }: EditorProps) {
             </span>
           </button>
         ))}
-      </div>
+      </nav>
     </div>
   )
 }

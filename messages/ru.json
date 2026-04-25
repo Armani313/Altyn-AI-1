@@ -2082,7 +2082,15 @@
     "layerProduct": "Продукт",
     "layerText": "Текст",
     "layerBadge": "Значок",
-    "layerObject": "Объект"
+    "layerObject": "Объект",
+    "zoomIn": "Приблизить",
+    "zoomOut": "Отдалить",
+    "zoomFit": "По размеру",
+    "format": "Формат",
+    "loading": "Загрузка редактора…",
+    "actions": "Действия",
+    "noSelection": "Выберите объект, чтобы редактировать",
+    "duplicate": "Дублировать"
   },
   "bgRemoverPage": {
     "metaTitle": "Удаление фона — бесплатный ИИ-инструмент | Luminify",

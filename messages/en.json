@@ -2082,7 +2082,15 @@
     "layerProduct": "Product",
     "layerText": "Text",
     "layerBadge": "Badge",
-    "layerObject": "Object"
+    "layerObject": "Object",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomFit": "Fit to screen",
+    "format": "Format",
+    "loading": "Loading editor…",
+    "actions": "Actions",
+    "noSelection": "Select an object to edit",
+    "duplicate": "Duplicate"
   },
   "bgRemoverPage": {
     "metaTitle": "Background Remover — Free AI Tool | Luminify",

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { ImagePlus } from 'lucide-react'
+import { ImagePlus, Check } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,9 +34,17 @@ export const GRADIENT_PRESETS: GradientPreset[] = [
   { label: 'marble',   from: '#e8e8e8', to: '#f5f5f5' },
 ]
 
-const SOLID_PRESETS = [
-  '#ffffff', '#f5f5f5', '#1a1a1a', '#000000',
-  '#C4834F', '#e8d5c4', '#dbeafe', '#dcfce7',
+const SOLID_PRESETS: { color: string; label: string }[] = [
+  { color: '#ffffff', label: 'White' },
+  { color: '#f5f5f5', label: 'Light Gray' },
+  { color: '#FAF7F4', label: 'Cream' },
+  { color: '#1a1a1a', label: 'Charcoal' },
+  { color: '#000000', label: 'Black' },
+  { color: '#C4834F', label: 'Rose Gold' },
+  { color: '#e8d5c4', label: 'Beige' },
+  { color: '#dbeafe', label: 'Sky' },
+  { color: '#dcfce7', label: 'Mint' },
+  { color: '#fce7f3', label: 'Rose' },
 ]
 
 export const DEFAULT_BG_CONFIG: BgConfig = {
@@ -89,15 +97,17 @@ export function BackgroundPanel({ config, onChange }: BackgroundPanelProps) {
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
         {t('background')}
       </p>
-      <div className="grid grid-cols-4 gap-1.5">
+
+      {/* Type tabs */}
+      <div className="grid grid-cols-4 gap-1 p-1 bg-cream-100 rounded-xl">
         {(['transparent', 'color', 'gradient', 'image'] as BgType[]).map((bgType) => (
           <button
             key={bgType}
             onClick={() => setType(bgType)}
-            className={`py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+            className={`py-2 rounded-lg text-[11px] font-medium transition-all ${
               config.type === bgType
-                ? 'bg-rose-gold-100 text-rose-gold-700 border border-rose-gold-200'
-                : 'bg-cream-100 text-muted-foreground hover:bg-cream-200'
+                ? 'bg-white text-rose-gold-700 shadow-soft'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {bgType === 'transparent' ? t('bgTransparent')
@@ -108,67 +118,111 @@ export function BackgroundPanel({ config, onChange }: BackgroundPanelProps) {
         ))}
       </div>
 
+      {/* Color presets */}
       {config.type === 'color' && (
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {SOLID_PRESETS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                className={`w-7 h-7 rounded-lg border-2 transition-all ${
-                  config.color === c ? 'border-rose-gold-500 scale-110' : 'border-transparent hover:border-cream-400'
-                }`}
-                style={{ background: c }}
+        <div className="space-y-3">
+          <div className="grid grid-cols-5 gap-1.5">
+            {SOLID_PRESETS.map(({ color, label }) => {
+              const isActive = config.color.toLowerCase() === color.toLowerCase()
+              return (
+                <button
+                  key={color}
+                  onClick={() => setColor(color)}
+                  title={label}
+                  className={`relative aspect-square rounded-lg border transition-all ${
+                    isActive
+                      ? 'border-rose-gold-500 ring-2 ring-rose-gold-200 scale-105'
+                      : 'border-cream-200 hover:border-cream-400 hover:scale-105'
+                  }`}
+                  style={{ background: color }}
+                >
+                  {isActive && (
+                    <Check
+                      className={`w-3.5 h-3.5 absolute inset-0 m-auto ${
+                        ['#ffffff', '#f5f5f5', '#FAF7F4', '#e8d5c4', '#dbeafe', '#dcfce7', '#fce7f3'].includes(color)
+                          ? 'text-rose-gold-600'
+                          : 'text-white'
+                      }`}
+                      strokeWidth={3}
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex items-center gap-2 px-1">
+            <label className="relative cursor-pointer">
+              <input
+                type="color"
+                value={config.color}
+                onChange={(e) => setColor(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
               />
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={config.color}
-              onChange={(e) => setColor(e.target.value)}
-              className="w-8 h-8 rounded-lg cursor-pointer border border-cream-200"
-            />
-            <span className="text-xs text-muted-foreground">{config.color}</span>
+              <div
+                className="w-9 h-9 rounded-lg border-2 border-cream-200 hover:border-rose-gold-300 transition-colors"
+                style={{ background: config.color }}
+              />
+            </label>
+            <span className="text-xs text-muted-foreground font-mono uppercase">{config.color}</span>
           </div>
         </div>
       )}
 
+      {/* Gradient presets */}
       {config.type === 'gradient' && (
-        <div className="flex flex-wrap gap-1.5">
-          {GRADIENT_PRESETS.map((g) => (
-            <button
-              key={g.label}
-              onClick={() => setGradient(g)}
-              title={gradientName(g.label)}
-              className={`w-7 h-7 rounded-lg border-2 transition-all ${
-                config.gradient.label === g.label
-                  ? 'border-rose-gold-500 scale-110'
-                  : 'border-transparent hover:border-cream-400'
-              }`}
-              style={{ background: `linear-gradient(135deg, ${g.from}, ${g.to})` }}
-            />
-          ))}
+        <div className="grid grid-cols-4 gap-1.5">
+          {GRADIENT_PRESETS.map((g) => {
+            const isActive = config.gradient.label === g.label
+            return (
+              <button
+                key={g.label}
+                onClick={() => setGradient(g)}
+                title={gradientName(g.label)}
+                className={`relative aspect-square rounded-lg border transition-all ${
+                  isActive
+                    ? 'border-rose-gold-500 ring-2 ring-rose-gold-200 scale-105'
+                    : 'border-cream-200 hover:border-cream-400 hover:scale-105'
+                }`}
+                style={{ background: `linear-gradient(135deg, ${g.from}, ${g.to})` }}
+              >
+                {isActive && (
+                  <Check className="w-3.5 h-3.5 text-white absolute inset-0 m-auto drop-shadow" strokeWidth={3} />
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
 
+      {/* Image upload */}
       {config.type === 'image' && (
-        <label className="flex items-center gap-2 cursor-pointer">
-          <div className={`flex-1 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${
-            bgImageFile ? 'border-rose-gold-200 bg-rose-gold-50' : 'border-cream-300 bg-cream-100'
-          }`}>
-            <ImagePlus className="w-3.5 h-3.5 text-rose-gold-500 flex-shrink-0" />
-            <span className="truncate text-muted-foreground">
-              {bgImageFile ? bgImageFile.name : t('selectBgPhoto')}
-            </span>
-          </div>
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleBgImageUpload(f) }}
-          />
-        </label>
+        <div className="space-y-2">
+          <label className="block cursor-pointer">
+            <div
+              className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 px-4 transition-colors ${
+                bgImageFile
+                  ? 'border-rose-gold-200 bg-rose-gold-50/60'
+                  : 'border-cream-300 bg-cream-50 hover:border-rose-gold-300 hover:bg-rose-gold-50/30'
+              }`}
+            >
+              <ImagePlus className="w-5 h-5 text-rose-gold-500" />
+              <span className="text-xs font-medium text-foreground text-center">
+                {bgImageFile ? bgImageFile.name : t('selectBgPhoto')}
+              </span>
+              {bgImageFile && (
+                <span className="text-[10px] text-muted-foreground">
+                  {(bgImageFile.size / 1024).toFixed(0)} KB
+                </span>
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleBgImageUpload(f) }}
+            />
+          </label>
+        </div>
       )}
     </>
   )

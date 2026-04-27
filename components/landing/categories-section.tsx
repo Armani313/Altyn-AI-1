@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -211,8 +212,28 @@ function CategoryVisual({ kind }: { kind: CategoryKey }) {
             </span>
             <span className="text-[10px] text-muted-foreground">flat-lay</span>
           </div>
-          <div className="aspect-[3/4] rounded-xl bg-gradient-to-br from-cream-100 to-cream-200 border border-cream-300 flex items-center justify-center">
-            <span className="text-4xl opacity-40 grayscale">{p.emoji}</span>
+          <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-cream-300 bg-gradient-to-br from-cream-100 to-cream-200">
+            {kind === 'apparel' ? (
+              <Image
+                src="/apparel-before.jpeg"
+                alt="White blouse and blue skirt before AI enhancement"
+                fill
+                sizes="(min-width: 1024px) 240px, 45vw"
+                className="object-cover"
+              />
+            ) : kind === 'jewelry' ? (
+              <Image
+                src="/jewelry-before.webp"
+                alt="Turquoise and silver jewelry before AI enhancement"
+                fill
+                sizes="(min-width: 1024px) 240px, 45vw"
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <span className="text-4xl opacity-40 grayscale">{p.emoji}</span>
+              </div>
+            )}
           </div>
         </div>
         {/* After */}
@@ -223,8 +244,28 @@ function CategoryVisual({ kind }: { kind: CategoryKey }) {
             </span>
             <span className="text-[10px] text-rose-gold-700/70">on-model</span>
           </div>
-          <div className="aspect-[3/4] rounded-xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-inner">
-            <span className="text-5xl drop-shadow-md">{p.emoji}</span>
+          <div className="relative z-10 aspect-[3/4] overflow-hidden rounded-xl border border-white/60 bg-white/80 shadow-inner backdrop-blur-sm">
+            {kind === 'apparel' ? (
+              <Image
+                src="/apparel-after.png"
+                alt="Model wearing a white blouse and blue skirt after AI enhancement"
+                fill
+                sizes="(min-width: 1024px) 240px, 45vw"
+                className="object-cover"
+              />
+            ) : kind === 'jewelry' ? (
+              <Image
+                src="/jewelry-after.jpg"
+                alt="Model wearing turquoise and silver jewelry after AI enhancement"
+                fill
+                sizes="(min-width: 1024px) 240px, 45vw"
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <span className="text-5xl drop-shadow-md">{p.emoji}</span>
+              </div>
+            )}
           </div>
           <span className={`absolute -bottom-8 -right-8 w-28 h-28 rounded-full ${p.accent} blur-2xl opacity-40`} />
         </div>

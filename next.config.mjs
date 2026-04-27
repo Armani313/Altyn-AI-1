@@ -66,8 +66,8 @@ const nextConfig = {
   },
 
   // ── Image optimizer disabled ──────────────────────────────────────────────
-  // next/image is not used in this project (all images are plain <img> tags).
-  // Disabling the optimizer eliminates the /_next/image DoS attack surface
+  // Images render without the /_next/image optimizer. Keeping this disabled
+  // eliminates the /_next/image DoS attack surface
   // (CVE-2025-59471 / GHSA-9g9p-9gw9-jx7f).
   images: {
     unoptimized: true,
